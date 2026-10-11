@@ -1,0 +1,95 @@
+<!doctype html><html lang="uz"><head><meta charset="utf-8"><title>Yarashamiz</title>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;700&family=Manrope:wght@400;600&display=swap" rel="stylesheet">
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+:root{color-scheme:dark;--bg1:#4a1d5c;--bg2:#12061c;--ink:#f6e9ee;--gold:#f2b27a;--ok:#7be0a8;--glass:rgba(255,255,255,.08);--line:rgba(255,255,255,.16);box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{background:radial-gradient(120% 70% at 50% 0,var(--bg1),#1d0b2b 60%,var(--bg2));color:var(--ink);font:400 15px/1.5 Manrope,system-ui,sans-serif;overflow-x:hidden}
+h1,h2{font:700 24px/1.2 Unbounded,sans-serif;margin:0;text-align:center}
+p{margin:0;opacity:.75;text-align:center}
+#app{min-height:100%;display:flex;flex-direction:column}
+.scr{display:none;flex:1;flex-direction:column;align-items:center;gap:18px;padding:36px 22px 24px;animation:in .5s ease}
+.scr.on{display:flex}
+@keyframes in{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+.btn{border:0;border-radius:16px;min-height:52px;width:100%;font:600 16px Manrope,sans-serif;background:var(--gold);color:#2a0f33;box-shadow:0 10px 24px rgba(242,178,122,.35);transition:transform .15s}
+.btn:active{transform:scale(.96)}
+.ghost{background:none;border:0;color:var(--ink);opacity:.55;font:400 13px Manrope,sans-serif;min-height:44px}
+.glass{background:var(--glass);border:1px solid var(--line);border-radius:20px;box-shadow:0 18px 40px rgba(0,0,0,.35)}
+/* envelope */
+.stage{perspective:900px;width:280px;height:200px;margin:50px 0 12px;position:relative;cursor:pointer}
+.env,.paper,.flap,.front{position:absolute}
+.env{inset:0;border-radius:18px;background:linear-gradient(160deg,#7a3a86,#4a1d5c);box-shadow:0 30px 50px rgba(0,0,0,.5)}
+.paper{left:22px;right:22px;top:10px;height:170px;border-radius:12px;background:#fbefe6;color:#3a1a2e;padding:18px;transition:transform .9s .35s cubic-bezier(.2,.8,.2,1);font:600 13px Manrope;display:flex;align-items:center;justify-content:center;text-align:center}
+.front{left:0;right:0;bottom:0;height:120px;border-radius:0 0 18px 18px;background:linear-gradient(180deg,#6a2f78,#4a1d5c)}
+.flap{left:0;right:0;top:0;height:0;border-left:140px solid transparent;border-right:140px solid transparent;border-top:110px solid #9a52a6;transform-origin:top;transition:transform .7s;filter:drop-shadow(0 6px 8px rgba(0,0,0,.4));z-index:3}
+.stage.open .flap{transform:rotateX(180deg);z-index:0}
+.stage.open .paper{transform:translateY(-70px);z-index:2}
+.stage:not(.open) .env{animation:float 3s ease-in-out infinite}
+@keyframes float{50%{transform:translateY(-8px) rotateX(4deg)}}
+#reveal{display:none;width:100%;flex-direction:column;gap:12px;animation:in .6s ease}
+#reveal.on{display:flex}
+.letter{padding:18px;font-size:16px;line-height:1.6;text-align:center}
+.chips{display:flex;flex-wrap:wrap;gap:8px;justify-content:center}
+.chip{border:1px solid var(--line);background:var(--glass);color:var(--ink);border-radius:99px;padding:10px 16px;min-height:44px;font:600 14px Manrope}
+.chip.sel{background:var(--gold);color:#2a0f33}
+/* games */
+.row{display:flex;gap:44px}
+.av{display:flex;flex-direction:column;align-items:center;gap:8px}
+.dot{width:64px;height:64px;border-radius:50%;background:linear-gradient(145deg,#9a52a6,#4a1d5c);display:flex;align-items:center;justify-content:center;font:700 22px Unbounded;box-shadow:0 10px 20px rgba(0,0,0,.4)}
+.st{font-size:12px;font-weight:600;border-radius:99px;padding:4px 10px;background:var(--glass);color:var(--gold)}
+.st.ok{color:var(--ok)}
+.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;width:100%;perspective:800px}
+.card{aspect-ratio:1;position:relative;transform-style:preserve-3d;transition:transform .5s;border:0;background:none;padding:0}
+.card.f{transform:rotateY(180deg)}
+.card i{position:absolute;inset:0;border-radius:14px;backface-visibility:hidden;display:flex;align-items:center;justify-content:center;font:normal 28px Unbounded}
+.card .b{background:linear-gradient(145deg,#7a3a86,#4a1d5c);border:1px solid var(--line)}
+.card .a{background:#fbefe6;color:#b3365b;transform:rotateY(180deg)}
+.card.m .a{background:var(--ok);color:#12351f}
+.bar{width:100%;height:8px;border-radius:9px;background:rgba(255,255,255,.12)}
+.bar b{display:block;height:100%;width:0;border-radius:9px;background:var(--gold);transition:width .8s}
+/* ranking */
+.pod{display:flex;align-items:flex-end;gap:10px;margin-top:30px}
+.pc{width:100px;text-align:center;font-size:12px;font-weight:600}
+.pc div{margin-top:6px;border-radius:14px 14px 0 0;display:flex;justify-content:center;padding-top:10px;font:700 26px Unbounded;box-shadow:0 14px 28px rgba(0,0,0,.4);transform-origin:bottom;animation:rise .9s cubic-bezier(.2,.8,.2,1) backwards}
+@keyframes rise{from{transform:scaleY(0)}}
+.rw{display:flex;justify-content:space-between;width:100%;padding:13px 18px}
+nav{position:sticky;bottom:0;display:flex;gap:6px;padding:10px 14px;background:rgba(18,6,28,.85);backdrop-filter:blur(12px);border-top:1px solid var(--line)}
+nav.hide{display:none}
+nav button{flex:1;min-height:46px;border:0;border-radius:14px;background:none;color:var(--ink);opacity:.55;font:600 13px Manrope}
+nav button.on{opacity:1;background:var(--glass)}
+</style></head><body><div id="app">
+
+<section class="scr on" id="s-letter">
+<h1>Sizga xat bor</h1><p id="hint">Konvertni bosing</p>
+<div class="stage" id="stage"><div class="env"></div><div class="paper" id="peek">Kimdir sizni o'ylayapti</div><div class="front"></div><div class="flap"></div></div>
+<div id="reveal">
+<div class="glass letter" id="ltext">Uzr, arazlashib qoldik. Seni sog'indim. Yarashamizmi?</div>
+<p>Taklifni tanlang</p>
+<div class="chips" id="opts"></div>
+<button class="btn" id="yes">Yarashamiz</button>
+<button class="btn" id="later" style="background:var(--glass);color:var(--ink);box-shadow:none;border:1px solid var(--line)">Keyinroq</button>
+<button class="ghost" id="stop">Boshqa xat olmayman</button>
+</div></section>
+
+
+
+
+</div>
+<script>
+var tg=window.Telegram&&window.Telegram.WebApp;if(tg){try{tg.ready();tg.expand()}catch(e){}}
+function hap(t){try{tg.HapticFeedback.impactOccurred(t||'light')}catch(e){}}
+var $=function(i){return document.getElementById(i)};
+// xat ma'lumoti URL dan: ?d=base64url(JSON{t,o})
+var data={t:"Uzr, arazlashib qoldik. Seni sog'indim. Yarashamizmi?",o:["Birga ovqatlanamiz","Sayr qilamiz","Kofe ichamiz"]};
+try{var d=new URLSearchParams(location.search).get("d");if(d){var b=atob(d.replace(/-/g,"+").replace(/_/g,"/"));data=JSON.parse(new TextDecoder().decode(Uint8Array.from(b,function(c){return c.charCodeAt(0)})))}}catch(e){}
+$("ltext").textContent=data.t;var pick=data.o[0];
+data.o.forEach(function(o,i){var c=document.createElement("button");c.className="chip"+(i?"":" sel");c.textContent=o;c.onclick=function(){pick=o;hap();document.querySelectorAll(".chip").forEach(function(x){x.classList.remove("sel")});c.classList.add("sel")};$("opts").appendChild(c)});
+$("stage").onclick=function(){if($("stage").classList.contains("open"))return;hap("medium");$("stage").classList.add("open");$("hint").textContent="";setTimeout(function(){$("reveal").classList.add("on")},1100)};
+function send(a){hap("medium");var p=JSON.stringify({a:a,o:pick,l:new URLSearchParams(location.search).get('l')});if(tg&&tg.sendData){tg.sendData(p)}else{$("hint").textContent="Javob yuborildi: "+a}}
+$("yes").onclick=function(){send("yes")};
+$("later").onclick=function(){send("later")};
+$("stop").onclick=function(){send("stop")};
+</script></body></html>
