@@ -28,6 +28,7 @@ imzolanadi (`lib/core.js` dagi `auth()` HMAC-SHA256 orqali tekshiradi).
 | `UPSTASH_REDIS_REST_URL` | ha* | Upstash Redis REST manzili |
 | `UPSTASH_REDIS_REST_TOKEN` | ha* | Upstash Redis REST tokeni |
 | `WEBHOOK_SECRET` | tavsiya | Webhook'ni begona POST'lardan himoyalaydi |
+| `PREMIUM_COUNT` | yo'q | Reyting progressi uchun boshlang'ich premium soni. Redis `prem:count` qiymati ustun turadi |
 
 \* Vercel KV ishlatilsa `KV_REST_API_URL` / `KV_REST_API_TOKEN` ham qabul qilinadi.
 
