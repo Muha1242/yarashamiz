@@ -30,7 +30,7 @@ imzolanadi (`lib/core.js` dagi `auth()` HMAC-SHA256 orqali tekshiradi).
 | `UPSTASH_REDIS_REST_URL` | ha* | Upstash Redis REST manzili |
 | `UPSTASH_REDIS_REST_TOKEN` | ha* | Upstash Redis REST tokeni |
 | `WEBHOOK_SECRET` | tavsiya | Webhook'ni begona POST'lardan himoyalaydi |
-| `SETUP_KEY` | tavsiya | `/api/setup` endpointini yoqadi (bir marta sozlash uchun) |
+| `SETUP_KEY` | ixtiyoriy | `/api/setup` ni qo'lda chaqirish uchun himoya kaliti (sozlash odatda avtomatik) |
 | `PREMIUM_COUNT` | yo'q | Reyting progressi boshlang'ich qiymati |
 
 \* Vercel KV ishlatilsa `KV_REST_API_URL` / `KV_REST_API_TOKEN` ham qabul qilinadi.
@@ -45,18 +45,25 @@ xabarini yuboradi.
 2. Project Settings > Environment Variables bo'limiga yuqoridagi
    o'zgaruvchilarni qo'shing.
 3. Deploy qiling.
-4. **Sozlash (webhook + menyu tugmasi)** — brauzerda bir marta oching:
+4. **Sozlash avtomatik bajariladi.** Deploy paytida Vercel `npm run build` ni
+   ishga tushiradi (`scripts/vercel-setup.js`) va u o'zi:
+   - `setWebhook` — Telegram'ni `/api/webhook` ga ulaydi
+   - `setChatMenuButton` — chatda **"Yarashamiz"** menyu tugmasini o'rnatadi
+     (Mini App'ga doimiy kirish tugmasi)
 
-```
-https://<domen>/api/setup?key=<SETUP_KEY>
-```
+   Buning uchun faqat `BOT_TOKEN` bo'lishi kifoya. Vercel build loglarida
+   `[setup] setWebhook: OK` qatorini ko'rasiz. Skript xato bersa ham deploy
+   to'xtatilmaydi va u faqat production deployda ishlaydi (previewda emas).
 
-Bu buyruq:
-- `setWebhook` — Telegram'ni `/api/webhook` ga ulaydi
-- `setChatMenuButton` — chatda **"Yarashamiz"** menyu tugmasini o'rnatadi
-  (Mini App'ga doimiy kirish tugmasi)
+   <details>
+   <summary>Muqobil: brauzerda qo'lda sozlash</summary>
 
-Javobda `"ok": true` ko'rsangiz — hammasi tayyor.
+   ```
+   https://<domen>/api/setup?key=<SETUP_KEY>
+   ```
+
+   Javobda `"ok": true` ko'rsangiz — hammasi tayyor.
+   </details>
 
 <details>
 <summary>Muqobil: qo'lda curl bilan</summary>

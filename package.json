@@ -4,6 +4,8 @@
   "private": true,
   "engines": { "node": ">=18" },
   "scripts": {
+    "build": "node scripts/vercel-setup.js",
+    "setup": "node scripts/vercel-setup.js",
     "dev": "vercel dev",
     "deploy": "vercel --prod"
   },
