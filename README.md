@@ -10,7 +10,15 @@ check-in va vaqt kapsulasi.
 
 - **Xat yozish** - bosqichma-bosqich sehrgar, tayyor shablon bilan
 - **Juftlik** - xat havolasi orqali yarashish, bloklash/shikoyat
-- **O'yinlar** - A yoki B, Kim ko'proq, Sevgi tili testi, Sirli savollar, Missiya
+- **O'yinlar (7 xil)**
+  - *A yoki B* - 5 savol: o'zingiz tanlaysiz va juftingiz tanlovini topasiz
+  - *Kim ko'proq?* - 5 savol, bir xil javobga ball
+  - *Kelajak xaritasi* - 6 savol, kelajak rejalaringiz mosligi foizda
+  - *Sevgi tili testi* - 5 savol, qanday sevish turingizni aniqlaydi
+  - *Sirli savollar* - 3 ta erkin javob, ikkalangiz tugatgach ochiladi
+  - *Minnatdorchilik* - 3 ta samimiy minnatdorchilik yozasiz
+  - *Kunlik missiya* - kichik vazifa, 10 ball
+- **/start** - chiroyli rasm va menyu tugmasi bilan kutib oladi
 - **Kunlik check-in** - kayfiyat belgilash + streak
 - **Bog'imiz** - juftlik birgalikda ball to'plab o'stiradigan virtual bog'.
   Har kuni ikkalasi ham check-in qilsa bog'ga bitta gul qo'shiladi;
