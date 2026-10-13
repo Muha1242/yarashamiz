@@ -30,7 +30,7 @@ imzolanadi (`lib/core.js` dagi `auth()` HMAC-SHA256 orqali tekshiradi).
 | `UPSTASH_REDIS_REST_URL` | ha* | Upstash Redis REST manzili |
 | `UPSTASH_REDIS_REST_TOKEN` | ha* | Upstash Redis REST tokeni |
 | `WEBHOOK_SECRET` | tavsiya | Webhook'ni begona POST'lardan himoyalaydi |
-| `SETUP_KEY` | ixtiyoriy | `/api/setup` ni qo'lda chaqirish uchun himoya kaliti (sozlash odatda avtomatik) |
+| `SETUP_KEY` | ixtiyoriy | `/api/setup` ni qulflash uchun. Bo'lmasa endpoint kalitsiz ishlaydi (u faqat o'z domenini sozlaydi, zarar yetkaza olmaydi) |
 | `PREMIUM_COUNT` | yo'q | Reyting progressi boshlang'ich qiymati |
 
 \* Vercel KV ishlatilsa `KV_REST_API_URL` / `KV_REST_API_TOKEN` ham qabul qilinadi.
@@ -59,10 +59,13 @@ xabarini yuboradi.
    <summary>Muqobil: brauzerda qo'lda sozlash</summary>
 
    ```
-   https://<domen>/api/setup?key=<SETUP_KEY>
+   https://<domen>/api/setup
    ```
 
-   Javobda `"ok": true` ko'rsangiz — hammasi tayyor.
+   `SETUP_KEY` o'rnatilgan bo'lsa: `https://<domen>/api/setup?key=<SETUP_KEY>`
+
+   Javobda `"ok": true` ko'rsangiz — hammasi tayyor. Javobdagi `before`
+   maydoni o'zgarishdan OLDINGI webhook holatini ko'rsatadi (diagnostika uchun).
    </details>
 
 <details>
