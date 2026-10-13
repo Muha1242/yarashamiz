@@ -6,6 +6,19 @@ check-in va vaqt kapsulasi.
 > **Eslatma:** loyiha **Node.js** (serverless funksiyalar) asosida. Avvalgi README
 > `bot.py` va `requirements.txt` haqida yozgan edi — bunday fayllar repoda yo'q.
 
+## Imkoniyatlar
+
+- **Xat yozish** - bosqichma-bosqich sehrgar, tayyor shablon bilan
+- **Juftlik** - xat havolasi orqali yarashish, bloklash/shikoyat
+- **O'yinlar** - A yoki B, Kim ko'proq, Sevgi tili testi, Sirli savollar, Missiya
+- **Kunlik check-in** - kayfiyat belgilash + streak
+- **Bog'imiz** - juftlik birgalikda ball to'plab o'stiradigan virtual bog'.
+  Har kuni ikkalasi ham check-in qilsa bog'ga bitta gul qo'shiladi;
+  ball oshgani sari o'simlik Urug' -> Nihol -> Yosh daraxt -> Gullagan
+  daraxt -> Mevali daraxt -> Afsonaviy bog' bosqichlaridan o'tadi
+- **Vaqt kapsulasi** - kelajakka xat (7/30/365 kun)
+- **Tinchlanish mashqi** - nafas olish + 10 daqiqa pauza + «Men» tilida gapirish
+
 ## Arxitektura
 
 ```
@@ -31,7 +44,6 @@ imzolanadi (`lib/core.js` dagi `auth()` HMAC-SHA256 orqali tekshiradi).
 | `UPSTASH_REDIS_REST_TOKEN` | ha* | Upstash Redis REST tokeni |
 | `WEBHOOK_SECRET` | tavsiya | Webhook'ni begona POST'lardan himoyalaydi |
 | `SETUP_KEY` | ixtiyoriy | `/api/setup` ni qulflash uchun. Bo'lmasa endpoint kalitsiz ishlaydi (u faqat o'z domenini sozlaydi, zarar yetkaza olmaydi) |
-| `PREMIUM_COUNT` | yo'q | Reyting progressi boshlang'ich qiymati |
 
 \* Vercel KV ishlatilsa `KV_REST_API_URL` / `KV_REST_API_TOKEN` ham qabul qilinadi.
 
