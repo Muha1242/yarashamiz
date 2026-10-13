@@ -49,7 +49,7 @@ async function call(method, body) {
   console.log("[setup] setWebhook:", w && w.ok ? "OK" : `XATO — ${(w && w.description) || "javob yo'q"}`);
 
   const m = await call("setChatMenuButton", {
-    menu_button: { type: "web_app", text: "Yarashamiz", web_app: { url: `${app}/yarashamiz.html` } },
+    menu_button: { type: "web_app", text: "Yarashamiz", web_app: { url: `${app}/yarashamiz.html?api=${encodeURIComponent(app)}` } },
   });
   console.log("[setup] setChatMenuButton:", m && m.ok ? "OK" : `XATO — ${(m && m.description) || "javob yo'q"}`);
 

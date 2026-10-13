@@ -29,7 +29,7 @@ module.exports = async (req, res) => {
 
   const webhook = await tg("setWebhook", webhookBody);
   const menu = await tg("setChatMenuButton", {
-    menu_button: { type: "web_app", text: "Yarashamiz", web_app: { url: `${app}/yarashamiz.html` } },
+    menu_button: { type: "web_app", text: "Yarashamiz", web_app: { url: `${app}/yarashamiz.html?api=${encodeURIComponent(app)}` } },
   });
   const me = await tg("getMe", {});
 
