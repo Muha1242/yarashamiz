@@ -57,6 +57,25 @@ class handler(BaseHTTPRequestHandler):
                                     "hint": "APP_URL yoki VERCEL_URL kerak"})
 
         result = {"app": app, "hook": app + "/api/tg"}
+        # Diagnostika: qaysi env ozgaruvchilar ornatilgan (qiymatlari EMAS)
+        result["env"] = {
+            "BOT_TOKEN": bool(os.environ.get("BOT_TOKEN")),
+            "WEBAPP_URL": os.environ.get("WEBAPP_URL") or None,
+            "APP_URL": os.environ.get("APP_URL") or None,
+            "VERCEL_URL": os.environ.get("VERCEL_URL") or None,
+            "UPSTASH_REDIS_REST_URL": bool(os.environ.get("UPSTASH_REDIS_REST_URL")
+                                           or os.environ.get("KV_REST_API_URL")),
+            "UPSTASH_REDIS_REST_TOKEN": bool(os.environ.get("UPSTASH_REDIS_REST_TOKEN")
+                                             or os.environ.get("KV_REST_API_TOKEN")),
+            "WEBHOOK_SECRET": bool(os.environ.get("WEBHOOK_SECRET")),
+            "CRON_SECRET": bool(os.environ.get("CRON_SECRET")),
+        }
+        result["webapp"] = (os.environ.get("WEBAPP_URL") or (app + "/mini_app"))
+        result["warnings"] = []
+        if not result["env"]["UPSTASH_REDIS_REST_URL"] or not result["env"]["UPSTASH_REDIS_REST_TOKEN"]:
+            result["warnings"].append("UPSTASH_REDIS_* ornatilmagan - malumotlar saqlanmaydi!")
+        if not result["env"]["WEBAPP_URL"]:
+            result["warnings"].append("WEBAPP_URL ornatilmagan - avtomatik aniqlandi: " + result["webapp"])
         try:
             before = call("getWebhookInfo", {})
             result["before"] = before.get("result")
