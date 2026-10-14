@@ -62,6 +62,7 @@ class handler(BaseHTTPRequestHandler):
             "BOT_TOKEN": bool(os.environ.get("BOT_TOKEN")),
             "WEBAPP_URL": os.environ.get("WEBAPP_URL") or None,
             "APP_URL": os.environ.get("APP_URL") or None,
+            "VERCEL_PROJECT_PRODUCTION_URL": os.environ.get("VERCEL_PROJECT_PRODUCTION_URL") or None,
             "VERCEL_URL": os.environ.get("VERCEL_URL") or None,
             "UPSTASH_REDIS_REST_URL": bool(os.environ.get("UPSTASH_REDIS_REST_URL")
                                            or os.environ.get("KV_REST_API_URL")),
