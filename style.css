@@ -1,0 +1,112 @@
+/* Yarashamiz — dizayn tizimi: qizil→binafsha gradient, yumshoq kartalar */
+:root {
+  --pink: #E91E63;
+  --purple: #9C27B0;
+  --gold: #FFD700;
+  --ink: #2b1230;
+  --ok: #4CAF50;
+  --radius: 20px;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+body {
+  font-family: 'Nunito', system-ui, sans-serif;
+  color: #fff;
+  min-height: 100vh;
+  background: linear-gradient(135deg, var(--pink) 0%, var(--purple) 100%);
+  overflow-x: hidden;
+}
+
+/* fonda suzib yurgan yuraklar */
+.hearts { position: fixed; inset: 0; pointer-events: none; z-index: 0; }
+.hearts span {
+  position: absolute; bottom: -40px; font-size: 22px; opacity: .25;
+  animation: rise linear infinite;
+}
+@keyframes rise {
+  to { transform: translateY(-110vh) rotate(40deg); opacity: 0; }
+}
+
+.wrap { position: relative; z-index: 1; max-width: 460px; margin: 0 auto; padding: 20px 16px 40px; }
+
+.brand {
+  text-align: center; font-size: 22px; font-weight: 800; letter-spacing: .5px;
+  margin: 8px 0 18px; text-shadow: 0 2px 12px rgba(0,0,0,.25);
+}
+
+/* --- xat kartochkasi --- */
+.card {
+  position: relative; border-radius: var(--radius); padding: 26px 22px;
+  background: #fff; color: var(--ink);
+  box-shadow: 0 18px 50px rgba(0,0,0,.28);
+  animation: pop .5s cubic-bezier(.2,1.4,.4,1) both;
+  transform-origin: top center;
+}
+@keyframes pop { from { transform: scale(.7) rotate(-4deg); opacity: 0; } }
+
+.card-glow {
+  position: absolute; inset: -2px; border-radius: calc(var(--radius) + 2px); z-index: -1;
+  background: linear-gradient(135deg, var(--pink), var(--purple));
+  filter: blur(18px); opacity: .55;
+}
+
+.letter-text {
+  font-family: 'Caveat', cursive; font-size: 27px; line-height: 1.35; white-space: pre-wrap;
+}
+
+.offers { margin-top: 16px; display: flex; flex-wrap: wrap; gap: 8px; }
+.offers span {
+  font-size: 13px; font-weight: 700; padding: 7px 12px; border-radius: 999px;
+  background: rgba(233,30,99,.1); color: var(--pink); border: 1px solid rgba(233,30,99,.25);
+}
+
+.theme-badge {
+  position: absolute; top: 14px; right: 16px; font-size: 11px; font-weight: 800;
+  letter-spacing: 1px; text-transform: uppercase; opacity: .7;
+}
+
+/* mavzular */
+.card.theme-love { background: linear-gradient(160deg, #ffe3ec, #fff6f8); }
+.card.theme-night {
+  background: linear-gradient(160deg, #1a1a2e, #2d1b4e); color: #ffe9f3;
+}
+.card.theme-night .letter-text { color: #ffe9f3; }
+.card.theme-night .offers span { background: rgba(255,215,0,.14); color: var(--gold); border-color: rgba(255,215,0,.4); }
+.card.theme-night .theme-badge { color: var(--gold); }
+.card.theme-gold {
+  background: linear-gradient(160deg, #fffdf5, #fdf3d8); border: 2px solid var(--gold);
+}
+.card.theme-gold .theme-badge { color: #b8860b; }
+
+/* --- javob menyusi --- */
+.menu { margin-top: 26px; animation: pop .4s .1s both; }
+.menu-title { font-size: 14px; font-weight: 600; opacity: .9; margin-bottom: 12px; text-align: center; }
+
+.offer-list { display: grid; gap: 10px; margin-bottom: 14px; }
+.offer-list button {
+  font-family: inherit; font-size: 15px; font-weight: 700; text-align: left;
+  padding: 14px 16px; border-radius: 14px; border: 1px solid rgba(255,255,255,.35);
+  background: rgba(255,255,255,.14); color: #fff; cursor: pointer;
+  transition: transform .12s, background .12s;
+}
+.offer-list button:active { transform: scale(.97); background: rgba(255,255,255,.24); }
+.offer-list button.sel { background: #fff; color: var(--pink); border-color: #fff; }
+
+.btn {
+  width: 100%; font-family: inherit; font-size: 17px; font-weight: 800;
+  padding: 16px; border-radius: 16px; border: none; cursor: pointer;
+  transition: transform .12s, filter .12s; margin-bottom: 10px;
+}
+.btn:active { transform: scale(.96); filter: brightness(.95); }
+
+.btn-main { background: #fff; color: var(--pink); box-shadow: 0 10px 26px rgba(0,0,0,.25); }
+.row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.row .btn { margin-bottom: 10px; }
+.btn-ghost { background: rgba(255,255,255,.16); color: #fff; border: 1px solid rgba(255,255,255,.4); }
+.btn-stop {
+  width: auto; display: block; margin: 6px auto 0; background: none; color: rgba(255,255,255,.75);
+  font-size: 13px; font-weight: 600; padding: 8px 12px;
+}
+
+#confetti { position: fixed; inset: 0; pointer-events: none; z-index: 99; }
