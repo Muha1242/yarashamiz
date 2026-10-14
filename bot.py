@@ -4,8 +4,10 @@ Mualliflik: v2 botining kengaytirilgan versiyasi. Barcha eski funksiyalar saqlan
 Talab qilinadi: Python 3.10+, aiogram>=3.13, SQLite3.
 Ishga tushirish: BOT_TOKEN va WEBAPP_URL muhit o'zgaruvchilari berilgach `python bot.py`.
 """
-import asyncio, base64, datetime as dt, json, os, secrets, sqlite3, time
+import asyncio, base64, datetime as dt, html, json, os, secrets, sqlite3, time
 from aiogram import Bot, Dispatcher, F
+from aiogram.client.default import DefaultBotProperties
+from aiogram.enums import ParseMode
 from aiogram.filters import Command, CommandObject, CommandStart, StateFilter
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
@@ -42,7 +44,13 @@ def app_url():
 
 URL = app_url()
 DAILY_LIMIT = 3                                  # bepul: kuniga necha xat
-PRICES = {"month": 500, "year": 5000, "gift": 500}   # Telegram Stars
+# Telegram Stars narxlari (muhit orqali sozlanadi)
+# 1 Star ~ 0.013 USD. Misol: 50 Stars ~ 0.65 USD.
+PRICES = {
+    "month": int(os.environ.get("PRICE_MONTH", "50")),
+    "year": int(os.environ.get("PRICE_YEAR", "400")),
+    "gift": int(os.environ.get("PRICE_GIFT", "50")),
+}
 PREMIUM_DAYS = {"month": 30, "year": 365}
 
 # ============================== KONTENT ================================
@@ -388,7 +396,7 @@ def library_view(u):
     out = ["💌 <b>Xotiralar</b>\n"]
     for i, (lid, text, ts, sender) in enumerate(rows):
         d = dt.datetime.fromtimestamp(ts).strftime("%d.%m")
-        out.append(f"{i+1}. {d} {'siz →' if sender == u else '→ siz'} «{text[:40]}…»")
+        out.append(f"{i+1}. {d} {'siz →' if sender == u else '→ siz'} «{html.escape(text[:40])}…»")
     return "\n".join(out) + "\n\n<b>Premium</b> bilan xotiralar cheksiz saqlanadi 💎"
 
 
@@ -428,7 +436,7 @@ class W(StatesGroup):
 
 
 # ============================== XAT OQIMI ==============================
-bot, dp = Bot(TOKEN), Dispatcher(storage=SqliteFSM(db))
+bot, dp = Bot(TOKEN, default=DefaultBotProperties(parse_mode=ParseMode.HTML)), Dispatcher(storage=SqliteFSM(db))
 def variants(sit, words):
     """Shablonlardan 3 xil xat varianti yasaydi."""
     words = (words or "").strip() or FALLBACK
@@ -614,7 +622,7 @@ async def ai_words(m: Message, state: FSMContext):
     vs = variants(d["sit"], m.text)
     await state.update_data(words=m.text, variants=vs, vi=0)
     await state.set_state(W.text)
-    await m.answer("✨ Mana shunday xat:\n\n" + vs[0],
+    await m.answer("✨ Mana shunday xat:\n\n" + html.escape(vs[0]),
                    reply_markup=IM(inline_keyboard=[
                        [IB(text="♻️ Boshqa variant", callback_data="aiv:1"),
                         IB(text="✅ Ishlatish", callback_data="aiu")]]))
@@ -628,7 +636,7 @@ async def ai_variant(c: CallbackQuery, state: FSMContext):
         return await c.answer("Avval kalit so'zlarni yozing", show_alert=True)
     i = int(c.data[4:]) % len(vs)
     await state.update_data(vi=i)
-    await c.message.edit_text("✨ Variant:\n\n" + vs[i],
+    await c.message.edit_text("✨ Variant:\n\n" + html.escape(vs[i]),
                               reply_markup=IM(inline_keyboard=[
                                   [IB(text="♻️ Boshqa variant",
                                       callback_data=f"aiv:{(i + 1) % len(vs)}"),
