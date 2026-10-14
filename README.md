@@ -63,6 +63,9 @@ Project → **Settings → Environment Variables**:
 | `SETUP_KEY` | ixtiyoriy | `/api/tg_setup` ni qulflash uchun |
 | `CRON_SECRET` | ixtiyoriy | `/api/cron` ni qulflash uchun |
 | `TZ_OFFSET` | ixtiyoriy | Mahalliy vaqt siljishi (standart `5` = UTC+5) |
+| `PRICE_MONTH` | ixtiyoriy | Premium oylik narxi, Stars (standart `50`) |
+| `PRICE_YEAR` | ixtiyoriy | Premium yillik narxi (standart `400`) |
+| `PRICE_GIFT` | ixtiyoriy | Juftlikka sovg'a narxi (standart `50`) |
 
 ### 3. Deploy qiling
 Repo'ni Vercel'ga ulang yoki **Deploy** tugmasini bosing.
@@ -143,11 +146,15 @@ chunki bot havolani `{WEBAPP_URL}/?d=...&l=...` ko'rinishida yasaydi.
 
 ## 💎 Telegram Stars premium
 
-| Tarif | Narx | Muddat |
+| Tarif | Narx (sozlanadi) | Muddat |
 |---|---|---|
-| Oylik | **500 ⭐** | 30 kun |
-| Yillik | **5000 ⭐** | 365 kun |
-| Juftlikka sovg'a | **500 ⭐** | 30 kun |
+| Oylik | **50 ⭐** | 30 kun |
+| Yillik | **400 ⭐** | 365 kun |
+| Juftlikka sovg'a | **50 ⭐** | 30 kun |
+
+> 💡 Narxlarni Vercel'dagi `PRICE_MONTH`, `PRICE_YEAR`, `PRICE_GIFT`
+> o'zgaruvchilari orqali **o'zingiz belgilaysiz**. Masalan `PRICE_MONTH=30`.
+> 1 Star ~ 0.013 USD (50 Stars ~ 0.65 USD).
 
 **Premium beradi:** cheksiz xat, 2 qo'shimcha shablon (Tun, Oltin), Sevgi kvizi, AI yordamchi.
 
