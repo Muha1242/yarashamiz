@@ -9,6 +9,7 @@ from aiogram import Bot, Dispatcher, F
 from aiogram.filters import Command, CommandObject, CommandStart, StateFilter
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
+from fsm_store import SqliteFSM
 from aiogram.types import (Message, CallbackQuery, ReplyKeyboardMarkup, KeyboardButton,
                             WebAppInfo, InlineKeyboardMarkup as IM, InlineKeyboardButton as IB,
                             LabeledPrice, PreCheckoutQuery)
@@ -99,8 +100,29 @@ HELP = ("<b>Qanday ishlaydi?</b>\n\n"
         "/menu — bosh menyu\n/cancel — bekor qilish\n/help — yordam")
 
 # ============================ MA'LUMOTLAR BAZASI =======================
-db = sqlite3.connect("bot.db")
-db.executescript("""
+# Vercel uchun: sqlite ulanishini almashtirish mumkin bolgan qobiq.
+# Fayl yo'li DB_PATH orqali beriladi (Vercel'da /tmp/bot.db).
+class _DB:
+    """sqlite ulanishining qobig'i. Har so'rovda bazani qayta ochish imkonini beradi."""
+
+    def __init__(self, path):
+        self.path = path
+        self.conn = sqlite3.connect(path)
+
+    def reopen(self):
+        try:
+            self.conn.commit()
+            self.conn.close()
+        except Exception:
+            pass
+        self.conn = sqlite3.connect(self.path)
+        return self.conn
+
+    def __getattr__(self, name):
+        return getattr(self.conn, name)
+
+
+_SCHEMA = """
 CREATE TABLE IF NOT EXISTS letters(id INTEGER PRIMARY KEY, sender INT, receiver INT, text TEXT,
                                    offers TEXT, theme TEXT DEFAULT 'classic', ts INT);
 CREATE TABLE IF NOT EXISTS blocked(user INT, sender INT, PRIMARY KEY(user, sender));
@@ -112,15 +134,24 @@ CREATE TABLE IF NOT EXISTS streaks(user INT PRIMARY KEY, last TEXT, n INT DEFAUL
 CREATE TABLE IF NOT EXISTS premium(user INT PRIMARY KEY, until INT);
 CREATE TABLE IF NOT EXISTS gifts(token TEXT PRIMARY KEY, days INT, used INT DEFAULT 0);
 CREATE TABLE IF NOT EXISTS sent(user INT, kind TEXT, day TEXT, PRIMARY KEY(user,kind,day));
-""")
-for _col, _ddl in [("theme", "TEXT DEFAULT 'classic'"), ("receiver", "INT"),
-                   ("ts", "INT DEFAULT 0")]:
-    _tbl = "pairs" if _col == "ts" else "letters"
-    try:
-        db.execute(f"ALTER TABLE {_tbl} ADD COLUMN {_col} {_ddl}")
-    except sqlite3.OperationalError:
-        pass
-db.commit()
+"""
+
+
+def init_db(conn):
+    """Jadval va ustunlarni yaratadi. Qayta chaqirish xavfsiz (migratsiya)."""
+    conn.executescript(_SCHEMA)
+    for _col, _ddl in [("theme", "TEXT DEFAULT 'classic'"), ("receiver", "INT"),
+                       ("ts", "INT DEFAULT 0")]:
+        _tbl = "pairs" if _col == "ts" else "letters"
+        try:
+            conn.execute(f"ALTER TABLE {_tbl} ADD COLUMN {_col} {_ddl}")
+        except sqlite3.OperationalError:
+            pass
+    conn.commit()
+
+
+db = _DB(os.environ.get("DB_PATH", "bot.db"))
+init_db(db.conn)
 
 today = lambda: dt.date.today().isoformat()
 
@@ -372,7 +403,7 @@ class W(StatesGroup):
 
 
 # ============================== XAT OQIMI ==============================
-bot, dp = Bot(TOKEN), Dispatcher()
+bot, dp = Bot(TOKEN), Dispatcher(storage=SqliteFSM(db))
 def variants(sit, words):
     """Shablonlardan 3 xil xat varianti yasaydi."""
     words = (words or "").strip() or FALLBACK
