@@ -57,6 +57,27 @@ def pull(path):
     return True
 
 
+def set_raw(key, val):
+    """Oddiy matn qiymatini yozadi (diagnostika uchun)."""
+    if not ENABLED:
+        return False
+    try:
+        _cmd("SET", key, val)
+        return True
+    except Exception:
+        return False
+
+
+def get_raw(key):
+    """Oddiy matn qiymatini o'qiydi."""
+    if not ENABLED:
+        return None
+    try:
+        return _cmd("GET", key)
+    except Exception:
+        return None
+
+
 def push(path):
     """`path` dagi bazani Redis'ga yozadi."""
     if not ENABLED or not os.path.exists(path):
