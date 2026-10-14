@@ -66,11 +66,14 @@ def _process(body: bytes) -> None:
         finally:
             await B.bot.session.close()
 
-    asyncio.run(run())
-
     # --- 3. Bazani saqlash ---
-    B.db.commit()
-    vstore.push(B.db.path)
+    # Xato bo'lsa ham saqlaymiz: aks holda bajarilgan o'zgarishlar yo'qoladi
+    # (masalan touch() yozgan seriya, xabar yuborishda xato bo'lsa).
+    try:
+        asyncio.run(run())
+    finally:
+        B.db.commit()
+        vstore.push(B.db.path)
 
 
 def _diag() -> dict:
@@ -90,9 +93,12 @@ def _diag() -> dict:
         info["webapp"] = B.URL
         info["token_set"] = bool(B.TOKEN)
         B.db.reopen()
-        if vstore.pull(B.db.path):
+        pulled = vstore.pull(B.db.path)
+        info["redis_pulled"] = pulled
+        if pulled:
             B.db.reopen()
             B.init_db(B.db.conn)
+        info["db_size"] = os.path.getsize(B.db.path) if os.path.exists(B.db.path) else 0
         for t in ("streaks", "letters", "pairs", "ans", "premium", "gifts", "sent"):
             try:
                 info["db_" + t] = B.db.execute("SELECT COUNT(*) FROM " + t).fetchone()[0]
