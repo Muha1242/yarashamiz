@@ -140,15 +140,16 @@ class _DB:
 
     def __init__(self, path):
         self.path = path
-        self.conn = sqlite3.connect(path)
+        self.conn = sqlite3.connect(path, check_same_thread=False, timeout=15)
 
     def reopen(self):
+        """Ulanishni yopib, qaytadan ochadi (Redis'dan yangi baza olgach)."""
         try:
             self.conn.commit()
             self.conn.close()
         except Exception:
             pass
-        self.conn = sqlite3.connect(self.path)
+        self.conn = sqlite3.connect(self.path, check_same_thread=False, timeout=15)
         return self.conn
 
     def __getattr__(self, name):

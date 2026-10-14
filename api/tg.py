@@ -15,6 +15,7 @@ import asyncio
 import json
 import os
 import sys
+import threading
 import time
 import traceback
 from http.server import BaseHTTPRequestHandler
@@ -30,6 +31,11 @@ os.environ.setdefault("DB_PATH", "/tmp/bot.db")
 import vstore  # noqa: E402
 
 SECRET = os.environ.get("WEBHOOK_SECRET", "")
+
+# Vercel bir vaqtda bir nechta so'rovni bir xil instance'da bajarishi mumkin.
+# SQLite ulanishi va /tmp/bot.db fayli umumiy bo'lgani uchun ularni ketma-ket
+# bajarish shart - aks holda "SQLite objects created in a thread..." xatosi.
+DB_LOCK = threading.RLock()
 K_ERR = "yarashamiz:lasterror"
 K_OK = "yarashamiz:lastok"
 K_CNT = "yarashamiz:okcount"
@@ -78,6 +84,11 @@ def _process(body: bytes) -> None:
 
 def _diag() -> dict:
     """Diagnostika: oxirgi xato, hisoblagichlar, baza statistikasi."""
+    with DB_LOCK:
+        return _diag_locked()
+
+
+def _diag_locked() -> dict:
     info = {
         "service": "yarashamiz webhook",
         "redis": vstore.ENABLED,
@@ -124,7 +135,8 @@ class handler(BaseHTTPRequestHandler):
         try:
             length = int(self.headers.get("content-length") or 0)
             body = self.rfile.read(length) if length else b"{}"
-            _process(body)
+            with DB_LOCK:
+                _process(body)
             _incr(K_CNT)
             vstore.set_raw(K_OK, time.strftime("%Y-%m-%d %H:%M:%S"))
         except Exception:  # noqa: BLE001
