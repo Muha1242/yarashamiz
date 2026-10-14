@@ -28,13 +28,16 @@ def app_url():
     a = (os.environ.get("WEBAPP_URL") or "").strip().rstrip("/")
     if a:
         return a
+    # VERCEL_PROJECT_PRODUCTION_URL - doimiy domen (deploy bilan ozgarmaydi),
+    # APP_URL - eski sozlama, VERCEL_URL - aniq deploy manzili (oxirgi chora)
     base = (os.environ.get("VERCEL_PROJECT_PRODUCTION_URL")
+            or os.environ.get("APP_URL")
             or os.environ.get("VERCEL_URL") or "").strip().rstrip("/")
-    if base:
-        if not base.lower().startswith("http"):
-            base = "https://" + base
-        return base + "/mini_app"
-    return ""
+    if not base:
+        return ""
+    if not base.lower().startswith("http"):
+        base = "https://" + base
+    return base if base.endswith("/mini_app") else base + "/mini_app"
 
 
 URL = app_url()
