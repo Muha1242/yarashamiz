@@ -15,7 +15,29 @@ from aiogram.types import (Message, CallbackQuery, ReplyKeyboardMarkup, Keyboard
                             LabeledPrice, PreCheckoutQuery)
 
 # ============================== SOZLAMALAR ==============================
-TOKEN, URL = os.environ["BOT_TOKEN"], os.environ["WEBAPP_URL"]
+TOKEN = os.environ.get("BOT_TOKEN", "")
+
+
+def app_url():
+    """Mini App manzili.
+
+    WEBAPP_URL berilmasa Vercel o'z domenidan avtomatik aniqlaydi
+    (VERCEL_PROJECT_PRODUCTION_URL -> VERCEL_URL) va /mini_app qo'shadi.
+    Bu env unutilsa ham bot ishlashda davom etadi.
+    """
+    a = (os.environ.get("WEBAPP_URL") or "").strip().rstrip("/")
+    if a:
+        return a
+    base = (os.environ.get("VERCEL_PROJECT_PRODUCTION_URL")
+            or os.environ.get("VERCEL_URL") or "").strip().rstrip("/")
+    if base:
+        if not base.lower().startswith("http"):
+            base = "https://" + base
+        return base + "/mini_app"
+    return ""
+
+
+URL = app_url()
 DAILY_LIMIT = 3                                  # bepul: kuniga necha xat
 PRICES = {"month": 500, "year": 5000, "gift": 500}   # Telegram Stars
 PREMIUM_DAYS = {"month": 30, "year": 365}
