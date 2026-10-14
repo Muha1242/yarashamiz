@@ -1,12 +1,12 @@
-# Yarashamiz boti — v3 (universal) 💌
+# Yarashamiz boti — v3 💌
 
-Sevishganlarni yarashtirish uchun Telegram boti: **xat yozish → havola → Mini App
-orqali javob → juftlik o'yinlari va ball**.
+Sevishganlarni yarashtirish uchun Telegram boti: **xat yozish → havola →
+Mini App orqali javob → juftlik o'yinlari va ball**.
 
-- 🤖 **aiogram 3.x** asosida (Python 3.10+)
-- 💾 Ma'lumotlar bazasi — **SQLite** (`bot.db`, avtomatik yaratiladi)
-- 📱 Mini App — `mini_app/` papkasidagi 3 ta statik fayl
-- 📦 Qo'shimcha kutubxona **kerak emas** — faqat `aiogram`
+- 🤖 **aiogram 3.x** (Python 3.10+)
+- ☁️ **Vercel'da bepul** ishlaydi — kompyuter yoki server kerak emas (webhook rejimi)
+- 💾 Baza — SQLite, **Upstash Redis**'da saqlanadi (bepul tarif yetarli)
+- 📱 Mini App — `mini_app/` papkasi
 
 ---
 
@@ -14,84 +14,112 @@ orqali javob → juftlik o'yinlari va ball**.
 
 | Bo'lim | Tafsilot |
 |---|---|
-| ✍️ **Xat yozish** | 300 belgigacha matn, 4 xil taklif, **4 shablon** (Klassik, Sevgi ❤️, Tun 🌙, Oltin ⭐) |
-| ✨ **AI yordamchi** | 5 holatda shablon asosida xat yozadi: *uzr, sog'inch, sevgi, minnatdorchilik, uchrashuv* |
-| ❤️ **Juftlik** | Mini App'da «Yarashamiz» bosilsa ikkalasi ham xabar oladi, juftlik ochiladi |
-| 🎮 **O'yinlar (4 xil)** | *A yoki B*, *Kim ko'proq?*, *Kunlik missiya*, **Sevgi kvizi** 💎 (premium) |
-| 🔥 **Kunlik seriya** | Har kunlik kirish seriyasi (streak) va eslatmalar |
+| ✍️ **Xat yozish** | 300 belgigacha, 4 xil taklif, **4 shablon** (Klassik, Sevgi ❤️, Tun 🌙, Oltin ⭐) |
+| ✨ **AI yordamchi** | 5 holatda shablon asosida yozadi: *uzr, sog'inch, sevgi, minnatdorchilik, uchrashuv* |
+| ❤️ **Juftlik** | Mini App'da «Yarashamiz» bosilsa ikkalasi ham xabar oladi |
+| 🎮 **O'yinlar (4 xil)** | *A yoki B*, *Kim ko'proq?*, *Kunlik missiya*, **Sevgi kvizi** 💎 |
+| 🔥 **Kunlik seriya** | Streak va eslatmalar |
 | 💌 **Xotiralar** | Yozgan/olgan xatlar tarixi |
 | 🏆 **Yutuqlar** | 8 xil badge |
-| 💎 **Premium** | **Telegram Stars (XTR)** bilan to'lov + juftlikka sovg'a |
-| 🔔 **Eslatmalar** | Har soatda missiya/seriya eslatmasi (`reminders()`) |
+| 💎 **Premium** | **Telegram Stars (XTR)** + juftlikka sovg'a |
 
 ---
 
 ## Fayl tuzilishi
 
 ```
-bot.py                 — botning to'liq kodi (aiogram 3.x)
-requirements.txt       — aiogram>=3.13
-mini_app/
-  index.html           — Mini App sahifasi (Telegram WebApp SDK ulangan)
-  style.css            — gradient dizayn, yurak animatsiyasi
-  app.js               — xatni ochish, javob yuborish, konfeti
-bot.db                 — SQLite (birinchi ishga tushirishda avtomatik yaratiladi)
+bot.py            — botning to'liq kodi (aiogram 3.x)
+fsm_store.py      — SQLite'ga asoslangan FSM (holat) saqlash
+vstore.py         — Upstash Redis klienti + SQLite blob sinxronizatsiyasi
+requirements.txt  — aiogram>=3.13
+api/
+  tg.py           — Vercel webhook (Telegram update'larini qabul qiladi)
+  tg_setup.py     — webhook va komandalarni o'rnatadi
+mini_app/         — Mini App manbasi (asosiy nusxa)
+  index.html · style.css · app.js
+public/mini_app/  — Vercel xizmat qiladigan nusxa
 ```
 
 ---
 
-## O'rnatish va ishga tushirish
+## 🚀 Vercel'ga joylash (tavsiya — bepul, kompyutersiz)
 
-```bash
-# 1. Kutubxonalar
-pip install -r requirements.txt
+### 1. Upstash Redis oling (bepul)
+1. [upstash.com](https://upstash.com) → **Create Database**
+2. **REST API** bo'limidan `UPSTASH_REDIS_REST_URL` va `UPSTASH_REDIS_REST_TOKEN` ni oling
 
-# 2. Muhit o'zgaruvchilari
-export BOT_TOKEN="123456:ABC..."          # @BotFather'dan
-export WEBAPP_URL="https://<host>/mini_app"   # Mini App manzili (pastga qarang)
+> Redis **majburiy**: Vercel'da fayl tizimi vaqtinchalik, SQLite bazasi shu yerda saqlanadi.
 
-# 3. Ishga tushirish
-python bot.py
-```
-
-### Muhit o'zgaruvchilari
+### 2. Vercel'ga muhit o'zgaruvchilarini qo'shing
+Project → **Settings → Environment Variables**:
 
 | Nomi | Majburiy | Izoh |
 |---|---|---|
-| `BOT_TOKEN` | ✅ ha | @BotFather'dan olingan token |
-| `WEBAPP_URL` | ✅ ha | Mini App joylashgan manzil. Bot unga `/?d=...&l=...` qo'shadi |
+| `BOT_TOKEN` | ✅ | @BotFather'dan |
+| `WEBAPP_URL` | ✅ | Mini App manzili, masalan `https://<loyiha>.vercel.app/mini_app` |
+| `UPSTASH_REDIS_REST_URL` | ✅ | Upstash'dan |
+| `UPSTASH_REDIS_REST_TOKEN` | ✅ | Upstash'dan |
+| `WEBHOOK_SECRET` | tavsiya | Webhook'ni begona POST'lardan himoyalaydi |
+| `SETUP_KEY` | ixtiyoriy | `/api/tg_setup` ni qulflash uchun |
 
-> ⚠️ Bot **long polling** ishlatadi — VPS, Railway yoki Render kabi doimiy
-> ishlaydigan serverda ishlashi kerak (Vercel/GitHub Pages faqat statik fayllar uchun).
+### 3. Deploy qiling
+Repo'ni Vercel'ga ulang yoki **Deploy** tugmasini bosing.
+
+### 4. Webhook'ni o'rnating
+Brauzerda bir marta oching:
+
+```
+https://<loyiha>.vercel.app/api/tg_setup
+```
+
+Javobda `"ok": true` ko'rsangiz — tayyor! Bu buyruq:
+- `setWebhook` → `https://<loyiha>.vercel.app/api/tg`
+- `setMyCommands` → `/start`, `/menu`, `/help`, `/cancel`
+
+### 5. Mini App manzili
+`https://<loyiha>.vercel.app/mini_app` — shuni `WEBAPP_URL` ga yozing.
 
 ---
 
-## Mini App'ni host qilish
+## 💻 Lokal ishlash (long polling)
 
-`mini_app/` papkasidagi 3 ta faylni istalgan statik hostingga joylang.
-Muhim: **`index.html` ildizda ochilishi kerak**, chunki bot havolani
-`{WEBAPP_URL}/?d=...&l=...` ko'rinishida yasaydi.
+```bash
+export BOT_TOKEN="123456:ABC..."
+export WEBAPP_URL="https://<host>/mini_app"
+python bot.py
+```
 
-### 🅰️ GitHub Pages
-1. `mini_app/` papkasini repo'ga push qiling
-2. Settings → Pages → Branch: `main`, papka: `/ (root)`
-3. Manzil: `https://<login>.github.io/<repo>/mini_app`
+Lokal rejimda Redis **shart emas** — baza `bot.db` faylida saqlanadi.
+`python bot.py` long polling ishlatadi (Vercel esa webhook ishlatadi).
 
-### 🅱️ Vercel / Netlify
-1. `mini_app/` ni loyiha ildiziga qo'ying (yoki `public/` papkasiga)
-2. Deploy qiling
-3. Manzil: `https://<loyiha>.vercel.app`
+---
 
-### Muhim
-- Manzil **HTTPS** bo'lishi shart — Telegram boshqasini qabul qilmaydi
-- `WEBAPP_URL` oxirida `/` **qo'ymang** (bot o'zi qo'shadi)
+## ⚙️ Qanday ishlaydi (Vercel)
+
+Vercel'da fon jarayoni yo'q, shuning uchun bot **webhook** rejimida ishlaydi:
+
+```
+Telegram  →  POST /api/tg
+              │
+              1. Redis'dan  bot.db  →  /tmp/bot.db      (pull)
+              2. update aiogram Dispatcher orqali qayta ishlanadi
+              3. /tmp/bot.db  →  Redis                   (push)
+```
+
+Holat (FSM) ham shu bazada saqlanadi (`fsm_store.py`) — shuning uchun
+ko'p qadamli amallar (xat yozish, AI yordamchi) serverless'da ham ishlaydi.
+
+---
+
+## 📱 Mini App'ni boshqa joyda host qilish
+
+`mini_app/` papkasidagi 3 ta faylni istalgan statik hostingga qo'yish mumkin
+(GitHub Pages, Netlify). Muhim: **`index.html` ildizda** ochilishi kerak,
+chunki bot havolani `{WEBAPP_URL}/?d=...&l=...` ko'rinishida yasaydi.
 
 ---
 
 ## 💎 Telegram Stars premium
-
-To'lov **Telegram Stars (XTR)** orqali ishlaydi — qo'shimcha to'lov provayderi
-kerak emas (`provider_token=""`).
 
 | Tarif | Narx | Muddat |
 |---|---|---|
@@ -99,48 +127,23 @@ kerak emas (`provider_token=""`).
 | Yillik | **5000 ⭐** | 365 kun |
 | Juftlikka sovg'a | **500 ⭐** | 30 kun |
 
-### Premium nima beradi
-- ♾️ **Cheksiz xat** (bepul limit — kuniga 3 ta)
-- 🎨 **2 qo'shimcha shablon** — Tun 🌙 va Oltin ⭐
-- 🎮 **Sevgi kvizi** o'yini
-- ✨ **AI yordamchi**
+**Premium beradi:** cheksiz xat, 2 qo'shimcha shablon (Tun, Oltin), Sevgi kvizi, AI yordamchi.
 
-### Sozlash
-1. @BotFather → `/mybots` → botni tanlang
-2. **Payments** → **Telegram Stars** yoqilgan bo'lishi kerak
-3. Botdagi **💎 Premium** tugmasi orqali to'lov amalga oshiriladi
-
----
-
-## Komandalar
-
-| Komanda | Vazifa |
-|---|---|
-| `/start` | Salom xabari + bosh menyu |
-| `/menu` | Bosh menyu |
-| `/help` | Yordam |
-| `/cancel` | Joriy amalni bekor qilish |
-
-### Bosh menyu tugmalari
-`✍️ Xat yozish` · `🎮 O'yinlar` · `📊 Hisobim` · `💌 Xotiralar` · `🏆 Yutuqlar` · `💎 Premium`
+**Sozlash:** @BotFather → `/mybots` → botni tanlang → **Payments** → **Telegram Stars** yoqilgan bo'lsin.
 
 ---
 
 ## Eski bazadan migratsiya
 
-`bot.py` ishga tushganda eski `bot.db` ga quyidagi ustunlar **avtomatik** qo'shiladi
-(`try/except sqlite3.OperationalError` orqali):
-
-- `letters.theme`
-- `letters.receiver`
-- `pairs.ts`
-
-Ya'ni eski bazani o'chirish shart emas — bot uni o'zi yangilaydi.
+`bot.py` ishga tushganda `pairs.ts`, `letters.theme`, `letters.receiver`
+ustunlari **avtomatik** qo'shiladi (`try/except` orqali). Eski `bot.db` ni
+o'chirish shart emas.
 
 ---
 
-## Eslatma (eski versiya)
+## 📌 Eslatma
 
-Repo'da avvalgi **Node.js / Vercel** versiyasi ham saqlanib qolgan
-(`api/`, `lib/`, `public/`, `package.json`, `scripts/`).
-Ular bot v3 ga ta'sir qilmaydi — `bot.py` ulardan mustaqil ishlaydi.
+Repo'da avvalgi **Node.js/Vercel** versiyasi ham qolgan (`api/*.js`, `lib/`,
+`public/yarashamiz.html`, `scripts/`, `package.json`).
+U **ishlatilmaydi** va `bot.py` ga ta'sir qilmaydi — eski avtomatik webhook
+sozlamasi o'chirilgan. Xohlasangiz o'chirib tashlash mumkin.

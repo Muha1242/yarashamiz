@@ -2,12 +2,16 @@
   "name": "yarashamiz",
   "version": "1.0.0",
   "private": true,
-  "engines": { "node": ">=18" },
+  "engines": {
+    "node": ">=18"
+  },
   "scripts": {
-    "build": "node scripts/vercel-setup.js",
-    "setup": "node scripts/vercel-setup.js",
     "dev": "vercel dev",
     "deploy": "vercel --prod"
   },
-  "dependencies": { "@upstash/redis": "^1.34.0" }
+  "dependencies": {
+    "@upstash/redis": "^1.34.0"
+  },
+  "legacy": true,
+  "description": "ESKI Node/Vercel versiyasi (endi ishlatilmaydi). Asosiy bot — bot.py (Python)."
 }
