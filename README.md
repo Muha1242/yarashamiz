@@ -61,6 +61,8 @@ Project → **Settings → Environment Variables**:
 | `UPSTASH_REDIS_REST_TOKEN` | ✅ | Upstash'dan |
 | `WEBHOOK_SECRET` | tavsiya | Webhook'ni begona POST'lardan himoyalaydi |
 | `SETUP_KEY` | ixtiyoriy | `/api/tg_setup` ni qulflash uchun |
+| `CRON_SECRET` | ixtiyoriy | `/api/cron` ni qulflash uchun |
+| `TZ_OFFSET` | ixtiyoriy | Mahalliy vaqt siljishi (standart `5` = UTC+5) |
 
 ### 3. Deploy qiling
 Repo'ni Vercel'ga ulang yoki **Deploy** tugmasini bosing.
@@ -78,6 +80,21 @@ Javobda `"ok": true` ko'rsangiz — tayyor! Bu buyruq:
 
 ### 5. Mini App manzili
 `https://<loyiha>.vercel.app/mini_app` — shuni `WEBAPP_URL` ga yozing.
+
+### 6. Eslatmalar (Vercel Cron)
+`vercel.json` da cron sozlangan — kuniga bir marta `/api/cron` chaqiriladi
+(15:00 UTC = **20:00** O'zbekiston). U quyidagilarni yuboradi:
+
+- 🌙 Bugungi missiya bajarilmagan bo'lsa
+- 🔥 3+ kunlik seriya uzilib qolsa
+
+Vaqtni o'zgartirish: `vercel.json` dagi `schedule` ni tahrirlang
+(`0 15 * * *` = har kuni 15:00 UTC). Qo'lda sinash: `/api/cron`.
+
+> ⚠️ Vercel **Hobby** tarifida cron kuniga **bir marta** ishlaydi — bu yetarli.
+
+### 7. Eslatmalarni qo'lda sinash
+Brauzerda: `https://<loyiha>.vercel.app/api/cron` → `{"ok": true, "job": "reminders"}`
 
 ---
 
@@ -104,6 +121,11 @@ Telegram  →  POST /api/tg
               1. Redis'dan  bot.db  →  /tmp/bot.db      (pull)
               2. update aiogram Dispatcher orqali qayta ishlanadi
               3. /tmp/bot.db  →  Redis                   (push)
+```
+
+```
+Vercel Cron  →  GET /api/cron   (kuniga 1 marta)
+              │  reminders_once() — missiya va seriya eslatmalari
 ```
 
 Holat (FSM) ham shu bazada saqlanadi (`fsm_store.py`) — shuning uchun
