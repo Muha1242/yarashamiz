@@ -1,144 +1,146 @@
-# Yarashamiz boti
+# Yarashamiz boti — v3 (universal) 💌
 
-Telegram Mini App: arazlashgan juftliklar uchun xat yozish, o'yinlar, kunlik
-check-in va vaqt kapsulasi.
+Sevishganlarni yarashtirish uchun Telegram boti: **xat yozish → havola → Mini App
+orqali javob → juftlik o'yinlari va ball**.
 
-> **Eslatma:** loyiha **Node.js** (serverless funksiyalar) asosida. Avvalgi README
-> `bot.py` va `requirements.txt` haqida yozgan edi — bunday fayllar repoda yo'q.
+- 🤖 **aiogram 3.x** asosida (Python 3.10+)
+- 💾 Ma'lumotlar bazasi — **SQLite** (`bot.db`, avtomatik yaratiladi)
+- 📱 Mini App — `mini_app/` papkasidagi 3 ta statik fayl
+- 📦 Qo'shimcha kutubxona **kerak emas** — faqat `aiogram`
+
+---
 
 ## Imkoniyatlar
 
-- **Xat yozish** - bosqichma-bosqich sehrgar, tayyor shablon bilan
-- **Juftlik** - xat havolasi orqali yarashish, bloklash/shikoyat
-- **O'yinlar (7 xil)**
-  - *A yoki B* - 5 savol: o'zingiz tanlaysiz va juftingiz tanlovini topasiz
-  - *Kim ko'proq?* - 5 savol, bir xil javobga ball
-  - *Kelajak xaritasi* - 6 savol, kelajak rejalaringiz mosligi foizda
-  - *Sevgi tili testi* - 5 savol, qanday sevish turingizni aniqlaydi
-  - *Sirli savollar* - 3 ta erkin javob, ikkalangiz tugatgach ochiladi
-  - *Minnatdorchilik* - 3 ta samimiy minnatdorchilik yozasiz
-  - *Kunlik missiya* - kichik vazifa, 10 ball
-- **/start** - chiroyli rasm va menyu tugmasi bilan kutib oladi
-- **Kunlik check-in** - kayfiyat belgilash + streak
-- **Bog'imiz** - juftlik birgalikda ball to'plab o'stiradigan virtual bog'.
-  Har kuni ikkalasi ham check-in qilsa bog'ga bitta gul qo'shiladi;
-  ball oshgani sari o'simlik Urug' -> Nihol -> Yosh daraxt -> Gullagan
-  daraxt -> Mevali daraxt -> Afsonaviy bog' bosqichlaridan o'tadi
-- **Vaqt kapsulasi** - kelajakka xat (7/30/365 kun)
-- **Tinchlanish mashqi** - nafas olish + 10 daqiqa pauza + «Men» tilida gapirish
+| Bo'lim | Tafsilot |
+|---|---|
+| ✍️ **Xat yozish** | 300 belgigacha matn, 4 xil taklif, **4 shablon** (Klassik, Sevgi ❤️, Tun 🌙, Oltin ⭐) |
+| ✨ **AI yordamchi** | 5 holatda shablon asosida xat yozadi: *uzr, sog'inch, sevgi, minnatdorchilik, uchrashuv* |
+| ❤️ **Juftlik** | Mini App'da «Yarashamiz» bosilsa ikkalasi ham xabar oladi, juftlik ochiladi |
+| 🎮 **O'yinlar (4 xil)** | *A yoki B*, *Kim ko'proq?*, *Kunlik missiya*, **Sevgi kvizi** 💎 (premium) |
+| 🔥 **Kunlik seriya** | Har kunlik kirish seriyasi (streak) va eslatmalar |
+| 💌 **Xotiralar** | Yozgan/olgan xatlar tarixi |
+| 🏆 **Yutuqlar** | 8 xil badge |
+| 💎 **Premium** | **Telegram Stars (XTR)** bilan to'lov + juftlikka sovg'a |
+| 🔔 **Eslatmalar** | Har soatda missiya/seriya eslatmasi (`reminders()`) |
 
-## Arxitektura
+---
+
+## Fayl tuzilishi
 
 ```
-public/yarashamiz.html   Mini App (bitta fayl: HTML + CSS + JS)
-api/*.js                 Vercel serverless endpointlar
-  me, play, checkin, letter_new, letter_get, respond, capsule_new
-  webhook                Telegram /start buyruqlarini qabul qiladi
-  setup                  Webhook va menyu tugmasini avtomatik o'rnatadi
-lib/core.js              Umumiy mantiq: auth, Redis, Telegram API, o'yin qoidalari
+bot.py                 — botning to'liq kodi (aiogram 3.x)
+requirements.txt       — aiogram>=3.13
+mini_app/
+  index.html           — Mini App sahifasi (Telegram WebApp SDK ulangan)
+  style.css            — gradient dizayn, yurak animatsiyasi
+  app.js               — xatni ochish, javob yuborish, konfeti
+bot.db                 — SQLite (birinchi ishga tushirishda avtomatik yaratiladi)
 ```
 
-Frontend API'ni `?api=<APP_URL>` parametri orqali topadi va
-`<APP_URL>/api/<nom>` ga POST qiladi. Har bir so'rov `initData` bilan
-imzolanadi (`lib/core.js` dagi `auth()` HMAC-SHA256 orqali tekshiradi).
+---
 
-## Muhit o'zgaruvchilari
+## O'rnatish va ishga tushirish
+
+```bash
+# 1. Kutubxonalar
+pip install -r requirements.txt
+
+# 2. Muhit o'zgaruvchilari
+export BOT_TOKEN="123456:ABC..."          # @BotFather'dan
+export WEBAPP_URL="https://<host>/mini_app"   # Mini App manzili (pastga qarang)
+
+# 3. Ishga tushirish
+python bot.py
+```
+
+### Muhit o'zgaruvchilari
 
 | Nomi | Majburiy | Izoh |
 |---|---|---|
-| `BOT_TOKEN` | ha | @BotFather'dan olingan token |
-| `APP_URL` | ha | Deploy manzili, masalan `https://loyiha.vercel.app`. **Protokolsiz ham bo'ladi** (`loyiha.vercel.app`) |
-| `UPSTASH_REDIS_REST_URL` | ha* | Upstash Redis REST manzili |
-| `UPSTASH_REDIS_REST_TOKEN` | ha* | Upstash Redis REST tokeni |
-| `WEBHOOK_SECRET` | tavsiya | Webhook'ni begona POST'lardan himoyalaydi |
-| `SETUP_KEY` | ixtiyoriy | `/api/setup` ni qulflash uchun. Bo'lmasa endpoint kalitsiz ishlaydi (u faqat o'z domenini sozlaydi, zarar yetkaza olmaydi) |
+| `BOT_TOKEN` | ✅ ha | @BotFather'dan olingan token |
+| `WEBAPP_URL` | ✅ ha | Mini App joylashgan manzil. Bot unga `/?d=...&l=...` qo'shadi |
 
-\* Vercel KV ishlatilsa `KV_REST_API_URL` / `KV_REST_API_TOKEN` ham qabul qilinadi.
+> ⚠️ Bot **long polling** ishlatadi — VPS, Railway yoki Render kabi doimiy
+> ishlaydigan serverda ishlashi kerak (Vercel/GitHub Pages faqat statik fayllar uchun).
 
-> `APP_URL` berilmasa, kod `VERCEL_PROJECT_PRODUCTION_URL` yoki `VERCEL_URL` dan
-automatik aniqlaydi. Agar u ham bo'lmasa, bot `/start` ga tushunarli xato
-xabarini yuboradi.
+---
 
-## Deploy (Vercel)
+## Mini App'ni host qilish
 
-1. Reponi Vercel'ga ulang. `public/` avtomatik statik, `api/` esa funksiya bo'ladi.
-2. Project Settings > Environment Variables bo'limiga yuqoridagi
-   o'zgaruvchilarni qo'shing.
-3. Deploy qiling.
-4. **Sozlash avtomatik bajariladi.** Deploy paytida Vercel `npm run build` ni
-   ishga tushiradi (`scripts/vercel-setup.js`) va u o'zi:
-   - `setWebhook` — Telegram'ni `/api/webhook` ga ulaydi
-   - `setChatMenuButton` — chatda **"Yarashamiz"** menyu tugmasini o'rnatadi
-     (Mini App'ga doimiy kirish tugmasi)
+`mini_app/` papkasidagi 3 ta faylni istalgan statik hostingga joylang.
+Muhim: **`index.html` ildizda ochilishi kerak**, chunki bot havolani
+`{WEBAPP_URL}/?d=...&l=...` ko'rinishida yasaydi.
 
-   Buning uchun faqat `BOT_TOKEN` bo'lishi kifoya. Vercel build loglarida
-   `[setup] setWebhook: OK` qatorini ko'rasiz. Skript xato bersa ham deploy
-   to'xtatilmaydi va u faqat production deployda ishlaydi (previewda emas).
+### 🅰️ GitHub Pages
+1. `mini_app/` papkasini repo'ga push qiling
+2. Settings → Pages → Branch: `main`, papka: `/ (root)`
+3. Manzil: `https://<login>.github.io/<repo>/mini_app`
 
-   <details>
-   <summary>Muqobil: brauzerda qo'lda sozlash</summary>
+### 🅱️ Vercel / Netlify
+1. `mini_app/` ni loyiha ildiziga qo'ying (yoki `public/` papkasiga)
+2. Deploy qiling
+3. Manzil: `https://<loyiha>.vercel.app`
 
-   ```
-   https://<domen>/api/setup
-   ```
+### Muhim
+- Manzil **HTTPS** bo'lishi shart — Telegram boshqasini qabul qilmaydi
+- `WEBAPP_URL` oxirida `/` **qo'ymang** (bot o'zi qo'shadi)
 
-   `SETUP_KEY` o'rnatilgan bo'lsa: `https://<domen>/api/setup?key=<SETUP_KEY>`
+---
 
-   Javobda `"ok": true` ko'rsangiz — hammasi tayyor. Javobdagi `before`
-   maydoni o'zgarishdan OLDINGI webhook holatini ko'rsatadi (diagnostika uchun).
-   </details>
+## 💎 Telegram Stars premium
 
-<details>
-<summary>Muqobil: qo'lda curl bilan</summary>
+To'lov **Telegram Stars (XTR)** orqali ishlaydi — qo'shimcha to'lov provayderi
+kerak emas (`provider_token=""`).
 
-```bash
-curl "https://api.telegram.org/bot$BOT_TOKEN/setWebhook" \
-  -d "url=$APP_URL/api/webhook" \
-  -d "secret_token=$WEBHOOK_SECRET"
+| Tarif | Narx | Muddat |
+|---|---|---|
+| Oylik | **500 ⭐** | 30 kun |
+| Yillik | **5000 ⭐** | 365 kun |
+| Juftlikka sovg'a | **500 ⭐** | 30 kun |
 
-curl "https://api.telegram.org/bot$BOT_TOKEN/setChatMenuButton" \
-  -H "Content-Type: application/json" \
-  -d "{\"menu_button\":{\"type\":\"web_app\",\"text\":\"Yarashamiz\",\"web_app\":{\"url\":\"$APP_URL/yarashamiz.html\"}}}"
-```
-</details>
+### Premium nima beradi
+- ♾️ **Cheksiz xat** (bepul limit — kuniga 3 ta)
+- 🎨 **2 qo'shimcha shablon** — Tun 🌙 va Oltin ⭐
+- 🎮 **Sevgi kvizi** o'yini
+- ✨ **AI yordamchi**
 
-5. Mini App manzili: `$APP_URL/yarashamiz.html`
+### Sozlash
+1. @BotFather → `/mybots` → botni tanlang
+2. **Payments** → **Telegram Stars** yoqilgan bo'lishi kerak
+3. Botdagi **💎 Premium** tugmasi orqali to'lov amalga oshiriladi
 
-> GitHub Pages faqat statik HTML uchun ishlaydi — `api/` funksiyalari u yerda
-> ishlamaydi, shuning uchun API alohida joyda (Vercel/Render) turishi kerak.
+---
 
-## Muammolarni hal qilish
+## Komandalar
 
-### Botda Web App tugmasi chiqmayapti
+| Komanda | Vazifa |
+|---|---|
+| `/start` | Salom xabari + bosh menyu |
+| `/menu` | Bosh menyu |
+| `/help` | Yordam |
+| `/cancel` | Joriy amalni bekor qilish |
 
-Bu deyarli har doim quyidagi 3 sababdan biri:
+### Bosh menyu tugmalari
+`✍️ Xat yozish` · `🎮 O'yinlar` · `📊 Hisobim` · `💌 Xotiralar` · `🏆 Yutuqlar` · `💎 Premium`
 
-| # | Sabab | Tekshirish | Yechim |
-|---|---|---|---|
-| 1 | **`APP_URL` o'rnatilmagan** | `/api/setup` javobida `"app"` bo'sh bo'lsa | `APP_URL` qo'shing. Telegram `https://` bo'lmagan URL ni qabul qilmaydi va xabar umuman yuborilmaydi |
-| 2 | **Webhook o'rnatilmagan** | `getWebhookInfo` da `url` bo'sh | `/api/setup?key=...` ni chaqiring |
-| 3 | **`WEBHOOK_SECRET` mos emas** | `getWebhookInfo` da `last_error_message: "401 Unauthorized"` | `WEBHOOK_SECRET` ni o'chiring yoki `setWebhook` da `secret_token` bilan bir xil qiymat bering |
+---
 
-Diagnostika:
+## Eski bazadan migratsiya
 
-```bash
-# Webhook holati
-curl "https://api.telegram.org/bot$BOT_TOKEN/getWebhookInfo"
+`bot.py` ishga tushganda eski `bot.db` ga quyidagi ustunlar **avtomatik** qo'shiladi
+(`try/except sqlite3.OperationalError` orqali):
 
-# Menyu tugmasi holati
-curl "https://api.telegram.org/bot$BOT_TOKEN/getChatMenuButton"
-```
+- `letters.theme`
+- `letters.receiver`
+- `pairs.ts`
 
-Vercel > Deployments > Functions > Logs bo'limida `[telegram]` bilan
-boshlanadigan qatorlarni qidiring — kod endi barcha Telegram xatolarini
-shu yerda yozadi.
+Ya'ni eski bazani o'chirish shart emas — bot uni o'zi yangilaydi.
 
-## Lokal ishlab chiqish
+---
 
-```bash
-npm install
-npx vercel dev
-```
+## Eslatma (eski versiya)
 
-`?api=` parametrisiz ochilsa, frontend ichidagi `MOCK` ma'lumotlar bilan
-ishlaydi (server kerak emas).
+Repo'da avvalgi **Node.js / Vercel** versiyasi ham saqlanib qolgan
+(`api/`, `lib/`, `public/`, `package.json`, `scripts/`).
+Ular bot v3 ga ta'sir qilmaydi — `bot.py` ulardan mustaqil ishlaydi.
