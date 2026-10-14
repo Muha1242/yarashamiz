@@ -873,30 +873,48 @@ async def ms_done(c: CallbackQuery, bot: Bot):
 
 
 # ============================== ESLATMALAR =============================
+# Vercel serveri UTC vaqtida ishlaydi, eslatma esa mahalliy vaqtda kerak.
+TZ_OFFSET = int(os.environ.get("TZ_OFFSET", "5"))   # O'zbekiston = UTC+5
+
+
+def local_hour():
+    """Mahalliy soat (UTC + TZ_OFFSET)."""
+    return (dt.datetime.utcnow().hour + TZ_OFFSET) % 24
+
+
+async def reminders_once():
+    """Bir marta ishlaydi: missiya va seriya eslatmalarini yuboradi.
+
+    Vercel Cron tomonidan chaqiriladi (api/cron.py), shuning uchun
+    cheksiz sikl YO'Q.
+    """
+    h = local_hour()
+    for (u,) in db.execute("SELECT user FROM streaks").fetchall():
+        p = pair_of(u)
+        if not p:
+            continue
+        if h >= 19 and not sent(u, "ms") and not done(p[0], "ms", u):
+            try:
+                await bot.send_message(u, "🌙 Bugungi missiya bajarilmagan. "
+                                       "Juftingizni bir gaplashib, birga qiling!")
+            except Exception:
+                pass
+            mark(u, "ms")
+        r = db.execute("SELECT last,n FROM streaks WHERE user=?", (u,)).fetchone()
+        if r and r[1] >= 3 and r[0] != today() and not sent(u, "st"):
+            try:
+                await bot.send_message(u, f"🔥 Seriyani buzma! {r[1]} kunlik "
+                                       "seriyangiz bor. Bugun bir o'yin o'ynang.")
+            except Exception:
+                pass
+            mark(u, "st")
+
+
 async def reminders():
-    """Har soat: missiya va seriya eslatmalari."""
+    """Doimiy sikl - faqat polling (lokal) rejimida ishlatiladi."""
     while True:
         try:
-            h = dt.datetime.now().hour
-            for (u,) in db.execute("SELECT user FROM streaks").fetchall():
-                p = pair_of(u)
-                if not p:
-                    continue
-                if h >= 19 and not sent(u, "ms") and not done(p[0], "ms", u):
-                    try:
-                        await bot.send_message(u, "🌙 Bugungi missiya bajarilmagan. "
-                                               "Juftingizni bir gaplashib, birga qiling!")
-                    except Exception:
-                        pass
-                    mark(u, "ms")
-                r = db.execute("SELECT last,n FROM streaks WHERE user=?", (u,)).fetchone()
-                if r and r[1] >= 3 and r[0] != today() and not sent(u, "st"):
-                    try:
-                        await bot.send_message(u, f"🔥 Seriyani buzma! {r[1]} kunlik "
-                                               "seriyangiz bor. Bugun bir o'yin o'ynang.")
-                    except Exception:
-                        pass
-                    mark(u, "st")
+            await reminders_once()
         except Exception:
             pass
         await asyncio.sleep(3600)
