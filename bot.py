@@ -71,6 +71,19 @@ QZ = ["Birinchi uchrashuvimiz ajoyib o'tdi.", "Biz haftada bir marta ko'rishardi
       "Biz birga sayohat qilishni yaxshi ko'ramiz.", "Kelajak rejalarimiz bir xil.",
       "Biz ko'p janjallaymiz.", "Biz bir-birimizni juda yaxshi tushunamiz."]
 
+# Kelajak xaritasi: har savolning o'z variantlari bor (savol, A, B)
+FM = [("Dam olishni qanday o'tkazamiz?", "Sayohat", "Uyda dam"),
+      ("Kechqurun nima qilamiz?", "Birga suhbat", "O'z ishimiz"),
+      ("Bayramni qanday nishonlaymiz?", "Katta davra", "Ikki kishi"),
+      ("Hafta oxirida nima qilamiz?", "Tashqarida", "Uyda"),
+      ("Erta turamizmi yoki kech?", "Erta", "Kech"),
+      ("Yangi narsani kim boshlaydi?", "Men", "U")]
+
+# Minnatdorchilik: 3 ta erkin javob
+GR = ["Bugun sen meni nima bilan xursand qilding?",
+      "Sendagi qaysi xislatni eng ko'p qadrlayman?",
+      "Senga aytmoqchi bo'lgan minnatdorchiligim:"]
+
 MISSIONS = ["Bugun juftingizga 3 ta yaxshi gap ayting.",
             "Juftingizning eng yaxshi ko'rgan qo'shig'ini qo'yib bering.",
             "Birga o'tgan eng yaxshi kunni eslab yozing.",
@@ -195,6 +208,8 @@ GAMES = {
     "ms": {"name": "Kunlik missiya", "n": 1, "mode": "mission", "qs": MISSIONS},
     "qz": {"name": "Sevgi kvizi", "n": 6, "mode": "match", "opt": ("Ha", "Yo'q"), "qs": QZ,
            "prem": True},
+    "fm": {"name": "Kelajak xaritasi", "n": 6, "mode": "match", "opt": ("A", "B"), "qs": FM},
+    "gr": {"name": "Minnatdorchilik", "n": 3, "mode": "text", "qs": GR},
 }
 
 
@@ -229,6 +244,17 @@ def done(pid, g, u):
 def qidx(g, step):
     """Kunlik aylanish: ikkala juftlik a'zosi bir xil savolni ko'radi."""
     return (dt.date.today().toordinal() + step) % len(GAMES[g]["qs"])
+
+
+def qopt(gg, i):
+    """Savol va uning ikkita variantini qaytaradi.
+
+    Savol (matn, A, B) korteji bo'lsa - o'z variantlari, aks holda gg["opt"].
+    """
+    q = gg["qs"][i]
+    if isinstance(q, (tuple, list)):
+        return q[0], q[1], q[2]
+    return q, gg["opt"][0], gg["opt"][1]
 
 
 def touch(u):
@@ -434,6 +460,7 @@ class W(StatesGroup):
     theme = State()
     ai_sit = State()
     ai_words = State()
+    grat = State()          # Minnatdorchilik: erkin javoblar
 
 
 # ============================== XAT OQIMI ==============================
@@ -778,7 +805,7 @@ def ab_kb(i):
 
 async def ask_match(msg, g, step):
     gg = GAMES[g]
-    q, a, b = gg["qs"][qidx(g, step)], *gg["opt"]
+    q, a, b = qopt(gg, qidx(g, step))
     await msg.answer(f"{step + 1}/{gg['n']}. {q}",
                      reply_markup=IM(inline_keyboard=[
                          [IB(text=a, callback_data=f"mg:{g}:{step}:0"),
@@ -805,13 +832,19 @@ async def after(u, p, g, bot: Bot):
     db.execute("UPDATE pairs SET pts=pts+? WHERE id=?", (pts, p[0]))
     db.commit()
     touch(u)
+    extra = ""
+    if g == "fm":
+        same = sum(d1[i] == d2[i] for i in range(gg["n"]))
+        extra = f" Moslik: {round(same / gg['n'] * 100)}%."
+    elif g == "gr":
+        extra = " Minnatdorchiliklaringiz saqlandi."
     for x in (u, o):
-        await bot.send_message(x, f"«{gg['name']}» natijasi: {pts} ball 🎯 "
+        await bot.send_message(x, f"«{gg['name']}» natijasi: {pts} ball 🎯{extra} "
                                   "Ikkalangiz ham qatnashdingiz.")
 
 
 @dp.callback_query(F.data.startswith("go:"))
-async def go(c: CallbackQuery):
+async def go(c: CallbackQuery, state: FSMContext):
     g = c.data[3:]
     u, p = c.from_user.id, pair_of(c.from_user.id)
     if not p:
@@ -829,6 +862,11 @@ async def go(c: CallbackQuery):
         q, kb = ab_kb(qidx(g, 0))
         await c.message.answer("Avval o'zingiz tanlang, keyin juftingiz nimani "
                                "tanlashini toping.\n\n" + q, reply_markup=kb)
+    elif gg["mode"] == "text":
+        await state.set_state(W.grat)
+        await state.update_data(g=g, step=0, items=[])
+        await c.message.answer(f"1/{gg['n']}. {gg['qs'][0]}\n\n"
+                               "Samimiy va qisqa yozing (140 belgigacha).")
     else:
         await ask_match(c.message, g, 0)
     await c.answer()
@@ -886,7 +924,7 @@ async def mg(c: CallbackQuery, bot: Bot):
     d.append(int(x))
     put(p[0], g, u, d)
     if len(d) < gg["n"]:
-        q, a, b = gg["qs"][qidx(g, len(d))], *gg["opt"]
+        q, a, b = qopt(gg, qidx(g, len(d)))
         await c.message.edit_text(f"{len(d) + 1}/{gg['n']}. {q}",
                                   reply_markup=IM(inline_keyboard=[
                                       [IB(text=a, callback_data=f"mg:{g}:{len(d)}:0"),
@@ -895,6 +933,27 @@ async def mg(c: CallbackQuery, bot: Bot):
         await c.message.edit_text("Tayyor ✅")
         await after(u, p, g, bot)
     await c.answer()
+
+
+@dp.message(W.grat, F.text)
+async def grat_text(m: Message, state: FSMContext, bot: Bot):
+    """Minnatdorchilik o'yini: 3 ta erkin javob yig'adi."""
+    d = await state.get_data()
+    g, items, step = d.get("g", "gr"), list(d.get("items") or []), d.get("step", 0)
+    gg = GAMES[g]
+    u, p = m.from_user.id, pair_of(m.from_user.id)
+    if not p:
+        await state.clear()
+        return await m.answer("Avval xat orqali yarashing ❤️")
+    items.append(m.text.strip()[:140])
+    step += 1
+    if step < gg["n"]:
+        await state.update_data(items=items, step=step)
+        return await m.answer(f"{step + 1}/{gg['n']}. {gg['qs'][step]}")
+    put(p[0], g, u, items)
+    await state.clear()
+    await m.answer("Rahmat! Javoblaringiz saqlandi ✅")
+    await after(u, p, g, bot)
 
 
 @dp.callback_query(F.data == "msd")
