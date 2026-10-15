@@ -38,6 +38,9 @@ class handler(BaseHTTPRequestHandler):
         elif scheme not in ("redis://", "rediss://"):
             warn.append(f"REDIS_URL '{scheme}' bilan boshlanadi - 'rediss://' kerak "
                         "(REST manzil EMAS!)")
+        elif scheme == "redis://" and ".upstash.io" in redis_url:
+            warn.append("REDIS_URL 'redis://' (bitta 's'), lekin Upstash TLS talab "
+                        "qiladi -> 'rediss://' qiling ('s' qo'shing)")
         if not info["WEBAPP_URL"] and not info["VERCEL_PROJECT_PRODUCTION_URL"]:
             warn.append("WEBAPP_URL yo'q - Mini App manzili aniqlanmaydi")
         info["warnings"] = warn
