@@ -12,6 +12,11 @@ import bot as core  # noqa: E402
 
 
 async def _set():
+    # Har chaqiruvda toza sessiya - aks holda ikkinchi chaqiruvda
+    # "Timeout context manager should be used inside a task" xatosi chiqadi
+    from aiogram.client.session.aiohttp import AiohttpSession
+    core.bot.session = AiohttpSession()
+
     a = (os.environ.get("WEBAPP_URL") or "").strip().rstrip("/")
     if not a:
         base = (os.environ.get("VERCEL_PROJECT_PRODUCTION_URL")
