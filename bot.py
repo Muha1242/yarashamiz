@@ -48,10 +48,12 @@ DAILY_LIMIT = 3                                  # bepul: kuniga necha xat
 # 1 Star ~ 0.013 USD. Misol: 50 Stars ~ 0.65 USD.
 PRICES = {
     "month": int(os.environ.get("PRICE_MONTH", "50")),
-    "year": int(os.environ.get("PRICE_YEAR", "400")),
-    "gift": int(os.environ.get("PRICE_GIFT", "50")),
+    "year": int(os.environ.get("PRICE_YEAR", "500")),
+    "gift": int(os.environ.get("PRICE_GIFT", "80")),
 }
-PREMIUM_DAYS = {"month": 30, "year": 365}
+# "1 yil + 2 oy" = 14 oy = 425 kun (matndagi va'da bilan mos)
+PREMIUM_DAYS = {"month": 30, "year": 425}
+GIFT_DAYS = int(os.environ.get("GIFT_DAYS", "30"))
 
 # ============================== KONTENT ================================
 OFFERS = ["Birga ovqatlanamiz", "Sayr qilamiz", "Kofe ichamiz", "Kino ko'ramiz", "Sovg'a olaman"]
@@ -438,15 +440,16 @@ def premium_view(u):
             "• 🎮 Qo'shimcha o'yin: Sevgi kvizi\n"
             "• 💌 Xotiralar cheksiz saqlanadi\n"
             "• 🥇 Maxsus yutuqlar va nishonlar\n\n"
-            f"Narx: <b>{PRICES['month']} ⭐</b> (oy) yoki "
-            f"<b>{PRICES['year']} ⭐</b> (yil, 2 oy bepul).")
+            f"Narx: <b>{PRICES['month']} ⭐</b> (1 oy) · "
+            f"<b>{PRICES['year']} ⭐</b> (1 yil + 2 oy)\n"
+            f"🎁 Juftingizga sovg'a: <b>{PRICES['gift']} ⭐</b> ({GIFT_DAYS} kun)")
 
 
 def prem_kb():
     return IM(inline_keyboard=[
         [IB(text=f"⭐ {PRICES['month']} — 1 oy", callback_data="buy:month"),
-         IB(text=f"⭐ {PRICES['year']} — 1 yil", callback_data="buy:year")],
-        [IB(text=f"🎁 {PRICES['gift']} ⭐ — sovg'a qilish", callback_data="buy:gift")]])
+         IB(text=f"⭐ {PRICES['year']} — 1 yil + 2 oy", callback_data="buy:year")],
+        [IB(text=f"🎁 {PRICES['gift']} ⭐ — {GIFT_DAYS} kunlik sovg'a", callback_data="buy:gift")]])
 
 
 def mission_of_day():
@@ -734,8 +737,8 @@ async def buy(c: CallbackQuery, bot: Bot):
     await bot.send_invoice(
         chat_id=c.from_user.id, title="Yarashamiz Premium 💎",
         description={"month": "1 oylik premium: cheksiz xat, AI yordamchi, barcha shablonlar.",
-                     "year": "1 yillik premium (2 oy bepul).",
-                     "gift": "Juftingizga 30 kunlik premium sovg'a."}[kind],
+                     "year": "1 yil + 2 oy premium: cheksiz xat, AI, barcha shablonlar, o'yinlar.",
+                     "gift": f"Juftingizga {GIFT_DAYS} kunlik premium sovg'a."}[kind],
         payload=payload, provider_token="", currency="XTR",
         prices=[LabeledPrice(label="Premium", amount=PRICES[kind])])
     await c.answer()
@@ -755,7 +758,7 @@ async def paid(m: Message, bot: Bot):
         await m.answer(f"💎 Premium faollashdi! {PREMIUM_DAYS[kind]} kunlik imtiyozlar "
                        "sizniki.\n«✍️ Xat yozish» ichida ✨ AI yordamchini sinab ko'ring.")
     else:
-        token = make_gift(30)
+        token = make_gift(GIFT_DAYS)
         me = await bot.get_me()
         await m.answer("🎁 Sovg'a tayyor! Bu havolani juftingizga yuboring — u 30 kun "
                        f"premium oladi:\nhttps://t.me/{me.username}?start=gift_{token}")
