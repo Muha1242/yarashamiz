@@ -17,7 +17,8 @@ Mini App orqali javob → juftlik o'yinlari va ball**.
 | ✍️ **Xat yozish** | 300 belgigacha, 4 xil taklif, **4 shablon** (Klassik, Sevgi ❤️, Tun 🌙, Oltin ⭐) |
 | ✨ **AI yordamchi** | 5 holatda shablon asosida yozadi: *uzr, sog'inch, sevgi, minnatdorchilik, uchrashuv* |
 | ❤️ **Juftlik** | Mini App'da «Yarashamiz» bosilsa ikkalasi ham xabar oladi |
-| 🎮 **O'yinlar (4 xil)** | *A yoki B*, *Kim ko'proq?*, *Kunlik missiya*, **Sevgi kvizi** 💎 |
+| 🎮 **O'yinlar (6 xil)** | *A yoki B*, *Kim ko'proq?*, **Kelajak xaritasi** (moslik %), *Kunlik missiya*, **Minnatdorchilik**, **Sevgi kvizi** 💎 |
+| 🎬 **3D Mini App** | Konvert 3D ochilishi, aylanuvchi yurak, uchqunlar, konfetti |
 | 🔥 **Kunlik seriya** | Streak va eslatmalar |
 | 💌 **Xotiralar** | Yozgan/olgan xatlar tarixi |
 | 🏆 **Yutuqlar** | 8 xil badge |
@@ -149,12 +150,15 @@ chunki bot havolani `{WEBAPP_URL}/?d=...&l=...` ko'rinishida yasaydi.
 | Tarif | Narx (sozlanadi) | Muddat |
 |---|---|---|
 | Oylik | **50 ⭐** | 30 kun |
-| Yillik | **400 ⭐** | 365 kun |
-| Juftlikka sovg'a | **50 ⭐** | 30 kun |
+| Yillik | **500 ⭐** | **425 kun** (1 yil + 2 oy) |
+| Juftlikka sovg'a | **80 ⭐** | 30 kun |
+
+**Tejamkorlik:** 14 oy alohida olsa 700 ⭐ — yillik paket bilan **200 ⭐ tejaydi**.
 
 > 💡 Narxlarni Vercel'dagi `PRICE_MONTH`, `PRICE_YEAR`, `PRICE_GIFT`
 > o'zgaruvchilari orqali **o'zingiz belgilaysiz**. Masalan `PRICE_MONTH=30`.
 > 1 Star ~ 0.013 USD (50 Stars ~ 0.65 USD).
+> Sovg'a muddati: `GIFT_DAYS` (standart `30` kun).
 
 **Premium beradi:** cheksiz xat, 2 qo'shimcha shablon (Tun, Oltin), Sevgi kvizi, AI yordamchi.
 
