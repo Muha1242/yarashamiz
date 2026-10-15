@@ -16,16 +16,42 @@ import os
 from aiogram import Bot, Dispatcher, F
 from aiogram.fsm.storage.redis import RedisStorage
 from redis.asyncio import Redis as ARedis
+from aiogram.client.default import DefaultBotProperties
+from aiogram.enums import ParseMode
 
 import ai_helper
 
 # ---------------------------- SOZLAMALAR --------------------------------
-TOKEN = os.environ["BOT_TOKEN"]
-URL = os.environ["WEBAPP_URL"]
+TOKEN = os.environ.get("BOT_TOKEN", "")
+
+
+def app_url():
+    """Mini App manzili. WEBAPP_URL bo'lmasa Vercel domenidan aniqlanadi."""
+    a = (os.environ.get("WEBAPP_URL") or "").strip().rstrip("/")
+    if a:
+        return a
+    base = (os.environ.get("VERCEL_PROJECT_PRODUCTION_URL")
+            or os.environ.get("APP_URL")
+            or os.environ.get("VERCEL_URL") or "").strip().rstrip("/")
+    if not base:
+        return ""
+    if not base.lower().startswith("http"):
+        base = "https://" + base
+    return base if base.endswith("/mini_app") else base + "/mini_app"
+
+
+URL = app_url()
 ADMIN_ID = os.environ.get("ADMIN_ID", "")
 DAILY_LIMIT = 3
-PRICES = {"month": 500, "year": 5000, "gift": 500}
-PREMIUM_DAYS = {"month": 30, "year": 365}
+# Telegram Stars narxlari (muhit orqali sozlanadi)
+PRICES = {
+    "month": int(os.environ.get("PRICE_MONTH", "50")),
+    "year": int(os.environ.get("PRICE_YEAR", "500")),
+    "gift": int(os.environ.get("PRICE_GIFT", "80")),
+}
+# "1 yil + 2 oy" = 425 kun (matndagi va'da bilan mos)
+PREMIUM_DAYS = {"month": 30, "year": 425}
+GIFT_DAYS = int(os.environ.get("GIFT_DAYS", "30"))
 
 # ------------------------------ KONTENT ---------------------------------
 OFFERS = ["Birga ovqatlanamiz", "Sayr qilamiz", "Kofe ichamiz", "Kino ko'ramiz", "Sovg'a olaman"]
@@ -126,6 +152,7 @@ HELP = ("<b>Qanday ishlaydi?</b>\n\n"
 
 import base64  # noqa: E402
 import datetime as dt  # noqa: E402
+import html  # noqa: E402
 import json  # noqa: E402
 import time  # noqa: E402
 
@@ -140,7 +167,7 @@ from aiogram.types import (CallbackQuery, InlineKeyboardButton as IB,  # noqa: E
 import store as st  # noqa: E402
 from store import GAMES  # noqa: E402
 
-bot, dp = Bot(TOKEN), Dispatcher(storage=RedisStorage(redis=ARedis.from_url(os.environ["REDIS_URL"])))
+bot, dp = Bot(TOKEN, default=DefaultBotProperties(parse_mode=ParseMode.HTML)), Dispatcher(storage=RedisStorage(redis=ARedis.from_url(os.environ["REDIS_URL"])))
 
 today = lambda: dt.date.today().isoformat()
 mission_of_day = lambda: MISSIONS[dt.date.today().toordinal() % len(MISSIONS)]
@@ -247,7 +274,7 @@ def library_view(u):
     for i, x in enumerate(rows):
         d = dt.datetime.fromtimestamp(x["ts"]).strftime("%d.%m")
         who = "siz →" if x["sender"] == u else "→ siz"
-        out.append(f"{i+1}. {d} {who} «{x['text'][:40]}…»")
+        out.append(f"{i+1}. {d} {who} «{html.escape(x['text'][:40])}…»")
     return "\n".join(out) + "\n\n<b>Premium</b> bilan xotiralar cheksiz saqlanadi 💎"
 
 
@@ -262,14 +289,15 @@ def premium_view(u):
             "• 🎮 Qo'shimcha o'yin: Sevgi kvizi\n"
             "• 💌 Xotiralar cheksiz saqlanadi\n\n"
             f"Narx: <b>{PRICES['month']} ⭐</b> (oy) yoki "
-            f"<b>{PRICES['year']} ⭐</b> (yil, 2 oy bepul).")
+            f"<b>{PRICES['year']} ⭐</b> (1 yil + 2 oy)\n\n"
+            f"🎁 Juftingizga sovg'a: <b>{PRICES['gift']} ⭐</b> ({GIFT_DAYS} kun)")
 
 
 def prem_kb():
     return IM(inline_keyboard=[
         [IB(text=f"⭐ {PRICES['month']} — 1 oy", callback_data="buy:month"),
-         IB(text=f"⭐ {PRICES['year']} — 1 yil", callback_data="buy:year")],
-        [IB(text=f"🎁 {PRICES['gift']} ⭐ — sovg'a qilish", callback_data="buy:gift")]])
+         IB(text=f"⭐ {PRICES['year']} — 1 yil + 2 oy", callback_data="buy:year")],
+        [IB(text=f"🎁 {PRICES['gift']} ⭐ — {GIFT_DAYS} kunlik sovg'a", callback_data="buy:gift")]])
 
 
 def qidx(g, step):
@@ -478,7 +506,7 @@ async def ai_words(m: Message, state: FSMContext):
     vs = ([real] if real else []) + variants(sit, m.text)
     await state.update_data(variants=vs, vi=0)
     await state.set_state(W.text)
-    await m.answer("✨ Mana shunday xat:\n\n" + vs[0],
+    await m.answer("✨ Mana shunday xat:\n\n" + html.escape(vs[0]),
                    reply_markup=IM(inline_keyboard=[
                        [IB(text="♻️ Boshqa variant", callback_data="aiv:1"),
                         IB(text="✅ Ishlatish", callback_data="aiu")]]))
@@ -492,7 +520,7 @@ async def ai_variant(c: CallbackQuery, state: FSMContext):
         return await c.answer("Avval kalit so'zlarni yozing", show_alert=True)
     i = int(c.data[4:]) % len(vs)
     await state.update_data(vi=i)
-    await c.message.edit_text("✨ Variant:\n\n" + vs[i],
+    await c.message.edit_text("✨ Variant:\n\n" + html.escape(vs[i]),
                               reply_markup=IM(inline_keyboard=[
                                   [IB(text="♻️ Boshqa variant",
                                       callback_data=f"aiv:{(i + 1) % len(vs)}"),
@@ -567,7 +595,7 @@ async def buy(c: CallbackQuery):
         chat_id=c.from_user.id, title="Yarashamiz Premium 💎",
         description={"month": "1 oylik premium: cheksiz xat, AI yordamchi.",
                      "year": "1 yillik premium (2 oy bepul).",
-                     "gift": "Juftingizga 30 kunlik premium sovg'a."}[kind],
+                     "gift": f"Juftingizga {GIFT_DAYS} kunlik premium sovg'a."}[kind],
         payload=payload, provider_token="", currency="XTR",
         prices=[LabeledPrice(label="Premium", amount=PRICES[kind])])
     await c.answer()
@@ -586,7 +614,7 @@ async def paid(m: Message):
         await m.answer(f"💎 Premium faollashdi! {PREMIUM_DAYS[parts[1]]} kunlik "
                        "imtiyozlar sizniki.")
     else:
-        token = st.make_gift(30)
+        token = st.make_gift(GIFT_DAYS)
         me = await bot.get_me()
         await m.answer("🎁 Sovg'a tayyor! Havolani juftingizga yuboring:\n"
                        f"https://t.me/{me.username}?start=gift_{token}")

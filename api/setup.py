@@ -12,7 +12,15 @@ import bot as core  # noqa: E402
 
 
 async def _set():
-    url = os.environ["WEBAPP_URL"].rstrip("/") + "/api/webhook"
+    a = (os.environ.get("WEBAPP_URL") or "").strip().rstrip("/")
+    if not a:
+        base = (os.environ.get("VERCEL_PROJECT_PRODUCTION_URL")
+                or os.environ.get("APP_URL")
+                or os.environ.get("VERCEL_URL") or "").strip().rstrip("/")
+        if base and not base.lower().startswith("http"):
+            base = "https://" + base
+        a = base
+    url = a + "/api/webhook"
     await core.bot.set_webhook(url, drop_pending_updates=True)
     try:
         await core.bot.session.close()
