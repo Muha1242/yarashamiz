@@ -2,7 +2,7 @@
 <html lang="uz">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
 <title>Yarashamiz ❤️</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@500;700&family=Nunito:wght@400;600;800&display=swap" rel="stylesheet">
@@ -10,31 +10,58 @@
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 </head>
 <body>
-  <div class="hearts" aria-hidden="true"></div>
 
-  <main class="wrap">
-    <h1 class="brand">💌 Sizga xat</h1>
+<!-- fon: suzuvchi yuraklar -->
+<div class="hearts" aria-hidden="true"></div>
 
-    <section id="card" class="card theme-classic">
-      <div class="card-glow"></div>
-      <p id="letter" class="letter-text"></p>
-      <div id="offers" class="offers"></div>
-      <p id="theme-badge" class="theme-badge"></p>
-    </section>
+<main class="wrap">
+  <h1 class="brand">💌 Sizga xat</h1>
 
-    <div class="menu" id="menu" hidden>
-      <p class="menu-title">Takliflardan birini tanlang:</p>
-      <div id="offer-list" class="offer-list"></div>
-      <button class="btn btn-main" id="btn-yes">❤️ Yarashamiz</button>
-      <div class="row">
-        <button class="btn btn-ghost" id="btn-heart">💝 Yurak</button>
-        <button class="btn btn-ghost" id="btn-later">⏳ Keyinroq</button>
-      </div>
-      <button class="btn btn-stop" id="btn-stop">🚫 Bu odam menga boshqa yozmasin</button>
+  <!-- ===== 3D SAHNA ===== -->
+  <div class="scene" id="scene">
+    <!-- orqa fonda aylanuvchi 3D yurak -->
+    <div class="heart3d" id="heart3d" aria-hidden="true">
+      <div class="h-half h-left"></div>
+      <div class="h-half h-right"></div>
+      <div class="h-glow"></div>
     </div>
-  </main>
 
-  <canvas id="confetti"></canvas>
-  <script src="app.js"></script>
+    <!-- konvert -->
+    <div class="envelope" id="envelope">
+      <div class="env-back"></div>
+      <div class="env-letter" id="envLetter">
+        <span class="env-seal-mini">💌</span>
+      </div>
+      <div class="env-front"></div>
+      <div class="env-flap" id="envFlap"></div>
+      <div class="env-glare"></div>
+    </div>
+  </div>
+
+  <p class="hint" id="hint">✨ Konvertni bosing</p>
+
+  <!-- ===== XAT ===== -->
+  <section id="card" class="card theme-classic" hidden>
+    <div class="card-glow"></div>
+    <p id="letter" class="letter-text"></p>
+    <div id="offers" class="offers"></div>
+    <p id="theme-badge" class="theme-badge"></p>
+  </section>
+
+  <!-- ===== TUGMALAR ===== -->
+  <div class="menu" id="menu" hidden>
+    <p class="menu-title" id="menu-title">Takliflardan birini tanlang:</p>
+    <div id="offer-list" class="offer-list"></div>
+    <button class="btn btn-main" id="btn-yes">❤️ Yarashamiz</button>
+    <div class="row">
+      <button class="btn btn-ghost" id="btn-heart">💝 Yurak</button>
+      <button class="btn btn-ghost" id="btn-later">⏳ Keyinroq</button>
+    </div>
+    <button class="btn btn-stop" id="btn-stop">🚫 Bu odam menga boshqa yozmasin</button>
+  </div>
+</main>
+
+<canvas id="confetti"></canvas>
+<script src="app.js"></script>
 </body>
 </html>
