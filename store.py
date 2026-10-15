@@ -1,13 +1,14 @@
-"""Yarashamiz v3 (Vercel/webhook) — ma'lumotlar qatlami: Upstash Redis.
+"""Yarashamiz v3.1 (Vercel/webhook) — ma'lumotlar qatlami: Upstash Redis.
 
-Serverless muhitda SQLite ishlamaydi (fayl tizimi vaqtinchalik), shuning uchun
-barcha ma'lumotlar Redis'da saqlanadi. Barcha funksiyalar sinkron — polling
-rejimidan farqi yo'q.
-Talab: REDIS_URL muhit o'zgaruvchisi (Upstash → "Redis" → "TCP endpoint").
+v3.1 qo'shimchalari:
+- "kq" (Kunlik savol) o'yini
+- admin uchun statistika (admin_stats)
+- juftlik/premium hisoblagichlari
 """
 import datetime as dt
 import json
 import os
+import secrets
 import time
 
 import redis
@@ -19,6 +20,7 @@ GAMES = {
     "ab": {"name": "A yoki B", "n": 5, "mode": "guess"},
     "wh": {"name": "Kim ko'proq?", "n": 5, "mode": "match"},
     "ms": {"name": "Kunlik missiya", "n": 1, "mode": "mission"},
+    "kq": {"name": "💬 Kunlik savol", "n": 1, "mode": "talk"},
     "qz": {"name": "Sevgi kvizi", "n": 6, "mode": "match", "prem": True},
 }
 
@@ -29,13 +31,12 @@ def _pid(a, b):
 
 # ------------------------------- JUFTLIK --------------------------------
 def pair_of(u):
-    """(pid, a, b) yoki None — eski sqlite versiyasi bilan bir xil shakl."""
+    """(pid, a, b) yoki None."""
     m = r.get(f"mate:{u}")
     if not m:
         return None
     o = int(m)
-    pid = _pid(u, o)
-    return (pid, u, o)
+    return (_pid(u, o), u, o)
 
 
 def other(p, u):
@@ -46,6 +47,7 @@ def add_pair(a, b):
     r.set(f"mate:{a}", b)
     r.set(f"mate:{b}", a)
     r.set(f"mets:{_pid(a, b)}", int(time.time()))
+    r.incr("cnt:pairs")
 
 
 def pair_ts(a, b):
@@ -174,11 +176,11 @@ def add_prem(u, days):
     if v and int(v) > base:
         base = int(v)
     r.set(f"prem:{u}", int(base + days * 86400))
+    r.sadd("prems", u)
 
 
 # -------------------------------- SOVG'A --------------------------------
 def make_gift(days):
-    import secrets
     token = secrets.token_urlsafe(8)
     r.hset(f"gift:{token}", mapping={"days": days, "used": 0})
     return token
@@ -200,3 +202,11 @@ def sent(u, kind):
 
 def mark(u, kind):
     r.set(f"sent:{u}:{kind}", today())
+
+
+# ------------------------------- ADMIN ----------------------------------
+def admin_stats():
+    return {"users": r.scard("users"),
+            "pairs": int(r.get("cnt:pairs") or 0),
+            "letters": int(r.get("seq:letters") or 0),
+            "prem": r.scard("prems")}

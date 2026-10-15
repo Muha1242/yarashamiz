@@ -1,0 +1,56 @@
+"""Yarashamiz v3.1 — haqiqiy AI yordamchi (Google Gemini API).
+
+Kutubxona kerak emas (stdlib urllib). GEMINI_API_KEY bo'lmasa yoki API xato
+bersa — None qaytaradi; chaqiruvchi shablon (AI_TPL) bilan davom etadi.
+API kalitini Google AI Studio'dan oling: https://aistudio.google.com/apikey
+"""
+import json
+import os
+import urllib.request
+
+KEY = os.environ.get("GEMINI_API_KEY", "")
+MODEL = os.environ.get("GEMINI_MODEL", "gemini-2.0-flash")
+ENDPOINT = (f"https://generativelanguage.googleapis.com/v1beta/models/"
+            f"{MODEL}:generateContent")
+
+SIT_NAMES = {
+    "sorry": "Kechirim so'ramoqchiman (munosabatlarni tiklash)",
+    "miss": "Sog'indim (sevgan insonini sog'indirish)",
+    "love": "Sevgi izhori (dil izhor qilish)",
+    "thank": "Minnatdorchilik (rahmat aytish)",
+    "date": "Uchrashuvga taklif",
+}
+
+PROMPT = (
+    "Sen «Yarashamiz» Telegram botining AI yordamchisan — bir-biridan "
+    "arazlagan sevishganlarni yarashtirishda yordam berasan.\n"
+    "Vazifa: {sit} maqsadida samimiy, issiq, qisqa xat yoz.\n"
+    "Foydalanuvchi kalit so'zlari: {w}\n"
+    "Talablar:\n"
+    "- faqat O'zbek tilida (lotin yozuvi)\n"
+    "- 300 belgidan oshmaydi\n"
+    "- tabiiy, ortiqcha gapirmaydigan, yurakdan chiqqan\n"
+    "- emoji ishlat, lekin ko'p emas (1-2 ta)\n"
+    "- faqat xat matnini qaytar, boshqa hech narsa qo'shma"
+)
+
+
+def compose(sit: str, words: str):
+    """Xat matnini qaytaradi; muammo bo'lsa None."""
+    if not KEY:
+        return None
+    prompt = PROMPT.format(sit=SIT_NAMES.get(sit, sit), w=(words or "yo'q"))
+    body = json.dumps({
+        "contents": [{"parts": [{"text": prompt}]}],
+        "generationConfig": {"maxOutputTokens": 300, "temperature": 0.9},
+    }).encode()
+    req = urllib.request.Request(
+        ENDPOINT + f"?key={KEY}", data=body,
+        headers={"Content-Type": "application/json"})
+    try:
+        with urllib.request.urlopen(req, timeout=25) as resp:
+            data = json.loads(resp.read())
+        text = data["candidates"][0]["content"]["parts"][0]["text"].strip()
+        return text[:400] if text else None
+    except Exception:
+        return None
