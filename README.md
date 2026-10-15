@@ -17,7 +17,8 @@ Mini App orqali javob → juftlik o'yinlari va ball**.
 | ✍️ **Xat yozish** | 300 belgigacha, 4 xil taklif, **4 shablon** (Klassik, Sevgi ❤️, Tun 🌙, Oltin ⭐) |
 | ✨ **AI yordamchi** | 5 holatda shablon asosida yozadi: *uzr, sog'inch, sevgi, minnatdorchilik, uchrashuv* |
 | ❤️ **Juftlik** | Mini App'da «Yarashamiz» bosilsa ikkalasi ham xabar oladi |
-| 🎮 **O'yinlar (4 xil)** | *A yoki B*, *Kim ko'proq?*, *Kunlik missiya*, **Sevgi kvizi** 💎 |
+| 🎮 **O'yinlar (6 xil)** | *A yoki B*, *Kim ko'proq?*, **Kelajak xaritasi** (moslik %), *Kunlik missiya*, **Minnatdorchilik**, **Sevgi kvizi** 💎 |
+| 🎬 **3D Mini App** | Konvert 3D ochilishi, aylanuvchi yurak, uchqunlar, konfetti |
 | 🔥 **Kunlik seriya** | Streak va eslatmalar |
 | 💌 **Xotiralar** | Yozgan/olgan xatlar tarixi |
 | 🏆 **Yutuqlar** | 8 xil badge |
