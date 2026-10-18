@@ -16,6 +16,9 @@ function decodePayload(d) {
   } catch (e) { return { t: '', o: [], theme: 'classic' }; }
 }
 const letter = decodePayload(params.get('d') || '');
+
+/* Eski (v2) havolalar ?api=... ko'rinishida bo'lgan - ularda xat matni yo'q */
+const IS_OLD_LINK = !params.get('d') && !!params.get('api');
 const THEME_NAMES = { classic: 'Klassik', love: 'Sevgi ❤️', night: 'Tun 🌙', gold: 'Oltin ⭐' };
 
 /* --- xatni tayyorlash (konvert ochilgach ko'rinadi) --- */
@@ -23,6 +26,14 @@ $('card').className = 'card theme-' + (letter.theme || 'classic');
 $('letter').textContent = letter.t || "(bo'sh xat)";
 $('theme-badge').textContent = THEME_NAMES[letter.theme] || 'Klassik';
 $('offers').innerHTML = (letter.o || []).map((o) => `<span>💝 ${o}</span>`).join('');
+
+if (IS_OLD_LINK) {
+  document.querySelector('.brand').textContent = '⏳ Havola eskirgan';
+  $('letter').textContent = `Bu havola eski versiyadan qolgan.
+
+Iltimos, botga qaytib, yangi xat so'rang ❤️`;
+  $('theme-badge').textContent = '';
+}
 
 let selected = (letter.o || [])[0] || '';
 if (letter.o && letter.o.length > 1) {
@@ -60,8 +71,13 @@ function openEnvelope() {
     window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
   }, 1150);
 }
-$('envelope').onclick = openEnvelope;
-$('scene').onclick = openEnvelope;
+if (IS_OLD_LINK) {
+  $('envelope').onclick = () => { $('card').hidden = false; haptic('light'); };
+  $('hint').textContent = "Botga qaytib, yangi xat so'rang";
+} else {
+  $('envelope').onclick = openEnvelope;
+}
+if (!IS_OLD_LINK) $('scene').onclick = openEnvelope;
 
 /* --- javoblar --- */
 function send(a, extra = {}) {

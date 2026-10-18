@@ -1,4 +1,8 @@
 {
+  "redirects": [
+    { "source": "/yarashamiz.html", "destination": "/mini_app/", "permanent": false },
+    { "source": "/yarashamiz", "destination": "/mini_app/", "permanent": false }
+  ],
   "crons": [
     { "path": "/api/cron", "schedule": "0 15 * * *" }
   ]
