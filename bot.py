@@ -177,6 +177,7 @@ dq_of_day = lambda: DAILY_Q[dt.date.today().toordinal() % len(DAILY_Q)]
 # ============================= KO'RINISHLAR =============================
 def main_kb():
     return ReplyKeyboardMarkup(resize_keyboard=True, keyboard=[
+        [KeyboardButton(text="📱 Ilova", web_app=WebAppInfo(url=f"{URL}/"))],
         [KeyboardButton(text="✍️ Xat yozish"), KeyboardButton(text="🎮 O'yinlar")],
         [KeyboardButton(text="📊 Hisobim"), KeyboardButton(text="💌 Xotiralar")],
         [KeyboardButton(text="🏆 Yutuqlar"), KeyboardButton(text="💎 Premium")],
