@@ -1,195 +1,378 @@
-/* ===== Yarashamiz Mini App — 3D konvert va javoblar ===== */
+/* ===== Yarashamiz Mini App — to'liq ilova ===== */
 const tg = window.Telegram.WebApp;
-tg.ready();
-tg.expand();
-tg.BackButton.hide();
+tg.ready(); tg.expand(); tg.BackButton.hide();
 try { tg.setHeaderColor('#2a0f3d'); tg.setBackgroundColor('#12061c'); } catch (e) {}
 
 const $ = (id) => document.getElementById(id);
-const params = new URLSearchParams(location.search);
-const letterId = params.get('l') || '';
+const P = new URLSearchParams(location.search);
+const API_BASE = P.get('api') || location.origin;
+const LETTER_ID = P.get('l') || '';
 
-/* URL-safe base64 -> oddiy base64 */
+/* --- xat yuklamasi (havoladan) --- */
 function decodePayload(d) {
+  try { return JSON.parse(atob(d.replace(/-/g, '+').replace(/_/g, '/'))); }
+  catch (e) { return null; }
+}
+const LETTER = decodePayload(P.get('d') || '');
+const THEMES = { classic: 'Klassik', love: 'Sevgi ❤️', night: 'Tun 🌙', gold: 'Oltin ⭐' };
+
+let ME = null;
+
+/* ================= API ================= */
+async function api(action, extra) {
   try {
-    return JSON.parse(atob(d.replace(/-/g, '+').replace(/_/g, '/')));
-  } catch (e) { return { t: '', o: [], theme: 'classic' }; }
-}
-const letter = decodePayload(params.get('d') || '');
-
-/* Eski (v2) havolalar ?api=... ko'rinishida bo'lgan - ularda xat matni yo'q */
-const IS_OLD_LINK = !params.get('d') && !!params.get('api');
-const THEME_NAMES = { classic: 'Klassik', love: 'Sevgi ❤️', night: 'Tun 🌙', gold: 'Oltin ⭐' };
-
-/* --- xatni tayyorlash (konvert ochilgach ko'rinadi) --- */
-$('card').className = 'card theme-' + (letter.theme || 'classic');
-$('letter').textContent = letter.t || "(bo'sh xat)";
-$('theme-badge').textContent = THEME_NAMES[letter.theme] || 'Klassik';
-$('offers').innerHTML = (letter.o || []).map((o) => `<span>💝 ${o}</span>`).join('');
-
-if (IS_OLD_LINK) {
-  document.querySelector('.brand').textContent = '⏳ Havola eskirgan';
-  $('letter').textContent = `Bu havola eski versiyadan qolgan.
-
-Iltimos, botga qaytib, yangi xat so'rang ❤️`;
-  $('theme-badge').textContent = '';
+    const r = await fetch(API_BASE + '/api/app', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(Object.assign({ init: tg.initData, action }, extra || {})),
+    });
+    return await r.json();
+  } catch (e) { return { ok: false, err: 'net' }; }
 }
 
-let selected = (letter.o || [])[0] || '';
-if (letter.o && letter.o.length > 1) {
-  $('offer-list').innerHTML = letter.o.map((o, i) =>
-    `<button data-i="${i}" class="${i === 0 ? 'sel' : ''}">${o}</button>`).join('');
-  $('offer-list').querySelectorAll('button').forEach((b) => {
-    b.onclick = () => {
-      $('offer-list').querySelectorAll('button').forEach((x) => x.classList.remove('sel'));
-      b.classList.add('sel');
-      selected = letter.o[+b.dataset.i];
-      haptic('light');
-    };
-  });
-} else {
-  $('menu-title').textContent = 'Uchrashuv taklifi qabul qilinsinmi?';
+const h = (tag, cls, txt) => { const e = document.createElement(tag); if (cls) e.className = cls; if (txt != null) e.textContent = txt; return e; };
+const haptic = (s) => { try { tg.HapticFeedback.impactOccurred(s || 'light'); } catch (e) {} };
+
+/* ================= TABLAR ================= */
+function setTab(name) {
+  document.querySelectorAll('.tabs button').forEach((b) => b.classList.toggle('on', b.dataset.tab === name));
+  const v = $('view'); v.innerHTML = '';
+  window.scrollTo(0, 0);
+  ({ letter: viewLetter, games: viewGames, me: viewMe, memory: viewMemory, garden: viewGarden }[name] || viewMe)(v);
+}
+document.querySelectorAll('.tabs button').forEach((b) => (b.onclick = () => { haptic(); setTab(b.dataset.tab); }));
+
+/* ================= 1. XAT ================= */
+function viewLetter(v) {
+  if (!LETTER) {
+    v.appendChild(h('div', 'splash', '💌'));
+    v.appendChild(h('p', 'hint', 'Xat ochish uchun botdan havola oling'));
+    const c = h('div', 'card');
+    c.appendChild(h('h2', '', 'Xat qanday ishlaydi?'));
+    c.appendChild(h('p', '', '1. Botda «✍️ Xat yozish» ni bosing\n2. Matn va shablon tanlang\n3. Havolani juftingizga yuboring\n4. U shu yerda ochadi ❤️'));
+    v.appendChild(c);
+    return;
+  }
+  const scene = h('div', 'scene'); scene.id = 'scene';
+  const heart = h('div', 'heart3d');
+  heart.appendChild(h('div', 'h-half h-left'));
+  heart.appendChild(h('div', 'h-half h-right'));
+  heart.appendChild(h('div', 'h-glow'));
+  scene.appendChild(heart);
+
+  const env = h('div', 'envelope'); env.id = 'envelope';
+  env.appendChild(h('div', 'env-back'));
+  const el = h('div', 'env-letter'); el.appendChild(h('span', '', '💌'));
+  env.appendChild(el);
+  env.appendChild(h('div', 'env-front'));
+  env.appendChild(h('div', 'env-flap'));
+  scene.appendChild(env);
+  v.appendChild(scene);
+  v.appendChild(h('p', 'hint', '✨ Konvertni bosing'));
+
+  const card = h('div', 'card'); card.id = 'lcard'; card.hidden = true;
+  card.style.background = 'rgba(255,255,255,.09)';
+  const txt = h('p', 'letter-text', LETTER.t || "(bo'sh xat)");
+  card.appendChild(txt);
+  if (LETTER.o && LETTER.o.length) {
+    const off = h('div', 'offers');
+    LETTER.o.forEach((o) => off.appendChild(h('span', '', '💝 ' + o)));
+    card.appendChild(off);
+  }
+  v.appendChild(card);
+
+  const menu = h('div', 'menu'); menu.id = 'lmenu'; menu.hidden = true;
+  if (LETTER.o && LETTER.o.length > 1) {
+    const opt = h('div', 'opt');
+    LETTER.o.forEach((o, i) => {
+      const b = h('button', i === 0 ? 'sel' : '', o);
+      b.onclick = () => { haptic(); opt.querySelectorAll('button').forEach((x) => x.classList.remove('sel')); b.classList.add('sel'); menu._sel = o; };
+      opt.appendChild(b);
+    });
+    menu._sel = LETTER.o[0];
+    menu.appendChild(opt);
+  } else { menu._sel = (LETTER.o || [])[0] || ''; }
+
+  const yes = h('button', 'btn btn-main', '❤️ Yarashamiz');
+  yes.style.marginTop = '12px';
+  yes.onclick = () => { haptic('heavy'); confetti(); yes.textContent = '❤️ Yarashamiz!'; setTimeout(() => sendAnswer('yes', menu._sel), 900); };
+  menu.appendChild(yes);
+  const later = h('button', 'btn btn-ghost', '⏳ Keyinroq'); later.style.marginTop = '8px';
+  later.onclick = () => sendAnswer('later', menu._sel);
+  menu.appendChild(later);
+  v.appendChild(menu);
+
+  env.onclick = () => {
+    if (scene.classList.contains('open')) return;
+    haptic('medium'); scene.classList.add('open');
+    document.querySelector('.hint').textContent = '';
+    setTimeout(() => { card.hidden = false; menu.hidden = false; haptic('light'); }, 900);
+  };
 }
 
-/* ===== 3D konvertni ochish ===== */
-let opened = false;
-function openEnvelope() {
-  if (opened) return;
-  opened = true;
-  haptic('medium');
-  $('scene').classList.add('open');
-  $('hint').style.opacity = '0';
-  sparkle($('scene'));
-  setTimeout(() => {
-    $('hint').textContent = 'Sizni o\'ylayotgan odam bor ❤️';
-    $('hint').style.opacity = '.75';
-  }, 1000);
-  setTimeout(() => {
-    $('card').hidden = false;
-    $('menu').hidden = false;
-    haptic('light');
-    window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
-  }, 1150);
-}
-if (IS_OLD_LINK) {
-  $('envelope').onclick = () => { $('card').hidden = false; haptic('light'); };
-  $('hint').textContent = "Botga qaytib, yangi xat so'rang";
-} else {
-  $('envelope').onclick = openEnvelope;
-}
-if (!IS_OLD_LINK) $('scene').onclick = openEnvelope;
-
-/* --- javoblar --- */
-function send(a, extra = {}) {
-  if (!letterId) return tg.close();
-  tg.sendData(JSON.stringify({ a, l: letterId, o: selected, ...extra }));
+function sendAnswer(a, o) {
+  if (!LETTER_ID) return tg.close();
+  tg.sendData(JSON.stringify({ a, l: LETTER_ID, o: o || '' }));
   tg.close();
 }
 
-$('btn-yes').onclick = () => {
-  haptic('heavy');
-  confetti();
-  $('btn-yes').textContent = '❤️ Yarashamiz!';
-  $('btn-yes').style.transform = 'scale(1.06)';
-  setTimeout(() => send('yes'), 950);
-};
-$('btn-heart').onclick = () => { haptic('light'); burstHearts(); setTimeout(() => send('heart'), 500); };
-$('btn-later').onclick = () => { haptic('light'); send('later'); };
-$('btn-stop').onclick = () => {
-  if (confirm('Bu odam sizga boshqa xat yozmasligi kerakmi?')) send('stop');
-};
+/* ================= 2. O'YINLAR ================= */
+let GAMES_CACHE = null;
+async function viewGames(v) {
+  v.appendChild(h('div', 'splash', 'Yuklanmoqda…'));
+  const r = await api('games');
+  v.innerHTML = '';
+  if (!r.ok) { v.appendChild(h('p', 'hint', "Xatolik: " + (r.err || '?') + "\nIlovani botdan oching")); return; }
+  if (!r.pair) {
+    const c = h('div', 'card');
+    c.appendChild(h('h2', '', '🎮 O\'yinlar'));
+    c.appendChild(h('p', '', "O'yinlar juftingiz bilan yarashgandan keyin ochiladi."));
+    v.appendChild(c); return;
+  }
+  GAMES_CACHE = r.games;
+  const head = h('div', 'card');
+  head.appendChild(h('h2', '', '🎮 Bugungi o\'yinlar'));
+  head.appendChild(h('p', '', 'Ball faqat ikkalangiz ham o\'ynasangiz beriladi.'));
+  v.appendChild(head);
+  r.games.forEach((g) => {
+    const el = h('div', 'game' + (g.locked ? ' locked' : ''));
+    const left = h('div');
+    left.appendChild(h('b', '', g.name + (g.prem ? ' 💎' : '')));
+    left.appendChild(h('small', '', g.mode === 'guess' ? "O'zingiz + juftingizni toping"
+      : g.mode === 'mission' ? 'Kichik vazifa' : g.mode === 'talk' ? 'Erkin javob'
+      : g.opt ? g.opt.join(' / ') : 'Savol-javob'));
+    el.appendChild(left);
+    const right = h('div'); right.style.textAlign = 'right';
+    const b1 = h('span', 'badge' + (g.done ? ' ok' : ''), g.done ? '✅ siz' : '⏳ siz');
+    const b2 = h('span', 'badge' + (g.him ? ' ok' : ''), g.him ? '✅ juft' : '⏳ juft');
+    b2.style.marginLeft = '6px';
+    right.appendChild(b1); right.appendChild(b2);
+    el.appendChild(right);
+    el.onclick = () => {
+      haptic();
+      if (g.locked) return alert('Bu o\'yin Premium uchun 💎');
+      if (g.done) return alert('Bugun o\'ynadingiz ✅');
+      playGame(v, g);
+    };
+    v.appendChild(el);
+  });
+}
 
-function haptic(s) { try { tg.HapticFeedback.impactOccurred(s); } catch (e) {} }
+function playGame(v, g) {
+  v.innerHTML = '';
+  const bar = h('div', 'qbar'); const fill = h('b'); fill.style.width = '0%'; bar.appendChild(fill);
+  v.appendChild(bar);
+  const q = h('div', 'qtext'); v.appendChild(q);
+  const box = h('div', 'qopt'); v.appendChild(box);
 
-/* ===== konfetti (3D aylanadi) ===== */
+  if (g.mode === 'mission') {
+    q.textContent = g.qs[0];
+    const b = h('button', 'btn btn-main', '✅ Bajardim');
+    b.onclick = () => submit(g, {});
+    v.appendChild(b); return;
+  }
+  if (g.mode === 'talk') {
+    q.textContent = g.qs[0];
+    const ta = document.createElement('textarea');
+    ta.placeholder = 'Javobingizni yozing…';
+    ta.style.cssText = 'width:100%;min-height:110px;border-radius:14px;border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.08);color:#fff3f7;padding:12px;font:400 15px Nunito;resize:none';
+    ta.maxLength = 250; v.appendChild(ta);
+    const b = h('button', 'btn btn-main', 'Yuborish'); b.style.marginTop = '10px';
+    b.onclick = () => { if (!ta.value.trim()) return; submit(g, [ta.value.trim()]); };
+    v.appendChild(b); return;
+  }
+
+  /* guess (ab) yoki match (wh, qz) */
+  const ans = [];
+  let step = 0, own = null;
+  const total = g.n * (g.mode === 'guess' ? 2 : 1);
+  function render() {
+    fill.style.width = Math.round((step / total) * 100) + '%';
+    box.innerHTML = '';
+    const idx = Math.floor(step / (g.mode === 'guess' ? 2 : 1));
+    const qq = g.qs[idx];
+    const opts = g.mode === 'guess' ? [qq[1], qq[2]] : g.opt;
+    q.textContent = (idx + 1) + '/' + g.n + '. ' + (g.mode === 'guess' ? qq[0] : qq);
+    opts.forEach((o, i) => {
+      const b = h('button', '', o);
+      b.onclick = () => {
+        haptic();
+        if (g.mode === 'guess') {
+          if (own === null) { own = i; render(); }
+          else { ans.push([own, i]); own = null; step++; next(); }
+        } else { ans.push(i); step++; next(); }
+      };
+      box.appendChild(b);
+    });
+    if (g.mode === 'guess' && own !== null) q.textContent += ' → juftingiz? ';
+  }
+  function next() { if (step >= total) submit(g, ans); else render(); }
+  render();
+}
+
+async function submit(g, data) {
+  const v = $('view');
+  v.innerHTML = ''; v.appendChild(h('div', 'splash', 'Yuborilmoqda…'));
+  const r = await api('answer', { g: g.id, data });
+  v.innerHTML = '';
+  const c = h('div', 'card');
+  if (!r.ok) {
+    c.appendChild(h('h2', '', 'Xatolik'));
+    c.appendChild(h('p', '', r.err === 'already' ? "Bugun o'ynadingiz ✅"
+      : r.err === 'premium' ? 'Bu o\'yin Premium uchun 💎' : 'Qayta urinib ko\'ring'));
+  } else if (r.waiting) {
+    c.appendChild(h('h2', '', '✅ Qabul qilindi'));
+    c.appendChild(h('p', '', 'Juftingiz ham o\'ynagach ball qo\'shiladi.'));
+  } else {
+    confetti();
+    c.appendChild(h('h2', '', '🎯 Natija'));
+    c.appendChild(h('p', '', 'Ikkalangiz ham o\'ynadingiz!'));
+    const g2 = h('div', 'stat-grid');
+    const a = h('div', 'stat'); a.appendChild(h('b', '', '+' + (r.result ? r.result.pts : 0))); a.appendChild(h('small', '', 'ball'));
+    g2.appendChild(a);
+    const b = h('div', 'stat'); b.appendChild(h('b', '', (r.result ? r.result.streak : 0))); b.appendChild(h('small', '', 'kun ketma-ket'));
+    g2.appendChild(b);
+    c.appendChild(g2);
+  }
+  const back = h('button', 'btn btn-ghost', 'Orqaga'); back.style.marginTop = '14px';
+  back.onclick = () => setTab('games');
+  v.appendChild(c); v.appendChild(back);
+}
+
+/* ================= 3. HISOBIM ================= */
+async function viewMe(v) {
+  if (!ME) { v.appendChild(h('div', 'splash', 'Yuklanmoqda…')); const r = await api('me'); if (!r.ok) { v.innerHTML = ''; v.appendChild(h('p', 'hint', 'Ilovani botdan oching')); return; } ME = r; }
+  v.innerHTML = '';
+  if (ME.pts != null) $('pill').textContent = ME.pts + ' ball';
+
+  const hi = h('div', 'card');
+  hi.appendChild(h('h2', '', 'Salom, ' + (ME.user.name || "Do'st")));
+  hi.appendChild(h('p', '', ME.pair ? 'Juftingiz bilan ulangansiz ❤️' : 'Hali juft ulanmagansiz'));
+  v.appendChild(hi);
+
+  const gr = h('div', 'stat-grid');
+  const s = (val, lab) => { const d = h('div', 'stat'); d.appendChild(h('b', '', val)); d.appendChild(h('small', '', lab)); return d; };
+  gr.appendChild(s(ME.streak || 0, 'kun ketma-ket'));
+  gr.appendChild(s(ME.pts || 0, 'juftlik bali'));
+  gr.appendChild(s(ME.days || 0, 'birga kunlar'));
+  gr.appendChild(s(ME.letters || 0, 'xatlar'));
+  v.appendChild(gr);
+
+  const pr = h('div', 'card');
+  pr.appendChild(h('h2', '', '💎 Premium'));
+  if (ME.prem) pr.appendChild(h('p', '', 'Faol — ' + ME.premDays + ' kun qoldi'));
+  else {
+    pr.appendChild(h('p', '', 'Cheksiz xat · AI yordamchi · 4 shablon · Sevgi kvizi'));
+    const pz = h('div', 'price');
+    const pm = h('div'); pm.appendChild(h('b', '', ME.prices.month + ' ⭐')); pm.appendChild(h('small', '', '1 oy'));
+    const py = h('div'); py.appendChild(h('b', '', ME.prices.year + ' ⭐')); py.appendChild(h('small', '', '1 yil + 2 oy'));
+    const pg = h('div'); pg.appendChild(h('b', '', ME.prices.gift + ' ⭐')); pg.appendChild(h('small', '', 'sovg\'a'));
+    pz.appendChild(pm); pz.appendChild(py); pz.appendChild(pg);
+    pr.appendChild(pz);
+    pr.appendChild(h('p', 'hint', 'Sotib olish uchun botdagi 💎 Premium tugmasini bosing'));
+  }
+  v.appendChild(pr);
+
+  const tip = h('div', 'card');
+  tip.appendChild(h('h2', '', '💡 Bugungi savol'));
+  tip.appendChild(h('p', '', ME.mission || '—'));
+  v.appendChild(tip);
+}
+
+/* ================= 4. XOTIRALAR ================= */
+async function viewMemory(v) {
+  v.appendChild(h('div', 'splash', 'Yuklanmoqda…'));
+  const r = await api('library');
+  v.innerHTML = '';
+  if (!r.ok) { v.appendChild(h('p', 'hint', 'Ilovani botdan oching')); return; }
+  if (!r.letters.length) {
+    const c = h('div', 'card');
+    c.appendChild(h('h2', '', '📖 Xotiralar'));
+    c.appendChild(h('p', '', "Hali xat yo'q. Birinchi xatni yozing!"));
+    v.appendChild(c); return;
+  }
+  r.letters.forEach((x) => {
+    const d = h('div', 'mem');
+    d.appendChild(h('div', 't', '«' + x.text.slice(0, 120) + (x.text.length > 120 ? '…' : '') + '»'));
+    const dt = new Date(x.ts * 1000).toLocaleDateString('uz');
+    d.appendChild(h('div', 'm', (x.mine ? 'siz →' : '→ siz') + ' · ' + dt + ' · ' + (THEMES[x.theme] || 'Klassik')));
+    v.appendChild(d);
+  });
+}
+
+/* ================= 5. BOG'IM ================= */
+const STAGES = [
+  { min: 0, icon: '🌱', name: "Urug'" }, { min: 20, icon: '🌿', name: 'Nihol' },
+  { min: 50, icon: '🌳', name: 'Yosh daraxt' }, { min: 100, icon: '🌸', name: 'Gullagan daraxt' },
+  { min: 200, icon: '🍎', name: 'Mevali daraxt' }, { min: 350, icon: '✨', name: "Afsonaviy bog'" },
+];
+async function viewGarden(v) {
+  if (!ME) { const r = await api('me'); if (r.ok) ME = r; }
+  v.innerHTML = '';
+  const pts = (ME && ME.pts) || 0;
+  let i = 0; STAGES.forEach((s, k) => { if (pts >= s.min) i = k; });
+  const cur = STAGES[i], nx = STAGES[i + 1];
+
+  v.appendChild(h('div', 'gplant', cur.icon));
+  const t = h('div', 'card');
+  t.appendChild(h('h2', '', cur.name));
+  t.appendChild(h('p', '', nx ? (nx.min - pts) + ' ball qolgach ' + nx.icon + ' ' + nx.name + " bo'ladi" : 'Eng yuqori bosqichga yetdingiz!'));
+  const bar = h('div', 'qbar'); const f = h('b');
+  f.style.width = (nx ? Math.round(((pts - cur.min) / (nx.min - cur.min)) * 100) : 100) + '%';
+  bar.appendChild(f); bar.style.marginTop = '12px'; t.appendChild(bar);
+  v.appendChild(t);
+
+  const grid = h('div', 'ggrid');
+  const st = (ME && ME.streak) || 0;
+  for (let d = 0; d < 28; d++) grid.appendChild(h('div', 'gday' + (d >= 28 - st ? ' on' : ''), d >= 28 - st ? '🌸' : '·'));
+  const g = h('div', 'card'); g.appendChild(h('h2', '', 'Gulzorimiz')); g.appendChild(grid);
+  g.appendChild(h('p', 'hint', 'Har kuni botga kirib o\'ynang — gul o\'sadi'));
+  v.appendChild(g);
+}
+
+/* ================= konfetti ================= */
 function confetti() {
-  const cv = $('confetti');
-  const ctx = cv.getContext ? cv.getContext('2d') : null;
-  if (!ctx) return;                       // canvas yo'q bo'lsa - jim o'tadi
+  const cv = $('confetti'); const ctx = cv.getContext && cv.getContext('2d');
+  if (!ctx) return;
   const dpr = window.devicePixelRatio || 1;
-  cv.width = innerWidth * dpr; cv.height = innerHeight * dpr;
-  ctx.scale(dpr, dpr);
-  const colors = ['#E91E63', '#9C27B0', '#FFD700', '#ffffff', '#4CAF50', '#ff7aa8'];
-  const parts = Array.from({ length: 130 }, () => ({
-    x: innerWidth / 2 + (Math.random() - .5) * 180,
-    y: innerHeight / 3,
-    vx: (Math.random() - .5) * 11,
-    vy: Math.random() * -13 - 4,
-    s: Math.random() * 9 + 4,
-    c: colors[(Math.random() * colors.length) | 0],
-    r: Math.random() * Math.PI,
-    vr: (Math.random() - .5) * .35,
-    sq: Math.random() * .7 + .25,      // 3D taqlid: kenglik siqilishi
-    sp: Math.random() * .07 + .02,
+  cv.width = innerWidth * dpr; cv.height = innerHeight * dpr; ctx.scale(dpr, dpr);
+  const cols = ['#E91E63', '#9C27B0', '#FFD700', '#fff', '#4CAF50', '#ff7aa8'];
+  const ps = Array.from({ length: 110 }, () => ({
+    x: innerWidth / 2 + (Math.random() - .5) * 160, y: innerHeight / 3,
+    vx: (Math.random() - .5) * 10, vy: Math.random() * -12 - 3,
+    s: Math.random() * 8 + 4, c: cols[(Math.random() * cols.length) | 0],
+    r: Math.random() * Math.PI, vr: (Math.random() - .5) * .3, sp: Math.random() * .07,
   }));
   (function frame() {
     ctx.clearRect(0, 0, innerWidth, innerHeight);
     let alive = false;
-    for (const p of parts) {
-      p.x += p.vx; p.y += p.vy; p.vy += .28; p.vx *= .995; p.r += p.vr;
-      const w = p.s * Math.abs(Math.cos(p.sp += .06));   // yon tomonga aylanayotgandek
-      ctx.save();
-      ctx.translate(p.x, p.y); ctx.rotate(p.r);
-      ctx.fillStyle = p.c;
-      ctx.fillRect(-w / 2, -p.s * p.sq / 2, w, p.s * p.sq);
-      ctx.restore();
+    for (const p of ps) {
+      p.x += p.vx; p.y += p.vy; p.vy += .27; p.vx *= .995; p.r += p.vr;
+      const w = p.s * Math.abs(Math.cos(p.sp += .06));
+      ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.r); ctx.fillStyle = p.c;
+      ctx.fillRect(-w / 2, -p.s / 2, w, p.s); ctx.restore();
       if (p.y < innerHeight + 60) alive = true;
     }
-    if (alive) requestAnimationFrame(frame);
-    else ctx.clearRect(0, 0, innerWidth, innerHeight);
+    if (alive) requestAnimationFrame(frame); else ctx.clearRect(0, 0, innerWidth, innerHeight);
   })();
 }
 
-/* ===== konvert atrofida uchqunlar ===== */
-function sparkle(box) {
-  const r = box.getBoundingClientRect();
-  for (let i = 0; i < 18; i++) {
-    const s = document.createElement('span');
-    s.className = 'spark';
-    s.textContent = ['✨', '💫', '⭐'][(Math.random() * 3) | 0];
-    s.style.cssText = `position:fixed;left:${r.left + Math.random() * r.width}px;` +
-      `top:${r.top + Math.random() * r.height}px;font-size:${10 + Math.random() * 16}px;` +
-      `pointer-events:none;z-index:8;transition:transform 1.2s ease-out,opacity 1.2s;`;
-    document.body.appendChild(s);
-    requestAnimationFrame(() => {
-      s.style.transform = `translate(${(Math.random() - .5) * 190}px,${-70 - Math.random() * 120}px) rotate(${Math.random() * 320}deg) scale(.3)`;
-      s.style.opacity = '0';
-    });
-    setTimeout(() => s.remove(), 1300);
-  }
-}
-
-/* ===== yurak yomg'iri ===== */
-function burstHearts() {
-  for (let i = 0; i < 14; i++) {
-    const s = document.createElement('span');
-    s.textContent = ['❤️', '💖', '💝'][(Math.random() * 3) | 0];
-    s.style.cssText = `position:fixed;left:${innerWidth / 2}px;top:${innerHeight / 2}px;` +
-      `font-size:${16 + Math.random() * 22}px;pointer-events:none;z-index:10;` +
-      `transition:transform 1.1s cubic-bezier(.2,.8,.2,1),opacity 1.1s;`;
-    document.body.appendChild(s);
-    requestAnimationFrame(() => {
-      s.style.transform = `translate(${(Math.random() - .5) * 300}px,${-120 - Math.random() * 260}px) rotate(${(Math.random() - .5) * 90}deg)`;
-      s.style.opacity = '0';
-    });
-    setTimeout(() => s.remove(), 1200);
-  }
-}
-
-/* ===== fon yuraklari ===== */
+/* fon yuraklari */
 (function hearts() {
   const box = document.querySelector('.hearts');
-  for (let i = 0; i < 14; i++) {
-    const s = document.createElement('span');
-    s.textContent = ['❤️', '💗', '💜'][(Math.random() * 3) | 0];
+  for (let i = 0; i < 12; i++) {
+    const s = h('span', '', ['❤️', '💗', '💜'][(Math.random() * 3) | 0]);
     s.style.left = Math.random() * 100 + 'vw';
-    s.style.fontSize = (12 + Math.random() * 24) + 'px';
-    s.style.animationDuration = (9 + Math.random() * 11) + 's';
+    s.style.fontSize = (12 + Math.random() * 22) + 'px';
+    s.style.animationDuration = (9 + Math.random() * 10) + 's';
     s.style.animationDelay = (-Math.random() * 12) + 's';
     box.appendChild(s);
   }
 })();
 
-/* konvert ochilmaguncha xat yashirin */
-$('card').hidden = true;
-$('menu').hidden = true;
+/* ================= START ================= */
+(async function start() {
+  if (LETTER) { setTab('letter'); return; }
+  const r = await api('me');
+  if (r.ok) { ME = r; $('pill').textContent = (r.pts || 0) + ' ball'; }
+  setTab(r.ok ? 'me' : 'letter');
+})();
