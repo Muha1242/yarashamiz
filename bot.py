@@ -107,11 +107,17 @@ MISSIONS = ["Bugun juftingizga 3 ta yaxshi gap ayting.",
             "Juftingizning ishini yengillashtiring: bir ishni o'zingiz qiling.",
             "Ertangi sanani rejalashtiring va juftingizga ayting."]
 
-THEMES = [("classic", "Klassik"), ("love", "Sevgi ❤️"),
-          ("sunset", "Quyosh 🌅"), ("mint", "Yalpiz 🍃"),
-          ("night", "Tun 🌙"), ("gold", "Oltin ⭐"),
-          ("ocean", "Okean 🌊"), ("royal", "Shohona 👑")]
-PREMIUM_THEMES = {"night", "gold", "ocean", "royal"}
+THEMES = [
+    # --- bepul ---
+    ("classic", "Klassik"), ("love", "Sevgi \u2764\ufe0f"),
+    ("sunset", "Quyosh \U0001F305"), ("mint", "Yalpiz \U0001F343"),
+    # --- premium \U0001F48E ---
+    ("night", "Tun \U0001F319"), ("gold", "Oltin \u2b50"),
+    ("ocean", "Okean \U0001F30A"), ("royal", "Shohona \U0001F451"),
+    ("aurora", "Shimol yog\'dusi \U0001F30C"), ("blossom", "Gulzor \U0001F338"),
+    ("velvet", "Baxmal \U0001F377"), ("sky", "Osmon \u2601\ufe0f"),
+]
+PREMIUM_THEMES = {"night", "gold", "ocean", "royal", "aurora", "blossom", "velvet", "sky"}
 
 AI_SIT = {"sorry": "Kechirim so'ramoqchiman", "miss": "Sog'indim", "love": "Sevgi izhori",
           "thank": "Minnatdorchilik", "date": "Uchrashuvga taklif"}
@@ -338,6 +344,13 @@ async def start(m: Message, command: CommandObject, state: FSMContext):
         L = st.letter(lid)
         if not L:
             return await m.answer("Xat topilmadi.")
+        if L["sender"] == m.from_user.id:
+            return await m.answer(
+                "Bu sizning xatingiz 💌\n\nUni Ilovada ko'rishingiz va dizaynini\n"
+                "o'zgartirishingiz mumkin.",
+                reply_markup=ReplyKeyboardMarkup(resize_keyboard=True, keyboard=[
+                    [KeyboardButton(text="📱 Ilova",
+                                    web_app=WebAppInfo(url=f"{URL}/"))]]))
         if st.is_blocked(m.from_user.id, L["sender"]):
             return await m.answer("Bu yuboruvchidan xat olmaslikni tanlagansiz.")
         payload = base64.urlsafe_b64encode(json.dumps(
@@ -468,15 +481,15 @@ async def own_offer_start(c: CallbackQuery, state: FSMContext):
         return await c.answer(
             "Bepul versiyada 1 ta o'z taklifingiz. Premium — cheksiz 💎",
             show_alert=True)
-    await state.set_state(W.own_offer)
+    # state W.offers da qoladi - keyingi matn o'z taklifi bo'ladi
     await c.message.answer(
-        "✍️ Taklifingizni yozing (40 belgigacha):",
-        reply_markup=IM(inline_keyboard=[[IB(text="Bekor qilish", callback_data="oc")]]))
+        "✍️ Taklifingizni yozing (40 belgigacha).\n\nYozgach takliflar ro'yxati qaytadi.")
     await c.answer()
 
 
-@dp.message(W.own_offer, F.text)
+@dp.message(W.offers, F.text)
 async def own_offer_text(m: Message, state: FSMContext):
+    """W.offers holatida yozilgan har qanday matn = o'z taklifi."""
     txt = m.text.strip()[:40]
     if not txt:
         return await m.answer("Bo'sh bo'lmasin. Qaytadan yozing:")
@@ -489,12 +502,7 @@ async def own_offer_text(m: Message, state: FSMContext):
     await m.answer(f"✅ «{txt}» qo'shildi", reply_markup=offer_kb(sel))
 
 
-@dp.callback_query(W.own_offer, F.data == "oc")
-async def own_offer_cancel(c: CallbackQuery, state: FSMContext):
-    d = await state.get_data()
-    await state.set_state(W.offers)
-    await c.message.answer("Takliflarni tanlang:", reply_markup=offer_kb(d.get("offers") or []))
-    await c.answer()
+
 
 
 @dp.callback_query(W.offers, F.data.startswith("x:"))
@@ -765,9 +773,10 @@ async def after(u, p, g):
         await bot.send_message(o, f"💬 Juftingizning bugungi javobi:\n\n«{d1[0]}»\n\n"
                                f"+{pts} ball 🎯")
         return
-    for x in (u, o):
-        await bot.send_message(x, f"«{gg['name']}» natijasi: {pts} ball 🎯 "
-                                  "Ikkalangiz ham qatnashdingiz.")
+    await asyncio.gather(*[
+        bot.send_message(x, f"«{gg['name']}» natijasi: {pts} ball 🎯 "
+                            "Ikkalangiz ham qatnashdingiz.")
+        for x in (u, o)], return_exceptions=True)
 
 
 @dp.callback_query(F.data.startswith("go:"))

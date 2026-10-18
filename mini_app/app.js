@@ -114,7 +114,10 @@ function letterOpen(v) {
 
   const env = h('div', 'envelope');
   env.appendChild(h('div', 'env-back'));
-  const el = h('div', 'env-letter'); el.appendChild(h('span', '', '💌'));
+  const el = h('div', 'env-letter');
+  const paper = h('div', 'pl-inner theme-' + (LETTER.theme || 'classic'));
+  paper.appendChild(h('p', 'pl-text', LETTER.t || ''));
+  el.appendChild(paper);
   env.appendChild(el);
   env.appendChild(h('div', 'env-front'));
   env.appendChild(h('div', 'env-flap'));
@@ -123,8 +126,13 @@ function letterOpen(v) {
   const hint = h('p', 'hint', '✨ Konvertni bosing');
   v.appendChild(hint);
 
-  const card = h('div'); card.hidden = true;
-  letterBody(card, LETTER.t, LETTER.o, LETTER.theme);
+  const card = h('div', 'card'); card.hidden = true;
+  card.style.padding = '12px 16px';
+  if (LETTER.o && LETTER.o.length) {
+    const off = h('div', 'offers');
+    LETTER.o.forEach((o) => off.appendChild(h('span', '', '💝 ' + o)));
+    card.appendChild(off);
+  } else { card.style.display = 'none'; }
   v.appendChild(card);
 
   const menu = h('div'); menu.hidden = true;

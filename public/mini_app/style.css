@@ -148,3 +148,31 @@ body::before{content:"";position:fixed;inset:-20%;pointer-events:none;z-index:0;
       color:var(--ink);font:700 13.5px Nunito;transition:.2s}
 .tbtn.on{background:linear-gradient(135deg,var(--pink),var(--purple));border-color:transparent;color:#fff}
 .tbtn.lock{opacity:.45}
+
+/* ===== KONVERT ICHIDAGI QOG'OZ (xat) ===== */
+.env-letter{padding:0;overflow:hidden;align-items:stretch;justify-content:stretch}
+.pl-inner{width:100%;height:100%;display:flex;align-items:center;justify-content:center;
+  padding:12px 10px;border-radius:11px;animation:bubble 5s ease-in-out infinite;
+  background:linear-gradient(180deg,#fff8f2,#f6e3d5);transition:background .45s}
+@keyframes bubble{50%{transform:translateY(-5px) rotate(.9deg) scale(1.018)}}
+.pl-text{font-family:Caveat,cursive;font-size:13px;line-height:1.34;color:#3a1a2e;text-align:center;
+  display:-webkit-box;-webkit-line-clamp:7;-webkit-box-orient:vertical;overflow:hidden;word-break:break-word}
+.scene.open .env-letter{transform:translateY(-58%) translateZ(34px) scale(1.1)}
+.scene.open .pl-text{-webkit-line-clamp:12;font-size:13.5px}
+
+/* mavzu fonlari (qog'oz) */
+.pl-inner.theme-love{background:radial-gradient(circle at 30% 22%,#ffe6ee,#ffc2d6 75%)}
+.pl-inner.theme-sunset{background:linear-gradient(160deg,#ffe0c2,#ffb3c8)}
+.pl-inner.theme-mint{background:linear-gradient(160deg,#e6fff4,#c2f0dc)}
+.pl-inner.theme-night{background:linear-gradient(160deg,#2b3566,#151c3d);color:#e9edff}
+.pl-inner.theme-night .pl-text{color:#e9edff}
+.pl-inner.theme-gold{background:linear-gradient(160deg,#fff6d6,#f2d48a)}
+.pl-inner.theme-ocean{background:linear-gradient(160deg,#d6f0ff,#a8d8f5)}
+.pl-inner.theme-royal{background:linear-gradient(160deg,#3a1d5c,#6a2b8f);color:#f6e9ff}
+.pl-inner.theme-royal .pl-text{color:#f6e9ff}
+.pl-inner.theme-aurora{background:linear-gradient(160deg,#1f4a4a,#4a2f7a 60%,#6a3fd0)}
+.pl-inner.theme-aurora .pl-text{color:#eafff6}
+.pl-inner.theme-blossom{background:linear-gradient(160deg,#fff2f7,#f7d6e6)}
+.pl-inner.theme-velvet{background:linear-gradient(160deg,#5c1a2a,#2a0d16);color:#ffe3ea}
+.pl-inner.theme-velvet .pl-text{color:#ffe3ea}
+.pl-inner.theme-sky{background:linear-gradient(160deg,#eaf6ff,#cfe8fb)}
