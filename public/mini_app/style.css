@@ -1,130 +1,134 @@
-/* ===== Yarashamiz Mini App — 3D interfeys ===== */
+/* ===== Yarashamiz Mini App - to'liq ilova ===== */
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-:root{
-  --gold:#f2b27a; --pink:#ff7aa8; --purple:#8a5cf0;
-  --ink:#fff3f7; --glass:rgba(255,255,255,.09); --line:rgba(255,255,255,.18);
-}
+:root{--gold:#f2b27a;--pink:#ff7aa8;--purple:#8a5cf0;--ink:#fff3f7;
+      --glass:rgba(255,255,255,.09);--line:rgba(255,255,255,.18);--ok:#7be0a8}
 html,body{height:100%;margin:0}
-body{
-  font:400 15px/1.55 Nunito,system-ui,-apple-system,sans-serif;
-  color:var(--ink); overflow-x:hidden;
-  background:radial-gradient(110% 70% at 50% 0%,#4a1d5c 0%,#2a0f3d 45%,#12061c 100%);
-}
-body::before{ /* yumshoq nurlar */
-  content:"";position:fixed;inset:-20%;pointer-events:none;z-index:0;
-  background:radial-gradient(circle at 25% 20%,rgba(255,122,168,.20),transparent 45%),
-             radial-gradient(circle at 78% 70%,rgba(138,92,240,.22),transparent 50%);
-  animation:aura 12s ease-in-out infinite;
-}
+body{font:400 15px/1.55 Nunito,system-ui,-apple-system,sans-serif;color:var(--ink);
+     overflow-x:hidden;background:radial-gradient(110% 70% at 50% 0%,#4a1d5c,#2a0f3d 45%,#12061c)}
+body::before{content:"";position:fixed;inset:-20%;pointer-events:none;z-index:0;
+  background:radial-gradient(circle at 25% 20%,rgba(255,122,168,.2),transparent 45%),
+             radial-gradient(circle at 78% 70%,rgba(138,92,240,.22),transparent 50%);animation:aura 12s ease-in-out infinite}
 @keyframes aura{50%{transform:scale(1.15) rotate(4deg)}}
 
-/* ===== fon yuraklari ===== */
 .hearts{position:fixed;inset:0;pointer-events:none;z-index:1;overflow:hidden}
-.hearts span{position:absolute;bottom:-40px;opacity:.22;animation:rise linear infinite;filter:blur(.3px)}
+.hearts span{position:absolute;bottom:-40px;opacity:.2;animation:rise linear infinite}
 @keyframes rise{to{transform:translateY(-115vh) rotate(30deg);opacity:0}}
 
 /* ===== tuzilma ===== */
-.wrap{position:relative;z-index:2;min-height:100%;display:flex;flex-direction:column;
-      align-items:center;gap:14px;padding:calc(18px + env(safe-area-inset-top)) 18px 40px}
-.brand{font:700 27px Caveat,cursive;margin:2px 0 0;letter-spacing:.5px;
-       text-shadow:0 4px 18px rgba(255,122,168,.5)}
-.hint{opacity:.6;font-size:13px;margin:-4px 0 0;animation:pulse 2.2s ease-in-out infinite}
+.app{position:relative;z-index:2;min-height:100vh;display:flex;flex-direction:column}
+.top{display:flex;justify-content:space-between;align-items:center;
+     padding:calc(14px + env(safe-area-inset-top)) 18px 8px}
+.brand{font:700 20px Caveat,cursive;letter-spacing:.4px;text-shadow:0 4px 16px rgba(255,122,168,.5)}
+.pill{background:var(--glass);border:1px solid var(--line);border-radius:99px;
+      padding:6px 13px;font-weight:800;font-size:13px;color:var(--gold)}
+.view{flex:1;padding:10px 16px 100px;display:flex;flex-direction:column;gap:14px}
+.splash{opacity:.6;text-align:center;margin-top:40vh}
+.tabs{position:fixed;left:12px;right:12px;bottom:calc(10px + env(safe-area-inset-bottom));z-index:9;
+      display:flex;gap:4px;padding:7px;border-radius:24px;background:rgba(30,12,44,.85);
+      backdrop-filter:blur(18px);border:1px solid var(--line);box-shadow:0 18px 40px rgba(0,0,0,.5)}
+.tabs button{flex:1;min-height:52px;border:0;border-radius:18px;background:none;color:var(--ink);
+             opacity:.55;font:700 10px Nunito;display:flex;flex-direction:column;align-items:center;
+             justify-content:center;gap:2px;transition:.2s;font-size:19px}
+.tabs button span{font-size:9.5px;font-weight:600}
+.tabs button.on{opacity:1;background:linear-gradient(135deg,#ff7aa8,#8a5cf0);box-shadow:0 8px 18px rgba(160,80,220,.5)}
+
+/* ===== kartalar ===== */
+.card{background:var(--glass);border:1px solid var(--line);border-radius:20px;padding:18px;
+      backdrop-filter:blur(12px);box-shadow:0 16px 36px rgba(0,0,0,.35);animation:in .45s cubic-bezier(.2,.8,.2,1) both}
+@keyframes in{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+.card h2{margin:0 0 10px;font:800 17px Nunito;color:var(--gold)}
+.card p{margin:0;opacity:.85}
+.stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.stat{background:var(--glass);border:1px solid var(--line);border-radius:16px;padding:14px;text-align:center}
+.stat b{display:block;font:800 24px Nunito;color:var(--gold)}
+.stat small{opacity:.65;font-size:11px}
+
+/* ===== tugmalar ===== */
+.btn{border:0;border-radius:16px;min-height:50px;font:800 15px Nunito;cursor:pointer;
+     transition:transform .15s;padding:0 18px}
+.btn:active{transform:scale(.96)}
+.btn-main{background:linear-gradient(135deg,#ff7aa8,#c2185b);color:#fff;box-shadow:0 12px 26px rgba(194,24,91,.45);width:100%}
+.btn-ghost{background:var(--glass);color:var(--ink);border:1px solid var(--line)}
+.btn-sm{min-height:40px;font-size:13px;padding:0 14px;border-radius:12px}
+.btn:disabled{opacity:.4}
+
+/* ===== 3D konvert ===== */
+.scene{position:relative;width:min(270px,72vw);aspect-ratio:1.4/1;margin:10px auto 0;
+       perspective:1100px;perspective-origin:50% 40%}
+.heart3d{position:absolute;left:50%;top:52%;width:140px;height:140px;
+         transform:translate(-50%,-50%);transform-style:preserve-3d;opacity:0;
+         transition:opacity .8s .5s;animation:hspin 9s linear infinite}
+.scene.open .heart3d{opacity:.45}
+@keyframes hspin{to{transform:translate(-50%,-50%) rotateY(360deg)}}
+.h-half{position:absolute;top:0;width:70px;height:140px;background:linear-gradient(180deg,#ff8fb4,#c2185b)}
+.h-left{left:0;border-radius:70px 70px 0 0;transform:rotate(-45deg);transform-origin:bottom right}
+.h-right{right:0;border-radius:70px 70px 0 0;transform:rotate(45deg);transform-origin:bottom left}
+.h-glow{position:absolute;inset:-28px;border-radius:50%;background:radial-gradient(circle,rgba(255,122,168,.5),transparent 65%);filter:blur(14px)}
+.envelope{position:absolute;inset:0;transform-style:preserve-3d;cursor:pointer;
+          transition:transform .9s cubic-bezier(.2,.8,.2,1);animation:float 3.6s ease-in-out infinite}
+.scene.open .envelope{animation:none;transform:translateY(44px) rotateX(14deg) scale(.92)}
+@keyframes float{50%{transform:translateY(-11px) rotateY(7deg)}}
+.env-back{position:absolute;inset:0;border-radius:16px;background:linear-gradient(160deg,#7a3a86,#4a1d5c);
+          box-shadow:0 24px 44px rgba(0,0,0,.55),inset 0 0 0 1px rgba(255,255,255,.08)}
+.env-letter{position:absolute;left:8%;right:8%;bottom:8%;height:84%;border-radius:12px;
+            background:linear-gradient(180deg,#fff8f2,#f6e3d5);display:flex;align-items:flex-start;
+            justify-content:center;padding-top:12px;font-size:24px;transform:translateZ(2px);
+            transition:transform .8s .45s cubic-bezier(.2,.8,.2,1);box-shadow:0 8px 22px rgba(0,0,0,.3)}
+.scene.open .env-letter{transform:translateY(-56%) translateZ(30px) scale(1.03)}
+.env-front{position:absolute;inset:0;border-radius:16px;z-index:2;background:linear-gradient(180deg,#8a4a97,#5b2670);
+           clip-path:polygon(0 0,50% 46%,100% 0,100% 100%,0 100%);box-shadow:inset 0 0 0 1px rgba(255,255,255,.07)}
+.env-flap{position:absolute;left:0;right:0;top:0;height:56%;z-index:3;background:linear-gradient(180deg,#9a54a8,#6b2d82);
+          clip-path:polygon(0 0,100% 0,50% 100%);transform-origin:top center;transition:transform .75s cubic-bezier(.6,-.3,.4,1.3)}
+.scene.open .env-flap{transform:rotateX(-178deg);z-index:0}
+.hint{text-align:center;opacity:.65;font-size:13px;margin:6px 0 0;animation:pulse 2.2s ease-in-out infinite}
 @keyframes pulse{50%{opacity:1}}
 
-/* ===== 3D SAHNA ===== */
-.scene{position:relative;width:min(280px,74vw);aspect-ratio:1.4/1;
-       perspective:1100px;perspective-origin:50% 40%;margin-top:6px}
+/* xat matni */
+.letter-text{font-family:Caveat,cursive;font-size:21px;line-height:1.5;margin:0;text-align:center}
+.offers{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-top:12px}
+.offers span{font-size:12.5px;padding:6px 12px;border-radius:999px;background:rgba(255,255,255,.1);border:1px solid var(--line)}
+.opt{display:flex;flex-direction:column;gap:8px;margin-top:12px}
+.opt button{border-radius:14px;min-height:46px;border:1px solid var(--line);background:var(--glass);
+            color:var(--ink);font:700 14px Nunito;transition:.2s}
+.opt button.sel{background:linear-gradient(135deg,var(--pink),var(--purple));border-color:transparent;color:#fff}
 
-/* --- 3D yurak (orqada) --- */
-.heart3d{position:absolute;left:50%;top:52%;width:150px;height:150px;
-         transform:translate(-50%,-50%) rotateY(0);transform-style:preserve-3d;
-         opacity:0;transition:opacity .8s .5s;animation:hspin 9s linear infinite}
-.scene.open .heart3d{opacity:.5}
-@keyframes hspin{to{transform:translate(-50%,-50%) rotateY(360deg)}}
-.h-half{position:absolute;top:0;width:75px;height:150px;background:linear-gradient(180deg,#ff8fb4,#c2185b)}
-.h-left{left:0;border-radius:75px 75px 0 0;transform:rotate(-45deg);transform-origin:bottom right}
-.h-right{right:0;border-radius:75px 75px 0 0;transform:rotate(45deg);transform-origin:bottom left}
-.h-glow{position:absolute;inset:-30px;border-radius:50%;
-        background:radial-gradient(circle,rgba(255,122,168,.55),transparent 65%);filter:blur(14px)}
+/* ===== o'yinlar ===== */
+.game{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:15px 16px;
+      border-radius:18px;border:1px solid var(--line);background:var(--glass);cursor:pointer;transition:.2s}
+.game:active{transform:scale(.98)}
+.game.locked{opacity:.55}
+.game b{display:block;font:800 15px Nunito}
+.game small{opacity:.65;font-size:12px}
+.badge{font-size:11px;font-weight:800;border-radius:99px;padding:4px 10px;background:rgba(255,255,255,.1);color:var(--gold);white-space:nowrap}
+.badge.ok{color:var(--ok)}
 
-/* --- konvert --- */
-.envelope{position:absolute;inset:0;transform-style:preserve-3d;
-          transition:transform .9s cubic-bezier(.2,.8,.2,1);
-          animation:float 3.6s ease-in-out infinite;cursor:pointer}
-.scene.open .envelope{animation:none;transform:translateY(46px) rotateX(14deg) scale(.92)}
-@keyframes float{50%{transform:translateY(-12px) rotateY(7deg)}}
+/* savol */
+.qbar{height:6px;border-radius:99px;background:rgba(255,255,255,.12);overflow:hidden}
+.qbar b{display:block;height:100%;background:linear-gradient(90deg,var(--pink),var(--gold));transition:width .4s}
+.qtext{font:700 18px Nunito;text-align:center;margin:16px 0}
+.qopt{display:flex;flex-direction:column;gap:10px}
+.qopt button{min-height:54px;border-radius:16px;border:1px solid var(--line);background:var(--glass);
+             color:var(--ink);font:700 16px Nunito}
+.qopt button:active{transform:scale(.97)}
 
-.env-back{position:absolute;inset:0;border-radius:16px;
-  background:linear-gradient(160deg,#7a3a86,#4a1d5c);
-  box-shadow:0 26px 46px rgba(0,0,0,.55), inset 0 0 0 1px rgba(255,255,255,.08)}
+/* ===== xotiralar ===== */
+.mem{padding:14px;border-radius:16px;background:var(--glass);border:1px solid var(--line)}
+.mem .t{font-family:Caveat,cursive;font-size:18px;line-height:1.4}
+.mem .m{font-size:11px;opacity:.6;margin-top:6px}
 
-.env-letter{position:absolute;left:8%;right:8%;bottom:8%;height:84%;
-  border-radius:12px;background:linear-gradient(180deg,#fff8f2,#f6e3d5);
-  display:flex;align-items:flex-start;justify-content:center;padding-top:14px;
-  font-size:26px;transform:translateZ(2px);
-  transition:transform .8s .45s cubic-bezier(.2,.8,.2,1);
-  box-shadow:0 8px 22px rgba(0,0,0,.3)}
-.scene.open .env-letter{transform:translateY(-56%) translateZ(30px) scale(1.03)}
+/* ===== bog'im ===== */
+.gplant{font-size:84px;text-align:center;line-height:1;animation:sway 4.5s ease-in-out infinite;
+        filter:drop-shadow(0 16px 30px rgba(0,0,0,.45))}
+@keyframes sway{50%{transform:rotate(-4deg) translateY(-7px)}}
+.ggrid{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}
+.gday{aspect-ratio:1;border-radius:8px;display:flex;align-items:center;justify-content:center;
+      font-size:12px;background:rgba(255,255,255,.05);border:1px solid var(--line);opacity:.4}
+.gday.on{opacity:1;background:linear-gradient(145deg,#ff7aa8,#8a5cf0);border-color:transparent}
 
-.env-front{position:absolute;inset:0;border-radius:16px;z-index:2;
-  background:linear-gradient(180deg,#8a4a97,#5b2670);
-  clip-path:polygon(0 0,50% 46%,100% 0,100% 100%,0 100%);
-  box-shadow:inset 0 0 0 1px rgba(255,255,255,.07)}
+/* ===== premium ===== */
+.price{display:flex;gap:10px;margin-top:12px}
+.price div{flex:1;padding:13px;border-radius:16px;background:var(--glass);border:1px solid var(--line);text-align:center}
+.price b{display:block;font:800 19px Nunito;color:var(--gold)}
+.price small{font-size:11px;opacity:.7}
 
-.env-flap{position:absolute;left:0;right:0;top:0;height:56%;z-index:3;
-  background:linear-gradient(180deg,#9a54a8,#6b2d82);
-  clip-path:polygon(0 0,100% 0,50% 100%);
-  transform-origin:top center;transform:rotateX(0deg);
-  transition:transform .75s cubic-bezier(.6,-0.3,.4,1.3);
-  box-shadow:0 6px 16px rgba(0,0,0,.35)}
-.scene.open .env-flap{transform:rotateX(-178deg);z-index:0}
-
-.env-glare{position:absolute;inset:0;border-radius:16px;z-index:4;pointer-events:none;
-  background:linear-gradient(115deg,transparent 38%,rgba(255,255,255,.20) 48%,transparent 58%);
-  transform:translateX(-120%);animation:glare 4.5s ease-in-out infinite}
-@keyframes glare{0%,70%{transform:translateX(-120%)}85%,100%{transform:translateX(120%)}}
-
-/* ===== XAT KARTASI ===== */
-.card{position:relative;width:100%;max-width:420px;border-radius:22px;padding:22px 20px;
-  background:var(--glass);border:1px solid var(--line);backdrop-filter:blur(14px);
-  box-shadow:0 20px 46px rgba(0,0,0,.42);animation:cardIn .7s cubic-bezier(.2,.8,.2,1) both}
-@keyframes cardIn{from{opacity:0;transform:translateY(26px) rotateX(-16deg) scale(.94)}to{opacity:1;transform:none}}
-.card[hidden]{display:none}
-.card-glow{position:absolute;inset:-2px;border-radius:24px;z-index:-1;
-  background:linear-gradient(135deg,var(--pink),var(--purple),var(--gold));
-  filter:blur(18px);opacity:.42;animation:aura 7s ease-in-out infinite}
-.letter-text{font-family:Caveat,cursive;font-size:22px;line-height:1.5;margin:0;text-align:center}
-.offers{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-top:14px}
-.offers span{font-size:13px;padding:6px 12px;border-radius:999px;
-  background:rgba(255,255,255,.10);border:1px solid var(--line)}
-.theme-badge{margin:14px 0 0;font-size:12px;opacity:.65;text-align:center}
-
-/* ===== TUGMALAR ===== */
-.menu{width:100%;max-width:420px;display:flex;flex-direction:column;gap:11px;
-  animation:cardIn .6s .1s cubic-bezier(.2,.8,.2,1) both}
-.menu[hidden]{display:none}
-.menu-title{margin:0;font-weight:600;opacity:.8;text-align:center}
-.btn{border:0;border-radius:16px;min-height:54px;font:800 16px Nunito,sans-serif;
-  cursor:pointer;transition:transform .16s,box-shadow .16s}
-.btn:active{transform:scale(.96)}
-.btn-main{background:linear-gradient(135deg,#ff7aa8,#c2185b);color:#fff;
-  box-shadow:0 14px 30px rgba(194,24,91,.45)}
-.btn-ghost{flex:1;background:var(--glass);color:var(--ink);border:1px solid var(--line)}
-.btn-stop{background:transparent;color:#ff9a9a;border:1px solid rgba(255,120,120,.35);
-  font-weight:600;font-size:13px;min-height:46px}
-.row{display:flex;gap:11px}
-.offer-list{display:flex;flex-direction:column;gap:8px}
-.offer-list button{border-radius:14px;min-height:48px;border:1px solid var(--line);
-  background:var(--glass);color:var(--ink);font:600 15px Nunito;transition:.2s}
-.offer-list button.sel{background:linear-gradient(135deg,var(--pink),var(--purple));
-  border-color:transparent;color:#fff;transform:scale(1.02)}
-
-/* ===== mavzular ===== */
-.card.theme-love .card-glow{background:linear-gradient(135deg,#ff4d6d,#ff8fb4)}
-.card.theme-night{background:rgba(20,26,54,.55)}
-.card.theme-night .card-glow{background:linear-gradient(135deg,#4a5bd6,#1b2a6b)}
-.card.theme-gold{background:rgba(54,42,18,.45)}
-.card.theme-gold .card-glow{background:linear-gradient(135deg,#ffd700,#f2b27a)}
-
-/* ===== konfetti ===== */
 #confetti{position:fixed;inset:0;z-index:9;pointer-events:none}
