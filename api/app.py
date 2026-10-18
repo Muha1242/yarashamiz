@@ -169,10 +169,54 @@ def _answer(u, d):
             "him": st.done(p[0], g, st.other(p, u))}
 
 
+def _letter(u, d):
+    """Xatni ko'rish (o'zi yozgan bo'lsa ham)."""
+    import bot as core
+    import store as st
+    lid = d.get("l")
+    L = st.letter(lid) if lid else st.last_mine(u)
+    if not L:
+        return {"ok": False, "err": "none"}
+    valid = dict(core.THEMES)
+    return {
+        "ok": True, "id": L["id"], "text": L["text"], "offers": L["offers"],
+        "theme": L["theme"], "ts": L["ts"], "mine": L["sender"] == u,
+        "changesLeft": max(0, st.THEME_LIMIT - int(L.get("thn") or 0)),
+        "themes": [{"id": t, "name": n, "prem": t in core.PREMIUM_THEMES,
+                    "ok": t not in core.PREMIUM_THEMES or st.is_prem(u)}
+                   for t, n in core.THEMES if t in valid],
+    }
+
+
+def _retheme(u, d):
+    """Xat dizaynini o'zgartirish (faqat egasi, 3 martagacha)."""
+    import bot as core
+    import store as st
+    lid, theme = d.get("l"), d.get("theme")
+    L = st.letter(lid) if lid else None
+    if not L:
+        return {"ok": False, "err": "none"}
+    if L["sender"] != u:
+        return {"ok": False, "err": "not_mine"}
+    if theme not in dict(core.THEMES):
+        return {"ok": False, "err": "bad_theme"}
+    if theme in core.PREMIUM_THEMES and not st.is_prem(u):
+        return {"ok": False, "err": "premium"}
+    n = st.set_theme(lid, theme)
+    if n == 0:
+        return {"ok": False, "err": "limit"}
+    if n < 0:
+        return {"ok": False, "err": "none"}
+    return {"ok": True, "theme": theme,
+            "changesLeft": max(0, st.THEME_LIMIT - n)}
+
+
 ACTIONS = {"me": lambda u, usr, d: _me(u, usr),
            "library": lambda u, usr, d: _library(u),
            "games": lambda u, usr, d: _games(u),
-           "answer": lambda u, usr, d: _answer(u, d)}
+           "answer": lambda u, usr, d: _answer(u, d),
+           "letter": lambda u, usr, d: _letter(u, d),
+           "retheme": lambda u, usr, d: _retheme(u, d)}
 
 
 class handler(BaseHTTPRequestHandler):

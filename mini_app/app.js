@@ -14,7 +14,6 @@ function decodePayload(d) {
   catch (e) { return null; }
 }
 const LETTER = decodePayload(P.get('d') || '');
-const THEMES = { classic: 'Klassik', love: 'Sevgi ❤️', night: 'Tun 🌙', gold: 'Oltin ⭐' };
 
 let ME = null;
 
@@ -42,24 +41,78 @@ function setTab(name) {
 document.querySelectorAll('.tabs button').forEach((b) => (b.onclick = () => { haptic(); setTab(b.dataset.tab); }));
 
 /* ================= 1. XAT ================= */
+const THEME_NAMES = {
+  classic: 'Klassik', love: 'Sevgi ❤️', sunset: 'Quyosh 🌅', mint: 'Yalpiz 🍃',
+  night: 'Tun 🌙', gold: 'Oltin ⭐', ocean: 'Okean 🌊', royal: 'Shohona 👑',
+};
+
+function letterBody(card, txt, offers, theme) {
+  card.className = 'card theme-' + (theme || 'classic');
+  card.appendChild(h('p', 'letter-text', txt || "(bo'sh xat)"));
+  if (offers && offers.length) {
+    const off = h('div', 'offers');
+    offers.forEach((o) => off.appendChild(h('span', '', '💝 ' + o)));
+    card.appendChild(off);
+  }
+  card.appendChild(h('p', 'hint', THEME_NAMES[theme] || 'Klassik'));
+  return card;
+}
+
 function viewLetter(v) {
-  if (!LETTER) {
-    v.appendChild(h('div', 'splash', '💌'));
-    v.appendChild(h('p', 'hint', 'Xat ochish uchun botdan havola oling'));
+  if (LETTER) return letterOpen(v);
+  return letterPreview(v);
+}
+
+/* --- o'zi yozgan xatni ko'rish + dizayn o'zgartirish --- */
+async function letterPreview(v) {
+  v.appendChild(h('div', 'splash', 'Yuklanmoqda…'));
+  const r = await api('letter');
+  v.innerHTML = '';
+  if (!r.ok) {
     const c = h('div', 'card');
-    c.appendChild(h('h2', '', 'Xat qanday ishlaydi?'));
-    c.appendChild(h('p', '', '1. Botda «✍️ Xat yozish» ni bosing\n2. Matn va shablon tanlang\n3. Havolani juftingizga yuboring\n4. U shu yerda ochadi ❤️'));
+    c.appendChild(h('h2', '', '💌 Xat'));
+    c.appendChild(h('p', '', "Hali xat yozmadingiz.\n\nBotda «✍️ Xat yozish» ni bosing"));
     v.appendChild(c);
     return;
   }
-  const scene = h('div', 'scene'); scene.id = 'scene';
+  v.appendChild(h('p', 'hint', r.mine ? '👁 Sizning xatingiz — shunday ko\'rinadi' : '💌 Sizga kelgan xat'));
+  v.appendChild(letterBody(h('div'), r.text, r.offers, r.theme));
+
+  if (!r.mine) return;
+  const pick = h('div', 'card');
+  pick.appendChild(h('h2', '', '🎨 Dizayn'));
+  pick.appendChild(h('p', '', 'O\'zgartirish imkoniyati: ' + r.changesLeft + ' / 3'));
+  const grid = h('div', 'tgrid');
+  r.themes.forEach((t) => {
+    const b = h('button', 'tbtn' + (t.id === r.theme ? ' on' : '') + (t.ok ? '' : ' lock'), t.name);
+    b.onclick = async () => {
+      haptic();
+      if (!t.ok) return alert('Bu dizayn Premium uchun 💎');
+      if (r.changesLeft <= 0) return alert("O'zgartirish limiti tugadi (3/3)");
+      const res = await api('retheme', { l: r.id, theme: t.id });
+      if (!res.ok) return alert(res.err === 'limit' ? 'Limit tugadi (3/3)' : 'Xatolik yuz berdi');
+      haptic('medium');
+      LETTER_ID_CACHE = r.id;
+      setTab('letter');
+    };
+    grid.appendChild(b);
+  });
+  pick.appendChild(grid);
+  v.appendChild(pick);
+}
+
+let LETTER_ID_CACHE = '';
+
+/* --- havola orqali ochilgan xat (3D konvert) --- */
+function letterOpen(v) {
+  const scene = h('div', 'scene');
   const heart = h('div', 'heart3d');
   heart.appendChild(h('div', 'h-half h-left'));
   heart.appendChild(h('div', 'h-half h-right'));
   heart.appendChild(h('div', 'h-glow'));
   scene.appendChild(heart);
 
-  const env = h('div', 'envelope'); env.id = 'envelope';
+  const env = h('div', 'envelope');
   env.appendChild(h('div', 'env-back'));
   const el = h('div', 'env-letter'); el.appendChild(h('span', '', '💌'));
   env.appendChild(el);
@@ -67,44 +120,40 @@ function viewLetter(v) {
   env.appendChild(h('div', 'env-flap'));
   scene.appendChild(env);
   v.appendChild(scene);
-  v.appendChild(h('p', 'hint', '✨ Konvertni bosing'));
+  const hint = h('p', 'hint', '✨ Konvertni bosing');
+  v.appendChild(hint);
 
-  const card = h('div', 'card'); card.id = 'lcard'; card.hidden = true;
-  card.style.background = 'rgba(255,255,255,.09)';
-  const txt = h('p', 'letter-text', LETTER.t || "(bo'sh xat)");
-  card.appendChild(txt);
-  if (LETTER.o && LETTER.o.length) {
-    const off = h('div', 'offers');
-    LETTER.o.forEach((o) => off.appendChild(h('span', '', '💝 ' + o)));
-    card.appendChild(off);
-  }
+  const card = h('div'); card.hidden = true;
+  letterBody(card, LETTER.t, LETTER.o, LETTER.theme);
   v.appendChild(card);
 
-  const menu = h('div', 'menu'); menu.id = 'lmenu'; menu.hidden = true;
+  const menu = h('div'); menu.hidden = true;
+  menu.style.cssText = 'display:flex;flex-direction:column;gap:9px;margin-top:4px';
+  let sel = (LETTER.o || [])[0] || '';
   if (LETTER.o && LETTER.o.length > 1) {
     const opt = h('div', 'opt');
     LETTER.o.forEach((o, i) => {
       const b = h('button', i === 0 ? 'sel' : '', o);
-      b.onclick = () => { haptic(); opt.querySelectorAll('button').forEach((x) => x.classList.remove('sel')); b.classList.add('sel'); menu._sel = o; };
+      b.onclick = () => { haptic(); opt.querySelectorAll('button').forEach((x) => x.classList.remove('sel')); b.classList.add('sel'); sel = o; };
       opt.appendChild(b);
     });
-    menu._sel = LETTER.o[0];
     menu.appendChild(opt);
-  } else { menu._sel = (LETTER.o || [])[0] || ''; }
-
+  }
   const yes = h('button', 'btn btn-main', '❤️ Yarashamiz');
-  yes.style.marginTop = '12px';
-  yes.onclick = () => { haptic('heavy'); confetti(); yes.textContent = '❤️ Yarashamiz!'; setTimeout(() => sendAnswer('yes', menu._sel), 900); };
+  yes.onclick = () => { haptic('heavy'); confetti(); yes.textContent = '❤️ Yarashamiz!'; setTimeout(() => sendAnswer('yes', sel), 900); };
   menu.appendChild(yes);
-  const later = h('button', 'btn btn-ghost', '⏳ Keyinroq'); later.style.marginTop = '8px';
-  later.onclick = () => sendAnswer('later', menu._sel);
+  const later = h('button', 'btn btn-ghost', '⏳ Keyinroq');
+  later.onclick = () => sendAnswer('later', sel);
   menu.appendChild(later);
+  const stop = h('button', 'btn btn-ghost', '🚫 Boshqa xat olmayman');
+  stop.style.color = '#ff9a9a';
+  stop.onclick = () => { if (confirm('Bu odam sizga boshqa xat yozmasinmi?')) sendAnswer('stop', sel); };
+  menu.appendChild(stop);
   v.appendChild(menu);
 
   env.onclick = () => {
     if (scene.classList.contains('open')) return;
-    haptic('medium'); scene.classList.add('open');
-    document.querySelector('.hint').textContent = '';
+    haptic('medium'); scene.classList.add('open'); hint.textContent = '';
     setTimeout(() => { card.hidden = false; menu.hidden = false; haptic('light'); }, 900);
   };
 }
@@ -275,6 +324,19 @@ async function viewMe(v) {
   const tip = h('div', 'card');
   tip.appendChild(h('h2', '', '💡 Bugungi savol'));
   tip.appendChild(h('p', '', ME.mission || '—'));
+  const ansBtn = h('button', 'btn btn-main', '✍️ Javob berish');
+  ansBtn.style.marginTop = '12px';
+  ansBtn.onclick = async () => {
+    haptic();
+    const r = await api('games');
+    if (!r.ok || !r.pair) return alert('Avval juftingiz bilan yarashing ❤️');
+    const kq = (r.games || []).find((x) => x.id === 'kq');
+    if (!kq) return alert("O'yin topilmadi");
+    if (kq.done) return alert('Bugun javob bergansiz ✅');
+    document.querySelectorAll('.tabs button').forEach((b) => b.classList.toggle('on', b.dataset.tab === 'games'));
+    playGame($('view'), kq);
+  };
+  tip.appendChild(ansBtn);
   v.appendChild(tip);
 }
 
@@ -294,7 +356,7 @@ async function viewMemory(v) {
     const d = h('div', 'mem');
     d.appendChild(h('div', 't', '«' + x.text.slice(0, 120) + (x.text.length > 120 ? '…' : '') + '»'));
     const dt = new Date(x.ts * 1000).toLocaleDateString('uz');
-    d.appendChild(h('div', 'm', (x.mine ? 'siz →' : '→ siz') + ' · ' + dt + ' · ' + (THEMES[x.theme] || 'Klassik')));
+    d.appendChild(h('div', 'm', (x.mine ? 'siz →' : '→ siz') + ' · ' + dt + ' · ' + (THEME_NAMES[x.theme] || 'Klassik')));
     v.appendChild(d);
   });
 }

@@ -54,7 +54,9 @@ PREMIUM_DAYS = {"month": 30, "year": 425}
 GIFT_DAYS = int(os.environ.get("GIFT_DAYS", "30"))
 
 # ------------------------------ KONTENT ---------------------------------
-OFFERS = ["Birga ovqatlanamiz", "Sayr qilamiz", "Kofe ichamiz", "Kino ko'ramiz", "Sovg'a olaman"]
+OFFERS = ["Birga ovqatlanamiz", "Sayr qilamiz", "Kofe ichamiz", "Kino ko'ramiz",
+          "Sovg'a olaman", "Birga ovqat pishiramiz", "Telefonda gaplashamiz",
+          "Birga rasmga tushamiz", "Yulduzlarga qaraymiz"]
 
 AB = [("Kofe yoki choy?", "Kofe", "Choy"), ("Tong yoki tun?", "Tong", "Tun"),
       ("Dengiz yoki tog'?", "Dengiz", "Tog'"), ("Kino yoki sayr?", "Kino", "Sayr"),
@@ -105,8 +107,11 @@ MISSIONS = ["Bugun juftingizga 3 ta yaxshi gap ayting.",
             "Juftingizning ishini yengillashtiring: bir ishni o'zingiz qiling.",
             "Ertangi sanani rejalashtiring va juftingizga ayting."]
 
-THEMES = [("classic", "Klassik"), ("love", "Sevgi ❤️"), ("night", "Tun 🌙"), ("gold", "Oltin ⭐")]
-PREMIUM_THEMES = {"night", "gold"}
+THEMES = [("classic", "Klassik"), ("love", "Sevgi ❤️"),
+          ("sunset", "Quyosh 🌅"), ("mint", "Yalpiz 🍃"),
+          ("night", "Tun 🌙"), ("gold", "Oltin ⭐"),
+          ("ocean", "Okean 🌊"), ("royal", "Shohona 👑")]
+PREMIUM_THEMES = {"night", "gold", "ocean", "royal"}
 
 AI_SIT = {"sorry": "Kechirim so'ramoqchiman", "miss": "Sog'indim", "love": "Sevgi izhori",
           "thank": "Minnatdorchilik", "date": "Uchrashuvga taklif"}
@@ -198,6 +203,11 @@ def menu_kb(u):
 def offer_kb(sel):
     rows = [[IB(text=("✅ " if o in sel else "") + o, callback_data=f"o:{i}")]
             for i, o in enumerate(OFFERS)]
+    # foydalanuvchi o'zi yozgan takliflar
+    customs = [x for x in sel if x not in OFFERS]
+    for i, o in enumerate(customs):
+        rows.append([IB(text="✅ " + o, callback_data=f"x:{i}")])
+    rows.append([IB(text="➕ O'zim yozaman", callback_data="ox")])
     return IM(inline_keyboard=rows + [[IB(text="Tayyor", callback_data="done")]])
 
 
@@ -313,6 +323,7 @@ class W(StatesGroup):
     theme = State()
     ai_sit = State()
     ai_words = State()
+    own_offer = State()     # O'z taklifini yozish
     dq = State()
 
 
@@ -445,6 +456,57 @@ async def toggle(c: CallbackQuery, state: FSMContext):
     sel = (await state.get_data())["offers"]
     sel = [x for x in sel if x != o] if o in sel else sel + [o]
     await state.update_data(offers=sel)
+    await c.message.edit_reply_markup(reply_markup=offer_kb(sel))
+    await c.answer()
+
+
+@dp.callback_query(W.offers, F.data == "ox")
+async def own_offer_start(c: CallbackQuery, state: FSMContext):
+    """O'z taklifini yozish. Bepul: 1 ta, premium: cheksiz."""
+    d = await state.get_data()
+    if not st.is_prem(c.from_user.id) and int(d.get("own_count", 0)) >= 1:
+        return await c.answer(
+            "Bepul versiyada 1 ta o'z taklifingiz. Premium — cheksiz 💎",
+            show_alert=True)
+    await state.set_state(W.own_offer)
+    await c.message.answer(
+        "✍️ Taklifingizni yozing (40 belgigacha):",
+        reply_markup=IM(inline_keyboard=[[IB(text="Bekor qilish", callback_data="oc")]]))
+    await c.answer()
+
+
+@dp.message(W.own_offer, F.text)
+async def own_offer_text(m: Message, state: FSMContext):
+    txt = m.text.strip()[:40]
+    if not txt:
+        return await m.answer("Bo'sh bo'lmasin. Qaytadan yozing:")
+    d = await state.get_data()
+    sel = list(d.get("offers") or [])
+    if txt not in sel:
+        sel.append(txt)
+    await state.update_data(offers=sel, own_count=int(d.get("own_count", 0)) + 1)
+    await state.set_state(W.offers)
+    await m.answer(f"✅ «{txt}» qo'shildi", reply_markup=offer_kb(sel))
+
+
+@dp.callback_query(W.own_offer, F.data == "oc")
+async def own_offer_cancel(c: CallbackQuery, state: FSMContext):
+    d = await state.get_data()
+    await state.set_state(W.offers)
+    await c.message.answer("Takliflarni tanlang:", reply_markup=offer_kb(d.get("offers") or []))
+    await c.answer()
+
+
+@dp.callback_query(W.offers, F.data.startswith("x:"))
+async def own_offer_del(c: CallbackQuery, state: FSMContext):
+    """O'z taklifini o'chirish."""
+    d = await state.get_data()
+    sel = list(d.get("offers") or [])
+    customs = [x for x in sel if x not in OFFERS]
+    i = int(c.data[2:])
+    if 0 <= i < len(customs):
+        sel.remove(customs[i])
+        await state.update_data(offers=sel)
     await c.message.edit_reply_markup(reply_markup=offer_kb(sel))
     await c.answer()
 

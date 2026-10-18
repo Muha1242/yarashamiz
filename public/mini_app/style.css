@@ -132,3 +132,19 @@ body::before{content:"";position:fixed;inset:-20%;pointer-events:none;z-index:0;
 .price small{font-size:11px;opacity:.7}
 
 #confetti{position:fixed;inset:0;z-index:9;pointer-events:none}
+
+/* ===== mavzu (theme) ranglari ===== */
+.card.theme-love{background:rgba(255,77,109,.16);border-color:rgba(255,120,140,.4)}
+.card.theme-sunset{background:linear-gradient(150deg,rgba(255,140,90,.22),rgba(255,90,140,.13));border-color:rgba(255,150,100,.4)}
+.card.theme-mint{background:linear-gradient(150deg,rgba(110,230,180,.18),rgba(90,200,160,.11));border-color:rgba(120,230,190,.35)}
+.card.theme-night{background:rgba(20,26,54,.65);border-color:rgba(90,110,220,.4)}
+.card.theme-gold{background:rgba(70,54,20,.55);border-color:rgba(255,215,0,.35)}
+.card.theme-ocean{background:linear-gradient(150deg,rgba(40,120,220,.22),rgba(30,180,200,.13));border-color:rgba(80,170,240,.4)}
+.card.theme-royal{background:linear-gradient(150deg,rgba(120,50,180,.26),rgba(180,60,120,.13));border-color:rgba(200,120,240,.4)}
+
+/* ===== dizayn tanlash ===== */
+.tgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}
+.tbtn{min-height:46px;border-radius:13px;border:1px solid var(--line);background:var(--glass);
+      color:var(--ink);font:700 13.5px Nunito;transition:.2s}
+.tbtn.on{background:linear-gradient(135deg,var(--pink),var(--purple));border-color:transparent;color:#fff}
+.tbtn.lock{opacity:.45}
