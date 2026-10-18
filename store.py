@@ -67,7 +67,7 @@ def add_letter(sender, text, offers, theme):
     lid = r.incr("seq:letters")
     r.hset(f"letter:{lid}", mapping={
         "sender": sender, "text": text, "offers": json.dumps(offers),
-        "theme": theme, "ts": int(time.time()), "receiver": ""})
+        "theme": theme, "ts": int(time.time()), "receiver": "", "thn": 0})
     r.sadd(f"mine:{sender}", lid)
     return lid
 
@@ -78,12 +78,42 @@ def letter(lid):
         return None
     return {"id": int(lid), "sender": int(d["sender"]), "text": d["text"],
             "offers": json.loads(d["offers"]), "theme": d["theme"],
-            "ts": int(d["ts"]), "receiver": int(d["receiver"] or 0)}
+            "ts": int(d["ts"]), "receiver": int(d["receiver"] or 0),
+            "thn": int(d.get("thn") or 0)}
 
 
 def set_receiver(lid, u):
     r.hset(f"letter:{lid}", "receiver", u)
     r.sadd(f"got:{u}", lid)
+
+
+THEME_LIMIT = 3
+
+
+def set_theme(lid, theme):
+    """Xat mavzusini o'zgartiradi.
+
+    Qaytaradi: yangi thn (1..3), 0 = limit tugagan, -1 = xat topilmadi.
+    """
+    h = f"letter:{lid}"
+    if not r.exists(h):
+        return -1
+    n = int(r.hget(h, "thn") or 0)
+    if n >= THEME_LIMIT:
+        return 0
+    r.hset(h, mapping={"theme": theme, "thn": n + 1})
+    return n + 1
+
+
+def last_mine(u):
+    """Foydalanuvchi yozgan eng oxirgi xat."""
+    ids = [int(x) for x in r.smembers(f"mine:{u}")]
+    rows = [letter(i) for i in ids]
+    rows = [x for x in rows if x]
+    if not rows:
+        return None
+    rows.sort(key=lambda x: x["ts"], reverse=True)
+    return rows[0]
 
 
 def count_today_letters(u, since_ts):
