@@ -164,13 +164,13 @@ def touch(u):
     if not cur:
         n = 1
         r.hset(f"streak:{u}", mapping={"last": t, "n": 1})
+        r.sadd("users", u)          # faqat yangi foydalanuvchida
     elif cur["last"] == t:
         n = int(cur["n"])
     else:
         y = (dt.date.today() - dt.timedelta(1)).isoformat()
         n = int(cur["n"]) + 1 if cur["last"] == y else 1
         r.hset(f"streak:{u}", mapping={"last": t, "n": n})
-    r.sadd("users", u)
     return n
 
 

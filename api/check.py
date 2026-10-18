@@ -46,6 +46,25 @@ class handler(BaseHTTPRequestHandler):
         info["warnings"] = warn
         info["ok"] = not warn
 
+        # Redis kechikishini olchash (?ping=1)
+        if "ping" in (self.path or ""):
+            try:
+                import time as _t
+                import redis as _r
+                url = os.environ.get("REDIS_URL") or ""
+                t0 = _t.time()
+                rc = _r.from_url(url, socket_timeout=10, decode_responses=True)
+                rc.ping()
+                first = round((_t.time() - t0) * 1000)
+                times = []
+                for _ in range(3):
+                    t1 = _t.time()
+                    rc.ping()
+                    times.append(round((_t.time() - t1) * 1000))
+                info["redis_ms"] = {"connect_first": first, "ping": times}
+            except Exception as e:  # noqa: BLE001
+                info["redis_ms"] = {"error": repr(e)}
+
         body = json.dumps(info, ensure_ascii=False, indent=2).encode()
         self.send_response(200)
         self.send_header("Content-Type", "application/json; charset=utf-8")
