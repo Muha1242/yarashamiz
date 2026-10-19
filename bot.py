@@ -251,21 +251,19 @@ def games_view(u):
 
 
 def profile_view(u):
-    p = st.pair_of(u)
-    pts, days = 0, "—"
-    if p:
-        pts = st.get_pts(p[0])
-        ts = st.pair_ts(u, st.other(p, u))
-        if ts:
-            days = (dt.date.today() - dt.date.fromtimestamp(ts)).days
-    st_, prem = st.streak(u), st.is_prem(u)
+    ps = st.profile_stats(u)
+    p = ps["pair"]
+    pts, days = ps["pts"], "—"
+    if p and ps["since"]:
+        days = (dt.date.today() - dt.date.fromtimestamp(ps["since"])).days
+    st_, prem = ps["streak"], ps["prem"]
     tip = TIPS[dt.date.today().toordinal() % len(TIPS)]
     return (f"📊 <b>Hisobingiz</b>\n\n"
             f"🔥 Ketma-kunlik seriya: <b>{st_}</b> kun\n"
             f"⭐ Juftlik bali: <b>{pts}</b>\n"
             f"❤️ Birga kunlar: <b>{days}</b>\n"
             f"💎 Premium: <b>{'faol' if prem else 'yo‘q'}</b>"
-            + (f" ({st.prem_days(u)} kun qoldi)" if prem else "") + "\n\n"
+            + (f" ({ps['prem_days']} kun qoldi)" if prem else "") + "\n\n"
             f"💡 <i>{tip}</i>")
 
 

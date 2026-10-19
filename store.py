@@ -187,6 +187,32 @@ def users():
     return [int(x) for x in r.smembers("users")]
 
 
+# --------------------------- PROFIL (bitta pipeline) ---------------------
+def profile_stats(u):
+    """Profil uchun barcha malumot - 1 ta Redis round trip."""
+    p = pair_of(u)
+    pipe = r.pipeline()
+    pipe.hgetall(f"streak:{u}")
+    pipe.get(f"prem:{u}")
+    if p:
+        pipe.get(f"pts:{p[0]}")
+        pipe.get(f"mets:{_pid(u, other(p, u))}")
+        pipe.scard(f"mine:{u}")
+    rows = pipe.execute()
+    st_row = rows[0] or {}
+    prem_until = int(rows[1] or 0)
+    now = int(dt.datetime.now().timestamp())
+    return {
+        "pair": p,
+        "streak": int(st_row.get("n", 0)) if st_row else 0,
+        "prem": bool(prem_until and prem_until >= now),
+        "prem_days": max(0, round((prem_until - now) / 86400)) if prem_until > now else 0,
+        "pts": int(rows[2] or 0) if p else 0,
+        "since": int(rows[3] or 0) if p else 0,
+        "letters": int(rows[4] or 0) if p else 0,
+    }
+
+
 # ------------------------------- PREMIUM --------------------------------
 def is_prem(u):
     v = r.get(f"prem:{u}")
