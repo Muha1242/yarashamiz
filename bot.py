@@ -178,7 +178,41 @@ from aiogram.types import (CallbackQuery, InlineKeyboardButton as IB,  # noqa: E
 import store as st  # noqa: E402
 from store import GAMES  # noqa: E402
 
-bot, dp = Bot(TOKEN, default=DefaultBotProperties(parse_mode=ParseMode.HTML)), Dispatcher(storage=RedisStorage(redis=ARedis.from_url(os.environ["REDIS_URL"])))
+bot = Bot(TOKEN, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
+dp = Dispatcher(storage=RedisStorage(redis=ARedis.from_url(os.environ["REDIS_URL"])))
+
+
+def reset_storage():
+    """Serverless: har chaqiruv YANGI event loop yaratadi.
+
+    Redis asyncio klienti yaratilgan loopga bog'lanadi. Yangi loopda eski
+    klient ishlamaydi -> FSM state o'qilmaydi/yozilmaydi va handler
+    topilmaydi (birinchi matn "yo'qoladi"). Har chaqiruvda yangilaymiz.
+    """
+    try:
+        # Dispatcher.storage read-only, lekin RedisStorage.redis oddiy atribut
+        dp.storage.redis = ARedis.from_url(os.environ["REDIS_URL"])
+    except Exception as e:  # noqa: BLE001
+        print("[reset_storage]", e, flush=True)
+
+
+# ============================ XATO HANDLERI =============================
+@dp.errors()
+async def on_error(event):
+    """Kutilmagan xatoni foydalanuvchiga ko'rsatadi (diagnostika)."""
+    try:
+        tb = f"{type(event.exception).__name__}: {event.exception}"[:280]
+        print("[error]", tb, flush=True)
+        u = None
+        if event.update.message:
+            u = event.update.message.from_user.id
+        elif event.update.callback_query:
+            u = event.update.callback_query.from_user.id
+        if u:
+            await bot.send_message(u, "⚠️ Xatolik: " + html.escape(tb))
+    except Exception:
+        pass
+    return True
 
 today = lambda: dt.date.today().isoformat()
 mission_of_day = lambda: MISSIONS[dt.date.today().toordinal() % len(MISSIONS)]

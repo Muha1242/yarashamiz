@@ -21,6 +21,9 @@ def _process(body: bytes) -> None:
     from aiogram.types import Update
     import bot as core
 
+    # Har chaqiruv yangi event loop -> FSM Redis klientini yangilaymiz
+    core.reset_storage()
+
     update = Update.model_validate_json(body, context={"bot": core.bot})
 
     async def run():
