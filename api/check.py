@@ -46,6 +46,17 @@ class handler(BaseHTTPRequestHandler):
         info["warnings"] = warn
         info["ok"] = not warn
 
+        # Oxirgi webhook xatosi (?err=1)
+        if "err" in (self.path or ""):
+            try:
+                import redis as _r2
+                rc2 = _r2.from_url(os.environ.get("REDIS_URL") or "",
+                                   socket_timeout=5, decode_responses=True)
+                info["last_error"] = rc2.get("ybot:lasterror")
+                info["last_update"] = rc2.get("ybot:lastupdate")
+            except Exception as e:  # noqa: BLE001
+                info["last_error"] = repr(e)
+
         # Redis kechikishini olchash (?ping=1)
         if "ping" in (self.path or ""):
             try:

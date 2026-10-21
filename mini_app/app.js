@@ -118,6 +118,31 @@ function letterOpen(v) {
   stop.onclick = () => { if (confirm('Bu odam sizga boshqa xat yozmasinmi?')) sendAnswer('stop', sel); };
   menu.appendChild(stop);
 
+  /* --- javob yozish --- */
+  const replyBtn = h('button', 'btn btn-ghost', '✍️ Javob yozish');
+  replyBtn.onclick = () => {
+    haptic();
+    menu.innerHTML = '';
+    const ta = document.createElement('textarea');
+    ta.placeholder = 'Javobingizni yozing (300 belgigacha)...';
+    ta.maxLength = 300;
+    ta.style.cssText = 'width:100%;min-height:100px;border-radius:14px;border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.08);color:#fff3f7;padding:12px;font:400 15px Nunito;resize:none';
+    menu.appendChild(ta);
+    const send = h('button', 'btn btn-main', 'Yuborish');
+    send.onclick = () => {
+      const t = ta.value.trim();
+      if (!t) return;
+      haptic('medium');
+      sendReply(t);
+    };
+    menu.appendChild(send);
+    const back = h('button', 'btn btn-ghost', 'Orqaga');
+    back.onclick = () => { haptic(); setTab('letter'); };
+    menu.appendChild(back);
+    ta.focus();
+  };
+  menu.appendChild(replyBtn);
+
   mountScene(v, { t: LETTER.t, theme: LETTER.theme }, {
     after: 'Sizni o\'ylayotgan odam bor ❤️',
     onOpen: () => { menu.hidden = false; },
@@ -171,6 +196,12 @@ async function letterPreview(v) {
 function sendAnswer(a, o) {
   if (!LETTER_ID) return tg.close();
   tg.sendData(JSON.stringify({ a, l: LETTER_ID, o: o || '' }));
+  tg.close();
+}
+
+function sendReply(txt) {
+  if (!LETTER_ID) return tg.close();
+  tg.sendData(JSON.stringify({ a: 'reply', l: LETTER_ID, t: txt }));
   tg.close();
 }
 
