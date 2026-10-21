@@ -380,6 +380,17 @@ async def reply(m: Message):
     sender = L["sender"]
     if sender == u:
         return await m.answer("Bu o'z xatingiz 🙂")
+    if r.get("a") == "reply":
+        txt = str(r.get("t") or "").strip()[:300]
+        if not txt:
+            return await m.answer("Bo'sh javob yuborilmadi.")
+        st.touch(u)
+        await bot.send_message(
+            sender,
+            "💬 <b>Javob keldi</b>\n\n" + html.escape(txt)
+            + "\n\nDavom ettirish uchun javob yozing.",
+            reply_markup=menu_kb(sender))
+        return await m.answer("✅ Javobingiz yuborildi.")
     if r["a"] == "stop":
         st.block(u, sender)
         return await m.answer("Tushunarli. Bu yuboruvchidan boshqa xat kelmaydi.")

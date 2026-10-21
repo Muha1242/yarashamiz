@@ -47,8 +47,17 @@ class handler(BaseHTTPRequestHandler):
             body = self.rfile.read(length) if length else b"{}"
             _process(body)
         except Exception:  # noqa: BLE001
-            # Telegram qayta-qayta yubormasligi uchun baribir 200 qaytaramiz
+            # Xatoni Redis'ga yozamiz - /api/check?err=1 orqali ko'rish mumkin
+            tb = traceback.format_exc()
             traceback.print_exc()
+            try:
+                import redis as _r
+                rc = _r.from_url(os.environ.get("REDIS_URL") or "",
+                                 socket_timeout=5, decode_responses=True)
+                rc.set("ybot:lasterror", tb[-1200:])
+                rc.set("ybot:lastupdate", body[:400])
+            except Exception:
+                pass
         self.send_response(200)
         self.end_headers()
         self.wfile.write(b"ok")
