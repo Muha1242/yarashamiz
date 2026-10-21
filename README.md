@@ -132,3 +132,5 @@ python bot.py
 | `/help` | Yordam |
 | `/cancel` | Joriy amalni bekor qilish |
 | `/admin` | Statistika (faqat `ADMIN_ID`) |
+
+<!-- build: fsm-loop-fix -->
