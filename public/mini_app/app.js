@@ -36,7 +36,7 @@ function setTab(name) {
   document.querySelectorAll('.tabs button').forEach((b) => b.classList.toggle('on', b.dataset.tab === name));
   const v = $('view'); v.innerHTML = '';
   window.scrollTo(0, 0);
-  ({ letter: viewLetter, games: viewGames, me: viewMe, memory: viewMemory, garden: viewGarden }[name] || viewMe)(v);
+  ({ write: viewWrite, games: viewGames, me: viewMe, memory: viewMemory, garden: viewGarden }[name] || viewWrite)(v);
 }
 document.querySelectorAll('.tabs button').forEach((b) => (b.onclick = () => { haptic(); setTab(b.dataset.tab); }));
 
@@ -86,9 +86,167 @@ function mountScene(v, L, opts) {
   return scene;
 }
 
-function viewLetter(v) {
-  if (LETTER) return letterOpen(v);
-  return letterPreview(v);
+function viewWrite(v) {
+  v.innerHTML = '';
+  v.appendChild(h('div', 'splash', 'Yuklanmoqda…'));
+  api('form').then((f) => {
+    v.innerHTML = '';
+    if (!f.ok) {
+      const c = h('div', 'card');
+      c.appendChild(h('h2', '', '✍️ Xat yozish'));
+      c.appendChild(h('p', '', 'Ilovani botdan oching'));
+      v.appendChild(c); return;
+    }
+    buildForm(v, f);
+  });
+}
+
+function buildForm(v, f) {
+  const S = { offers: [], theme: 'classic', custom: [] };
+
+  /* --- matn --- */
+  const c1 = h('div', 'card');
+  c1.appendChild(h('h2', '', '✍️ Xat yozish'));
+  c1.appendChild(h('p', '', f.isPrem ? '💎 Cheksiz xat'
+    : ('Bugun qoldi: ' + f.left + ' / ' + f.limit)));
+  const ta = document.createElement('textarea');
+  ta.placeholder = "Uzr so'rang, samimiy bo'ling…";
+  ta.maxLength = f.textMax;
+  ta.style.cssText = 'width:100%;min-height:120px;margin-top:10px;border-radius:14px;border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.08);color:#fff3f7;padding:12px;font:400 15px Nunito;resize:none';
+  c1.appendChild(ta);
+  const cnt = h('p', 'hint', '0 / ' + f.textMax);
+  ta.oninput = () => { cnt.textContent = ta.value.length + ' / ' + f.textMax; };
+  c1.appendChild(cnt);
+  v.appendChild(c1);
+
+  /* --- takliflar --- */
+  const c2 = h('div', 'card');
+  c2.appendChild(h('h2', '', '🎁 Uchrashuv taklifi'));
+  c2.appendChild(h('p', '', "Bir nechtasini tanlang (yoki o'zingiznikini yozing)"));
+  const grid = h('div', 'tgrid');
+  c2.appendChild(grid);
+  function renderOffers() {
+    grid.innerHTML = '';
+    f.offers.concat(S.offers.filter((o) => f.offers.indexOf(o) < 0)).forEach((o) => {
+      const on = S.offers.indexOf(o) > -1;
+      const b = h('button', 'tbtn' + (on ? ' on' : ''), o);
+      b.onclick = () => {
+        haptic();
+        const i = S.offers.indexOf(o);
+        if (i > -1) S.offers.splice(i, 1); else S.offers.push(o);
+        renderOffers();
+      };
+      grid.appendChild(b);
+    });
+  }
+  renderOffers();
+
+  const ownRow = h('div');
+  ownRow.style.cssText = 'display:flex;gap:8px;margin-top:10px';
+  const inp = document.createElement('input');
+  inp.placeholder = "O'z taklifingiz (40 belgi)";
+  inp.maxLength = 40;
+  inp.style.cssText = 'flex:1;min-height:44px;border-radius:12px;border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.08);color:#fff3f7;padding:0 12px;font:400 14px Nunito';
+  ownRow.appendChild(inp);
+  const add = h('button', 'btn btn-ghost btn-sm', '+');
+  add.style.minWidth = '54px';
+  add.onclick = () => {
+    haptic();
+    const t = inp.value.trim();
+    if (!t) return;
+    if (!f.isPrem && S.custom.length >= 1) {
+      return alert("Bepul versiyada 1 ta o'z taklifi. Premium — cheksiz 💎");
+    }
+    if (S.offers.indexOf(t) > -1) return;
+    S.offers.push(t); S.custom.push(t);
+    inp.value = '';
+    renderOffers();
+  };
+  ownRow.appendChild(add);
+  c2.appendChild(ownRow);
+  v.appendChild(c2);
+
+  /* --- dizayn --- */
+  const c3 = h('div', 'card');
+  c3.appendChild(h('h2', '', '🎨 Dizayn'));
+  const tgrid = h('div', 'tgrid');
+  f.themes.forEach((t) => {
+    const b = h('button', 'tbtn' + (t.id === S.theme ? ' on' : '') + (t.ok ? '' : ' lock'), t.name);
+    b.onclick = () => {
+      haptic();
+      if (!t.ok) return alert('Bu dizayn Premium uchun 💎');
+      S.theme = t.id;
+      tgrid.querySelectorAll('.tbtn').forEach((x) => x.classList.remove('on'));
+      b.classList.add('on');
+    };
+    b.dataset.theme = t.id;
+    tgrid.appendChild(b);
+  });
+  c3.appendChild(tgrid);
+  v.appendChild(c3);
+
+  /* --- yaratish --- */
+  const mk = h('button', 'btn btn-main', '💌 Havola yaratish');
+  mk.style.marginTop = '4px';
+  v.appendChild(mk);
+  const out = h('div'); out.style.display = 'none';
+  v.appendChild(out);
+
+  mk.onclick = async () => {
+    const text = ta.value.trim();
+    if (!text) return alert('Xat matnini yozing');
+    if (!S.offers.length) return alert('Kamida bitta taklif tanlang');
+    haptic('medium');
+    mk.disabled = true;
+    mk.textContent = 'Yaratilmoqda…';
+    const r = await api('newletter', { text, offers: S.offers, theme: S.theme });
+    mk.disabled = false;
+    mk.textContent = '💌 Havola yaratish';
+    if (!r.ok) {
+      return alert(r.err === 'limit' ? 'Bugungi limit tugadi (' + f.limit + ')'
+        : r.err === 'premium' ? 'Bu dizayn Premium uchun 💎'
+        : r.err === 'offers' ? 'Kamida bitta taklif tanlang'
+        : 'Xatolik yuz berdi');
+    }
+    confetti();
+    ta.value = ''; cnt.textContent = '0 / ' + f.textMax;
+    S.offers = []; S.custom = []; renderOffers();
+    out.style.display = 'flex';
+    out.style.flexDirection = 'column';
+    out.style.gap = '10px';
+    out.innerHTML = '';
+    const card = letterCard(r.id, text, S.offers.length ? S.offers : [], S.theme);
+    out.appendChild(card);
+    const linkBox = h('div', 'card');
+    linkBox.appendChild(h('h2', '', '🔗 Havola tayyor'));
+    const lk = h('p', '', r.link);
+    lk.style.cssText = 'word-break:break-all;font-size:12.5px;opacity:.85';
+    linkBox.appendChild(lk);
+    const copy = h('button', 'btn btn-ghost', '📋 Nusxalash');
+    copy.style.marginTop = '10px';
+    copy.onclick = () => { navigator.clipboard.writeText(r.link); alert('Nusxalandi ✅'); };
+    linkBox.appendChild(copy);
+    const sh = h('button', 'btn btn-main', '📤 Telegramda yuborish');
+    sh.onclick = () => {
+      const u = 'https://t.me/share/url?url=' + encodeURIComponent(r.link) + '&text=' + encodeURIComponent('Senga xat bor 💌');
+      if (tg && tg.openTelegramLink) tg.openTelegramLink(u); else window.open(u);
+    };
+    linkBox.appendChild(sh);
+    out.appendChild(linkBox);
+    out.scrollIntoView({ behavior: 'smooth' });
+  };
+}
+
+function letterCard(id, text, offers, theme) {
+  const c = h('div', 'card theme-' + (theme || 'classic'));
+  c.appendChild(h('h2', '', '👁 Sizning xatingiz'));
+  c.appendChild(h('p', 'letter-text', text));
+  if (offers && offers.length) {
+    const off = h('div', 'offers');
+    offers.forEach((o) => off.appendChild(h('span', '', '💝 ' + o)));
+    c.appendChild(off);
+  }
+  return c;
 }
 
 /* --- havola orqali kelgan xat (oluvchi) --- */
@@ -148,49 +306,6 @@ function letterOpen(v) {
     onOpen: () => { menu.hidden = false; },
   });
   v.appendChild(menu);
-}
-
-/* --- o'zi yozgan xatni ko'rish (yozuvchi) + dizayn --- */
-async function letterPreview(v) {
-  v.appendChild(h('div', 'splash', 'Yuklanmoqda…'));
-  const r = await api('letter');
-  v.innerHTML = '';
-  if (!r.ok) {
-    const c = h('div', 'card');
-    c.appendChild(h('h2', '', '💌 Xat'));
-    c.appendChild(h('p', '', 'Hali xat yozmadingiz.'));
-    c.appendChild(h('p', 'hint', "Botda «✍️ Xat yozish» ni bosing"));
-    v.appendChild(c);
-    return;
-  }
-
-  v.appendChild(h('p', 'hint', r.mine ? "👁 Sizning xatingiz — shunday ko'rinadi" : '💌 Sizga kelgan xat'));
-  mountScene(v, { t: r.text, theme: r.theme }, {
-    hint: '',
-    after: r.mine ? '' : 'Sizni o\'ylayotgan odam bor ❤️',
-  });
-
-  if (!r.mine) return;
-
-  const pick = h('div', 'card');
-  pick.appendChild(h('h2', '', '🎨 Dizayn'));
-  pick.appendChild(h('p', '', "O'zgartirish imkoniyati: " + r.changesLeft + ' / 3'));
-  const grid = h('div', 'tgrid');
-  r.themes.forEach((t) => {
-    const b = h('button', 'tbtn' + (t.id === r.theme ? ' on' : '') + (t.ok ? '' : ' lock'), t.name);
-    b.onclick = async () => {
-      haptic();
-      if (!t.ok) return alert('Bu dizayn Premium uchun 💎');
-      if (r.changesLeft <= 0) return alert("O'zgartirish limiti tugadi (3/3)");
-      const res = await api('retheme', { l: r.id, theme: t.id });
-      if (!res.ok) return alert(res.err === 'limit' ? 'Limit tugadi (3/3)' : 'Xatolik yuz berdi');
-      haptic('medium');
-      setTab('letter');
-    };
-    grid.appendChild(b);
-  });
-  pick.appendChild(grid);
-  v.appendChild(pick);
 }
 
 function sendAnswer(a, o) {
@@ -474,8 +589,13 @@ function confetti() {
 
 /* ================= START ================= */
 (async function start() {
-  if (LETTER) { setTab('letter'); return; }
+  if (LETTER) {
+    const nav = document.querySelector('.tabs');
+    if (nav) nav.style.display = 'none';
+    letterOpen($('view'));
+    return;
+  }
   const r = await api('me');
   if (r.ok) { ME = r; $('pill').textContent = (r.pts || 0) + ' ball'; }
-  setTab(r.ok && r.letters > 0 ? 'letter' : (r.ok ? 'me' : 'letter'));
+  setTab('write');
 })();

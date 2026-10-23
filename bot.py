@@ -149,10 +149,19 @@ TIPS = ["Hissiyotlaringizni 'sen' deb emas, 'men' deb boshlang: 'men xafa bo'ldi
         "Kichik syurprizlar katta yuraklarni ochadi.",
         "Bir-biringizning sevgi tilini bilib oling: sovg'a, vaqt, so'z, yordam, tegish."]
 
-WELCOME = ("Salom! Men <b>Yarashamiz</b> botiman ❤️\n\n"
-           "Arazni chiroyli xat bilan tugatamiz, so'ngra birga o'ynaymiz "
-           "va seriyani buzmaymiz 🔥\n\n"
-           "Nima qilmoqchisiz?")
+SUPPORT = os.environ.get("SUPPORT_CONTACT", "@pulim_more")
+
+WELCOME = (
+    "💌 <b>Yarashamiz</b>\n\n"
+    "Arazni chiroyli tugating.\n\n"
+    "📱 <b>Barcha imkoniyatlar Ilovada:</b>\n"
+    "• ✍️ Xat yozish va yuborish\n"
+    "• 🎮 Juftlik o'yinlari\n"
+    "• 🔥 Kunlik seriya\n"
+    "• 📖 Xotiralar va 🌱 bog'\n\n"
+    "Pastdagi <b>📱 Ilovani ochish</b> tugmasini bosing.\n\n"
+    "⚠️ Muammo bo'lsa: " + SUPPORT
+)
 
 HELP = ("<b>Qanday ishlaydi?</b>\n\n"
         "1. «✍️ Xat yozish» — uzr yoki sevgi xatingizni yozing.\n"
@@ -221,11 +230,10 @@ dq_of_day = lambda: DAILY_Q[dt.date.today().toordinal() % len(DAILY_Q)]
 
 # ============================= KO'RINISHLAR =============================
 def main_kb():
+    """Bot chatida faqat Ilova tugmasi - qolgan hammasi ilova ichida."""
     return ReplyKeyboardMarkup(resize_keyboard=True, keyboard=[
-        [KeyboardButton(text="📱 Ilova", web_app=WebAppInfo(url=f"{URL}/"))],
-        [KeyboardButton(text="✍️ Xat yozish"), KeyboardButton(text="🎮 O'yinlar")],
-        [KeyboardButton(text="📊 Hisobim"), KeyboardButton(text="💌 Xotiralar")],
-        [KeyboardButton(text="🏆 Yutuqlar"), KeyboardButton(text="💎 Premium")],
+        [KeyboardButton(text="📱 Ilovani ochish",
+                        web_app=WebAppInfo(url=f"{URL}/"))],
     ])
 
 
@@ -401,7 +409,6 @@ async def start(m: Message, command: CommandObject, state: FSMContext):
 
     st.touch(m.from_user.id)
     await m.answer(WELCOME, reply_markup=main_kb())
-    await m.answer("Asosiy menyu:", reply_markup=menu_kb(m.from_user.id))
 
 
 @dp.message(F.web_app_data)
