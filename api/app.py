@@ -239,7 +239,9 @@ def bot_username():
                 pass
         return u
     except Exception:
-        return None
+        pass
+    # zaxira: muhit o'zgaruvchisi
+    return os.environ.get("BOT_USERNAME") or None
 
 
 def _form(u, d):
