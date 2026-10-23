@@ -211,12 +211,101 @@ def _retheme(u, d):
             "changesLeft": max(0, st.THEME_LIMIT - n)}
 
 
+_BOTNAME = None
+
+
+def bot_username():
+    """Bot username (keshda saqlanadi)."""
+    global _BOTNAME
+    if _BOTNAME:
+        return _BOTNAME
+    import urllib.request
+    try:
+        import redis as _r
+        rc = _r.from_url(os.environ.get("REDIS_URL") or "", socket_timeout=5,
+                         decode_responses=True)
+        v = rc.get("ybot:username")
+        if v:
+            _BOTNAME = v
+            return v
+        url = "https://api.telegram.org/bot" + BOT_TOKEN + "/getMe"
+        with urllib.request.urlopen(url, timeout=8) as r:
+            u = json.loads(r.read().decode()).get("result", {}).get("username")
+        if u:
+            _BOTNAME = u
+            try:
+                rc.set("ybot:username", u)
+            except Exception:
+                pass
+        return u
+    except Exception:
+        return None
+
+
+def _form(u, d):
+    """Xat yozish formasi uchun malumot."""
+    import bot as core
+    import store as st
+    prem = st.is_prem(u)
+    left = None if prem else max(0, core.DAILY_LIMIT -
+                                 st.count_today_letters(u, time.time() - 86400))
+    return {
+        "ok": True, "isPrem": prem, "left": left, "limit": core.DAILY_LIMIT,
+        "textMax": 300,
+        "offers": core.OFFERS,
+        "themes": [{"id": t, "name": n, "prem": t in core.PREMIUM_THEMES,
+                    "ok": t not in core.PREMIUM_THEMES or prem}
+                   for t, n in core.THEMES],
+    }
+
+
+def _newletter(u, d):
+    """Mini App dan xat yaratish."""
+    import bot as core
+    import store as st
+
+    text = str(d.get("text") or "").strip()[:300]
+    if not text:
+        return {"ok": False, "err": "text"}
+
+    raw = d.get("offers") or []
+    offers = []
+    if isinstance(raw, list):
+        for o in raw[:6]:
+            o = str(o).strip()[:40]
+            if o and o not in offers:
+                offers.append(o)
+    if not offers:
+        return {"ok": False, "err": "offers"}
+
+    theme = str(d.get("theme") or "classic")
+    if theme not in dict(core.THEMES):
+        theme = "classic"
+    prem = st.is_prem(u)
+    if theme in core.PREMIUM_THEMES and not prem:
+        return {"ok": False, "err": "premium"}
+
+    if not prem and st.count_today_letters(u, time.time() - 86400) >= core.DAILY_LIMIT:
+        return {"ok": False, "err": "limit", "limit": core.DAILY_LIMIT}
+
+    lid = st.add_letter(u, text, offers, theme)
+    st.touch(u)
+    uname = bot_username()
+    left = None if prem else max(0, core.DAILY_LIMIT -
+                                 st.count_today_letters(u, time.time() - 86400))
+    return {"ok": True, "id": lid,
+            "link": ("https://t.me/" + uname + "?start=l_" + str(lid)) if uname else "",
+            "left": left}
+
+
 ACTIONS = {"me": lambda u, usr, d: _me(u, usr),
            "library": lambda u, usr, d: _library(u),
            "games": lambda u, usr, d: _games(u),
            "answer": lambda u, usr, d: _answer(u, d),
            "letter": lambda u, usr, d: _letter(u, d),
-           "retheme": lambda u, usr, d: _retheme(u, d)}
+           "retheme": lambda u, usr, d: _retheme(u, d),
+           "form": lambda u, usr, d: _form(u, d),
+           "newletter": lambda u, usr, d: _newletter(u, d)}
 
 
 class handler(BaseHTTPRequestHandler):
