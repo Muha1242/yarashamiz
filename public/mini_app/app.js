@@ -252,8 +252,9 @@ function letterCard(id, text, offers, theme) {
 /* --- havola orqali kelgan xat (oluvchi) --- */
 function letterOpen(v) {
   const menu = h('div');
-  menu.hidden = true;
-  menu.style.cssText = 'display:flex;flex-direction:column;gap:9px;margin-top:10px';
+  // `hidden` atributi inline display bilan bekor bo'lardi — shuning uchun
+  // konvert ochilmaguncha display:none
+  menu.style.cssText = 'display:none;flex-direction:column;gap:9px;margin-top:10px';
 
   let sel = (LETTER.o || [])[0] || '';
   if (LETTER.o && LETTER.o.length > 1) {
@@ -295,7 +296,7 @@ function letterOpen(v) {
     };
     menu.appendChild(send);
     const back = h('button', 'btn btn-ghost', 'Orqaga');
-    back.onclick = () => { haptic(); setTab('letter'); };
+    back.onclick = () => { haptic(); setTab('write'); };
     menu.appendChild(back);
     ta.focus();
   };
@@ -303,7 +304,7 @@ function letterOpen(v) {
 
   mountScene(v, { t: LETTER.t, theme: LETTER.theme }, {
     after: 'Sizni o\'ylayotgan odam bor ❤️',
-    onOpen: () => { menu.hidden = false; },
+    onOpen: () => { menu.style.display = 'flex'; },
   });
   v.appendChild(menu);
 }

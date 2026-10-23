@@ -10,11 +10,25 @@ import json
 import os
 import secrets
 import time
+from contextlib import contextmanager
 
 import redis
 
 r = redis.from_url(os.environ["REDIS_URL"], decode_responses=True)
-today = lambda: dt.date.today().isoformat()
+
+# Server (Vercel) UTC'da ishlaydi, foydalanuvchilar esa O'zbekistonda (UTC+5).
+# Kunlik savol / seriya / eslatmalar mahalliy vaqt bo'yicha hisoblanishi kerak.
+TZ_OFFSET = int(os.environ.get("TZ_OFFSET", "5"))
+
+
+def now():
+    """Mahalliy (Toshkent) vaqt."""
+    return dt.datetime.now(dt.timezone.utc) + dt.timedelta(hours=TZ_OFFSET)
+
+
+def today():
+    """Mahalliy sana (YYYY-MM-DD)."""
+    return now().date().isoformat()
 
 GAMES = {
     "ab": {"name": "A yoki B", "n": 5, "mode": "guess"},
@@ -73,8 +87,10 @@ def add_letter(sender, text, offers, theme):
 
 
 def letter(lid):
+    if lid is None or lid == "":
+        return None
     d = r.hgetall(f"letter:{lid}")
-    if not d:
+    if not d or "sender" not in d:
         return None
     return {"id": int(lid), "sender": int(d["sender"]), "text": d["text"],
             "offers": json.loads(d["offers"]), "theme": d["theme"],
@@ -118,7 +134,12 @@ def last_mine(u):
 
 def count_today_letters(u, since_ts):
     ids = [int(x) for x in r.smembers(f"mine:{u}")]
-    return sum(1 for i in ids if letter(i)["ts"] > since_ts)
+    if not ids:
+        return 0
+    pipe = r.pipeline()
+    for i in ids:
+        pipe.hget(f"letter:{i}", "ts")
+    return sum(1 for ts in pipe.execute() if ts and int(ts) > since_ts)
 
 
 def count_letters(u):
@@ -127,7 +148,7 @@ def count_letters(u):
 
 def my_library(u, limit=20):
     ids = [int(x) for x in r.sunion(f"mine:{u}", f"got:{u}")]
-    rows = [letter(i) for i in ids]
+    rows = [x for x in (letter(i) for i in ids) if x]
     rows.sort(key=lambda x: x["ts"], reverse=True)
     return rows[:limit]
 
@@ -158,6 +179,27 @@ def done(pid, g, u):
     return len(d) >= gg["n"] if gg["mode"] != "mission" else bool(d.get("ok"))
 
 
+# ------------------------------- QULF -----------------------------------
+@contextmanager
+def lock(key, ttl=15):
+    """Qisqa muddatli Redis qulfi (ikki marta ball qo'shilmasligi uchun).
+
+    `with lock("nom") as ok:` — ok True bo'lsagina amal bajariladi.
+    """
+    token = secrets.token_hex(8)
+    full = f"lock:{key}"
+    got = bool(r.set(full, token, nx=True, ex=ttl))
+    try:
+        yield got
+    finally:
+        if got:
+            try:
+                if r.get(full) == token:
+                    r.delete(full)
+            except Exception:  # noqa: BLE001
+                pass
+
+
 # ------------------------------- SERIYA ---------------------------------
 def touch(u):
     t, cur = today(), r.hgetall(f"streak:{u}")
@@ -168,7 +210,7 @@ def touch(u):
     elif cur["last"] == t:
         n = int(cur["n"])
     else:
-        y = (dt.date.today() - dt.timedelta(1)).isoformat()
+        y = (now().date() - dt.timedelta(1)).isoformat()
         n = int(cur["n"]) + 1 if cur["last"] == y else 1
         r.hset(f"streak:{u}", mapping={"last": t, "n": n})
     return n
