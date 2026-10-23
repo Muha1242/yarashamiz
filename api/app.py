@@ -71,6 +71,9 @@ def _me(u, usr):
         "prices": core.PRICES,
         "mission": core.dq_of_day(),
         "themeCount": len(core.THEMES),
+        "refs": st.refs(u),
+        "remind": st.reminders_on(u),
+        "invite": invite_link(u),
     }
 
 
@@ -218,6 +221,14 @@ def _retheme(u, d):
 _BOTNAME = None
 
 
+def invite_link(u):
+    """Referral havolasi (tarmoqqa chiqmasdan, env/keshdan)."""
+    name = _BOTNAME or os.environ.get("BOT_USERNAME") or ""
+    if not name:
+        return ""
+    return f"https://t.me/{name}?start=ref_{u}"
+
+
 def bot_username():
     """Bot username (keshda saqlanadi)."""
     global _BOTNAME
@@ -296,12 +307,23 @@ def _newletter(u, d):
 
     lid = st.add_letter(u, text, offers, theme)
     st.touch(u)
+    got = st.claim_ref(u)
+    if got:                         # taklif qilgan odamga mukofot
+        st.apply_ref_reward(*got)
     uname = bot_username()
     left = None if prem else max(0, core.DAILY_LIMIT -
                                  st.count_today_letters(u, st.day_start_ts()))
     return {"ok": True, "id": lid,
             "link": ("https://t.me/" + uname + "?start=l_" + str(lid)) if uname else "",
             "left": left}
+
+
+def _remind(u, d):
+    """Eslatmalarni yoqish/o'chirish."""
+    import store as st
+    on = bool(d.get("on"))
+    st.set_reminders(u, on)
+    return {"ok": True, "remind": on}
 
 
 ACTIONS = {"me": lambda u, usr, d: _me(u, usr),
@@ -311,6 +333,7 @@ ACTIONS = {"me": lambda u, usr, d: _me(u, usr),
            "letter": lambda u, usr, d: _letter(u, d),
            "retheme": lambda u, usr, d: _retheme(u, d),
            "form": lambda u, usr, d: _form(u, d),
+           "remind": lambda u, usr, d: _remind(u, d),
            "newletter": lambda u, usr, d: _newletter(u, d)}
 
 

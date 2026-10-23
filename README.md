@@ -19,9 +19,13 @@ Sevishganlarni yarashtirish uchun Telegram boti — **Vercel'da bepul** ishlaydi
 | 🎮 **O'yinlar (5 xil)** | *A yoki B*, *Kim ko'proq?*, *Kunlik missiya*, **💬 Kunlik savol**, **Sevgi kvizi** 💎 |
 | 🔥 **Kunlik seriya** | Streak + avtomatik eslatmalar (Vercel Cron) |
 | 💌 **Xotiralar** | Yozgan/olgan xatlar tarixi |
+| 🖼 **Rasm kartochka** | Xatni PNG rasm qilib saqlash (Mini App) |
+| 🎁 **Referral** | Do'st taklif qilish: +10 ball, 3 ta — 7 kun, 10 ta — 30 kun premium |
+| 🔔 **Eslatma sozlamalari** | `/reminders` — yoqish/o'chirish (Ilovada ham) |
+| ⚠️ **Shikoyat** | Xatni shikoyat qilish: yuboruvchi bloklanadi, admin xabardor |
 | 🏆 **Yutuqlar** | Badge tizimi |
 | 💎 **Premium** | Telegram Stars (XTR) + juftlikka sovg'a |
-| 📊 **/admin** | Statistika (faqat `ADMIN_ID` uchun) |
+| 📊 **/admin** | Statistika: DAU, yangi, xat/juftlik bugun, referral, shikoyat (faqat `ADMIN_ID` uchun) |
 
 ---
 
@@ -70,7 +74,8 @@ Vercel → **Settings → Environment Variables**:
 | `SETUP_KEY` | ✅ | `/api/setup` ni qulflash uchun (bo'lmasa endpoint yopiq) |
 | `TZ_OFFSET` | ixtiyoriy | Mahalliy vaqt siljishi, standart `5` (Toshkent, UTC+5) |
 | `GEMINI_API_KEY` | ixtiyoriy | [aistudio.google.com/apikey](https://aistudio.google.com/apikey) |
-| `ADMIN_ID` | ixtiyoriy | Sizning Telegram ID (admin panel uchun) |
+| `ADMIN_ID` | ixtiyoriy | Sizning Telegram ID (admin panel + shikoyatlar uchun) |
+| `BOT_USERNAME` | ixtiyoriy | Ilovada referral havolasi uchun (masalan `yarashamiz_bot`) |
 | `WEBHOOK_SECRET` | ixtiyoriy | Webhook'ni himoyalash |
 | `CRON_SECRET` | ixtiyoriy | `/api/cron` ni qulflash |
 
@@ -131,6 +136,8 @@ python bot.py
 | `/start` | Salom + bosh menyu |
 | `/menu` | Asosiy menyu |
 | `/help` | Yordam |
+| `/invite` | Do'stlarni taklif qilish havolasi + sovg'alar |
+| `/reminders` | Kunlik eslatmalarni yoqish/o'chirish |
 | `/privacy` | Maxfiylik siyosati |
 | `/feedback` | Fikr/taklif (adminga boradi) |
 | `/cancel` | Joriy amalni bekor qilish |

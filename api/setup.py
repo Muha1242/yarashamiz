@@ -42,6 +42,8 @@ async def _set():
         await core.bot.set_my_commands([
             BotCommand(command="start", description="Boshlash / Ilovani ochish"),
             BotCommand(command="menu", description="Asosiy menyu"),
+            BotCommand(command="invite", description="Do'stlarni taklif qilish 🎁"),
+            BotCommand(command="reminders", description="Eslatmalar yoqish/o'chirish"),
             BotCommand(command="help", description="Yordam"),
             BotCommand(command="privacy", description="Maxfiylik"),
             BotCommand(command="feedback", description="Fikr va taklif"),

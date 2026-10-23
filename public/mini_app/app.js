@@ -249,6 +249,68 @@ function letterCard(id, text, offers, theme) {
   return c;
 }
 
+/* --- xatni rasm (PNG) qilib saqlash --- */
+const CARD_COLORS = {
+  classic: ['#2a0f3d', '#12061c'], love: ['#5a1030', '#2a0716'],
+  sunset: ['#5a2a10', '#1f0d06'], mint: ['#0f3d2e', '#06140f'],
+  night: ['#101a3d', '#060814'], gold: ['#4a3a10', '#171105'],
+  ocean: ['#0a2a4a', '#04101c'], royal: ['#3a1050', '#140620'],
+  aurora: ['#103a3a', '#061414'], blossom: ['#4a1030', '#1a0612'],
+  velvet: ['#3a0a1a', '#14040a'], sky: ['#1a2a4a', '#080d18'],
+};
+
+function wrapLines(ctx, text, maxW) {
+  const words = String(text || '').split(/\s+/);
+  const lines = [];
+  let line = '';
+  words.forEach((w) => {
+    const t = line ? line + ' ' + w : w;
+    if (ctx.measureText(t).width > maxW && line) { lines.push(line); line = w; }
+    else line = t;
+  });
+  if (line) lines.push(line);
+  return lines;
+}
+
+function saveCard(v, text, theme) {
+  const W = 720, H = 960;
+  const cv = document.createElement('canvas');
+  cv.width = W; cv.height = H;
+  const ctx = cv.getContext('2d');
+  if (!ctx) return;
+  const c = CARD_COLORS[theme] || CARD_COLORS.classic;
+  const g = ctx.createLinearGradient(0, 0, W, H);
+  g.addColorStop(0, c[0]); g.addColorStop(1, c[1]);
+  ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+  ctx.strokeStyle = 'rgba(255,255,255,.22)'; ctx.lineWidth = 2;
+  ctx.strokeRect(30, 30, W - 60, H - 60);
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#fff3f7';
+  ctx.font = '700 36px Nunito, sans-serif';
+  ctx.fillText('💌 Yarashamiz', W / 2, 120);
+  ctx.font = '400 30px Nunito, sans-serif';
+  const lines = wrapLines(ctx, text, W - 150).slice(0, 14);
+  let y = 250;
+  lines.forEach((ln) => { ctx.fillText(ln, W / 2, y); y += 46; });
+  ctx.font = '400 22px Nunito, sans-serif';
+  ctx.fillStyle = 'rgba(255,243,247,.65)';
+  ctx.fillText('t.me — Yarashamiz ❤️', W / 2, H - 70);
+
+  const card = h('div', 'card');
+  card.appendChild(h('h2', '', '🖼 Rasm tayyor'));
+  const img = h('img');
+  img.src = cv.toDataURL('image/png');
+  img.style.cssText = 'width:100%;border-radius:14px;margin-top:8px';
+  card.appendChild(img);
+  card.appendChild(h('p', 'hint', 'Rasmni uzoq bosib «Saqlash»ni tanlang'));
+  const a = h('a', 'btn btn-ghost', '⬇️ Yuklab olish');
+  a.href = img.src; a.download = 'yarashamiz-xat.png';
+  a.style.cssText = 'display:block;text-align:center;text-decoration:none;margin-top:10px';
+  card.appendChild(a);
+  v.appendChild(card);
+  card.scrollIntoView({ behavior: 'smooth' });
+}
+
 /* --- havola orqali kelgan xat (oluvchi) --- */
 function letterOpen(v) {
   const menu = h('div');
@@ -304,6 +366,20 @@ function letterOpen(v) {
     ta.focus();
   };
   menu.appendChild(replyBtn);
+
+  const saveBtn = h('button', 'btn btn-ghost', '🖼 Rasm qilib saqlash');
+  saveBtn.onclick = () => { haptic(); saveCard(v, LETTER.t, LETTER.theme); };
+  menu.appendChild(saveBtn);
+
+  const rep = h('button', 'btn btn-ghost', '⚠️ Shikoyat qilish');
+  rep.style.color = '#ffb36b';
+  rep.onclick = () => {
+    if (confirm('Shikoyat qilinsinmi? Yuboruvchidan boshqa xat kelmaydi va admin xabardor bo‘ladi.')) {
+      haptic('heavy');
+      sendAnswer('report', sel);
+    }
+  };
+  menu.appendChild(rep);
 
   mountScene(v, { t: LETTER.t, theme: LETTER.theme }, {
     after: 'Sizni o\'ylayotgan odam bor ❤️',
@@ -480,6 +556,40 @@ async function viewMe(v) {
     pr.appendChild(h('p', 'hint', 'Sotib olish uchun botdagi 💎 Premium tugmasini bosing'));
   }
   v.appendChild(pr);
+
+  /* --- taklif / eslatmalar --- */
+  const rf = h('div', 'card');
+  rf.appendChild(h('h2', '', '🎁 Do‘stlarni taklif qilish'));
+  rf.appendChild(h('p', '', 'Har bir taklif: +10 ball · 3 ta — 7 kun premium, 10 ta — 30 kun'));
+  if (ME.invite) {
+    const lk = h('p', 'hint', ME.invite);
+    lk.style.cssText = 'word-break:break-all;font-size:12px';
+    rf.appendChild(lk);
+    const cp = h('button', 'btn btn-ghost', '📋 Havolani nusxalash');
+    cp.onclick = () => { navigator.clipboard.writeText(ME.invite); alert('Nusxalandi ✅'); };
+    rf.appendChild(cp);
+    const sh = h('button', 'btn btn-main', '📤 Do‘stga yuborish');
+    sh.style.marginTop = '8px';
+    sh.onclick = () => {
+      const u = 'https://t.me/share/url?url=' + encodeURIComponent(ME.invite)
+        + '&text=' + encodeURIComponent('Senga bir xat bor 💌');
+      if (tg && tg.openTelegramLink) tg.openTelegramLink(u); else window.open(u);
+    };
+    rf.appendChild(sh);
+  }
+  const rm = h('button', 'btn btn-ghost',
+    ME.remind ? '🔕 Eslatmalarni o‘chirish' : '🔔 Eslatmalarni yoqish');
+  rm.style.marginTop = '8px';
+  rm.onclick = async () => {
+    haptic();
+    const r = await api('remind', { on: !ME.remind });
+    if (r && r.ok) {
+      ME.remind = r.remind;
+      rm.textContent = ME.remind ? '🔕 Eslatmalarni o‘chirish' : '🔔 Eslatmalarni yoqish';
+    }
+  };
+  rf.appendChild(rm);
+  v.appendChild(rf);
 
   const tip = h('div', 'card');
   tip.appendChild(h('h2', '', '💡 Bugungi savol'));

@@ -68,6 +68,7 @@ def add_pair(a, b):
     r.set(f"mate:{b}", a)
     r.set(f"mets:{_pid(a, b)}", int(time.time()))
     r.incr("cnt:pairs")
+    r.incr(f"cnt:pairs:{today()}")
 
 
 def pair_ts(a, b):
@@ -89,6 +90,7 @@ def add_letter(sender, text, offers, theme):
         "sender": sender, "text": text, "offers": json.dumps(offers),
         "theme": theme, "ts": int(time.time()), "receiver": "", "thn": 0})
     r.sadd(f"mine:{sender}", lid)
+    r.incr(f"cnt:letters:{today()}")
     return lid
 
 
@@ -217,12 +219,14 @@ def touch(u):
         n = 1
         r.hset(f"streak:{u}", mapping={"last": t, "n": 1})
         r.sadd("users", u)          # faqat yangi foydalanuvchida
+        r.sadd(f"new:{t}", u)
     elif cur["last"] == t:
         n = int(cur["n"])
     else:
         y = (now().date() - dt.timedelta(1)).isoformat()
         n = int(cur["n"]) + 1 if cur["last"] == y else 1
         r.hset(f"streak:{u}", mapping={"last": t, "n": n})
+    r.sadd(f"active:{t}", u)        # bugungi faol foydalanuvchilar
     return n
 
 
@@ -312,9 +316,95 @@ def mark(u, kind):
     r.set(f"sent:{u}:{kind}", today())
 
 
+def reminders_on(u):
+    """Foydalanuvchi eslatmalarni o'chirib qo'yganmi (standart — yoqilgan)."""
+    return r.get(f"remind:{u}") != "0"
+
+
+def set_reminders(u, on):
+    r.set(f"remind:{u}", 1 if on else 0)
+
+
+# ------------------------------ REFERRAL --------------------------------
+REF_BALL = 10                  # har bir taklif uchun juftlikka ball
+REF_PREM = {3: 7, 10: 30}      # takliflar soni -> premium kunlari
+
+
+def set_ref(new, referrer):
+    """Yangi foydalanuvchi uchun referrerni bir marta yozadi."""
+    try:
+        new, referrer = int(new), int(referrer)
+    except (TypeError, ValueError):
+        return False
+    if new == referrer:
+        return False
+    if not r.set(f"ref:{new}", referrer, nx=True):
+        return False
+    r.incr(f"refs:{referrer}")
+    r.incr("cnt:refs")
+    return True
+
+
+def refs(u):
+    return int(r.get(f"refs:{u}") or 0)
+
+
+def claim_ref(u):
+    """Birinchi xat yozilganda referrerni qaytaradi (bir marta).
+
+    Qaytaradi: (referrer, takliflar_soni) yoki None.
+    """
+    ref = r.get(f"ref:{u}")
+    if not ref:
+        return None
+    if not r.set(f"ref_done:{u}", 1, nx=True):
+        return None
+    try:
+        ref = int(ref)
+    except ValueError:
+        return None
+    return ref, refs(ref)
+
+
+def apply_ref_reward(ref, n):
+    """Referrer mukofoti: juftlikka ball + bosqichli premium."""
+    p = pair_of(ref)
+    if p:
+        add_pts(p[0], REF_BALL)
+    if n in REF_PREM:
+        add_prem(ref, REF_PREM[n])
+
+
+# -------------------------------- SHIKOYAT -------------------------------
+def add_report(lid, by, sender, text=""):
+    r.rpush("reports", json.dumps({
+        "l": lid, "by": by, "to": sender, "t": str(text)[:200],
+        "ts": int(time.time())}))
+    r.ltrim("reports", -300, -1)
+
+
+def reports(n=10):
+    return [json.loads(x) for x in r.lrange("reports", -n, -1)][::-1]
+
+
+def count_reports():
+    return r.llen("reports")
+
+
 # ------------------------------- ADMIN ----------------------------------
 def admin_stats():
+    t = today()
+    prem_all = [int(x) for x in r.smembers("prems")]
+    prem_active = sum(1 for u in prem_all if is_prem(u))
     return {"users": r.scard("users"),
             "pairs": int(r.get("cnt:pairs") or 0),
             "letters": int(r.get("seq:letters") or 0),
-            "prem": r.scard("prems")}
+            "prem": len(prem_all),
+            "prem_active": prem_active,
+            "active_today": r.scard(f"active:{t}"),
+            "new_today": r.scard(f"new:{t}"),
+            "letters_today": int(r.get(f"cnt:letters:{t}") or 0),
+            "pairs_today": int(r.get(f"cnt:pairs:{t}") or 0),
+            "refs": int(r.get("cnt:refs") or 0),
+            "reports": r.llen("reports"),
+            "feedback": r.llen("feedback")}

@@ -349,6 +349,84 @@ check("kunlik savol javobi escape qilinadi",
 check("escape qilingan matn ko'rinadi",
       any("&lt;b&gt;salom&lt;/b&gt;" in t for t in kq_msgs), kq_msgs)
 
+
+# ------------------------- 16. REFERRAL TIZIMI ---------------------------
+st.add_pair(1202, 1203)
+pid_ref = st.pair_of(1202)[0]
+pts_before = st.get_pts(pid_ref)
+SENT.clear()
+asyncio.run(core.start(
+    FakeOut(1201),
+    CommandObject(prefix="/", command="start", args="ref_1202"),
+    FSMContext(storage=core.dp.storage,
+               key=StorageKey(bot_id=123456, chat_id=1201, user_id=1201))))
+check("referral yozildi", st.r.get("ref:1201") == "1202")
+check("referral darhol ball bermaydi", st.get_pts(pid_ref) == pts_before)
+check("taklif qiluvchiga xabar ketdi",
+      any(cid == 1202 for cid, _ in SENT), SENT)
+check("o'zini taklif qilib bo'lmaydi", st.set_ref(1202, 1202) is False)
+check("takroriy referral hisoblanmaydi", st.set_ref(1201, 1202) is False)
+
+st.add_letter(1201, "Birinchi xatim", ["Kino"], "classic")
+asyncio.run(core.reward_ref(1201))
+check("birinchi xatdan keyin +10 ball", st.get_pts(pid_ref) == pts_before + 10,
+      st.get_pts(pid_ref))
+asyncio.run(core.reward_ref(1201))
+check("referral mukofoti bir marta", st.get_pts(pid_ref) == pts_before + 10)
+check("referral soni 1", st.refs(1202) == 1)
+
+st.apply_ref_reward(1202, 3)
+check("3 ta taklif -> 7 kun premium", st.is_prem(1202) and st.prem_days(1202) >= 6)
+check("referral matni", "ref_1202" in core.invite_text(1202, "testbot"))
+
+# --------------------- 17. ESLATMA SOZLAMALARI ---------------------------
+st.add_pair(1301, 1302)
+st.touch(1301)
+st.touch(1302)
+st.now = lambda: dt.datetime(2026, 10, 23, 20, 0)
+st.set_reminders(1301, False)
+msgs_off = asyncio.run(core.run_reminders())
+check("eslatma o'chirilganda yuborilmaydi",
+      all(u != 1301 for u, _ in msgs_off), [(u, t[:20]) for u, t in msgs_off])
+st.set_reminders(1301, True)
+check("eslatma qayta yoqiladi", st.reminders_on(1301) is True)
+
+# -------------------- 18. SHIKOYAT / MODERATSIYA -------------------------
+before_rep = st.count_reports()
+core.ADMIN_ID = "424242"
+SENT.clear()
+st.add_pair(1401, 1402)
+l_report = st.add_letter(1401, "yomon xat", ["Kino"], "classic")
+m_rep = FakeMsg(1402, {"a": "report", "l": l_report})
+asyncio.run(core.reply(m_rep))
+check("shikoyat yozildi", st.count_reports() == before_rep + 1)
+check("shikoyat qilgan bloklandi", st.is_blocked(1402, 1401))
+check("adminga shikoyat xabari ketdi",
+      any(cid == 424242 and "Shikoyat" in txt for cid, txt in SENT), SENT)
+check("shikoyatga javob berildi",
+      any("Shikoyat qabul" in (a or "") for a in m_rep.answers), m_rep.answers)
+core.ADMIN_ID = ""
+
+# ------------------------- 19. ADMIN ANALITIKA ---------------------------
+stats = st.admin_stats()
+check("admin: bugungi xatlar", stats["letters_today"] >= 1, stats["letters_today"])
+check("admin: bugun faol", stats["active_today"] >= 1, stats["active_today"])
+check("admin: yangi foydalanuvchilar", stats["new_today"] >= 1, stats["new_today"])
+check("admin: shikoyatlar", stats["reports"] >= 1, stats["reports"])
+check("admin: referral", stats["refs"] >= 1, stats["refs"])
+
+# --------------------- 20. ILOVA: REFERRAL / ESLATMA ---------------------
+os.environ["BOT_USERNAME"] = "testbot"
+me2 = api_app._me(1202, {"first_name": "Ref"})
+check("ilova: taklif havolasi", me2["invite"].endswith("start=ref_1202"), me2["invite"])
+check("ilova: taklif soni", me2["refs"] == 1, me2["refs"])
+check("ilova: eslatma holati", me2["remind"] is True)
+check("ilova: eslatmani o'chirish",
+      api_app._remind(1202, {"on": False})["remind"] is False
+      and st.reminders_on(1202) is False)
+api_app._remind(1202, {"on": True})
+check("ilova: eslatmani yoqish", st.reminders_on(1202) is True)
+
 print()
 if FAILS:
     print(f"❌ {len(FAILS)} ta tekshiruv yiqildi: {FAILS}")

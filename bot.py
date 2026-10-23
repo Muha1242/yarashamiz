@@ -187,6 +187,8 @@ HELP = ("<b>Qanday ishlaydi?</b>\n\n"
         "3. U xatni ochadi va javob beradi.\n"
         "4. Yarashgach, «🎮 O'yinlar» bo'limida birga o'ynab ball to'playsiz.\n\n"
         "/menu — bosh menyu\n/cancel — bekor qilish\n/help — yordam\n"
+        "/invite — do'stlarni taklif qilish (sovg'alar bor)\n"
+        "/reminders — eslatmalarni yoqish/o'chirish\n"
         "/privacy — maxfiylik\n/feedback — fikr va taklif\n\n"
         "⚠️ Muammo bo'lsa: " + SUPPORT)
 
@@ -391,6 +393,35 @@ def prem_kb():
         [IB(text=f"🎁 {PRICES['gift']} ⭐ — {GIFT_DAYS} kunlik sovg'a", callback_data="buy:gift")]])
 
 
+def rem_kb(on):
+    return IM(inline_keyboard=[[
+        IB(text=("✅ 🔔 Yoqilgan" if on else "🔔 Yoqish"), callback_data="rem:1"),
+        IB(text=("✅ 🔕 O'chirilgan" if not on else "🔕 O'chirish"), callback_data="rem:0")]])
+
+
+def rem_text(on):
+    return ("🔔 <b>Eslatmalar</b>\n\n"
+            + ("Yoqilgan: har kuni kunlik savol, missiya va seriya eslatmasi keladi."
+               if on else
+               "O'chirilgan: kundalik eslatmalar kelmaydi. Botga o'zingiz kirib "
+               "o'ynashingiz mumkin."))
+
+
+def invite_text(u, username):
+    n = st.refs(u)
+    nxt = next((k for k in sorted(st.REF_PREM) if k > n), None)
+    tip = (f"Keyingi sovg'a: <b>{nxt} ta taklif</b> → "
+           f"{st.REF_PREM[nxt]} kun premium" if nxt else "Barcha sovg'alarni oldingiz 🎉")
+    link = f"https://t.me/{username}?start=ref_{u}" if username else "—"
+    return ("🎁 <b>Do'stlaringizni taklif qiling</b>\n\n"
+            f"Har bir taklif uchun: <b>+{st.REF_BALL} ball</b>\n"
+            "3 ta taklif — <b>7 kun premium</b>\n"
+            "10 ta taklif — <b>30 kun premium</b>\n"
+            "(sovg'a taklif qilgan odam birinchi xat yozganda beriladi)\n\n"
+            f"🔗 Sizning havolangiz:\n{link}\n\n"
+            f"👥 Taklif qilganlaringiz: <b>{n}</b>\n{tip}")
+
+
 def qidx(g, step):
     qs = {"ab": AB, "wh": WHO, "qz": QZ}[g]
     return (st.now().date().toordinal() + step) % len(qs)
@@ -445,6 +476,17 @@ async def start(m: Message, command: CommandObject, state: FSMContext):
                                   "premium berildi 💎",
                                   reply_markup=menu_kb(m.from_user.id))
         return await m.answer("Bu sovg'a allaqachon ishlatilgan yoki yaroqsiz.")
+
+    if arg.startswith("ref_"):
+        ref = arg[4:]
+        if ref.isdigit() and st.set_ref(m.from_user.id, int(ref)):
+            try:
+                await bot.send_message(
+                    int(ref),
+                    "🎉 Sizning havolangiz orqali yangi odam keldi!\n"
+                    f"U birinchi xatini yozganda <b>+{st.REF_BALL} ball</b> olasiz.")
+            except Exception:  # noqa: BLE001
+                pass
 
     st.touch(m.from_user.id)
     await m.answer(WELCOME if URL else WELCOME_NO_APP,
@@ -518,6 +560,20 @@ async def reply(m: Message):
                                reply_markup=menu_kb(sender))
         return await m.answer("Yarashdingiz 🎉 Endi birga o'ynang.",
                               reply_markup=menu_kb(u))
+    if a == "report":
+        st.add_report(L["id"], u, sender, L.get("text", ""))
+        st.block(u, sender)
+        if ADMIN_ID:
+            try:
+                await bot.send_message(
+                    int(ADMIN_ID),
+                    "⚠️ <b>Shikoyat</b>\n"
+                    f"Kimdan: <code>{sender}</code>\nKimga: <code>{u}</code>\n"
+                    f"Xat #{L['id']}: {html.escape(str(L.get('text') or '')[:200])}")
+            except Exception:  # noqa: BLE001
+                pass
+        return await m.answer("⚠️ Shikoyat qabul qilindi. Bu yuboruvchidan boshqa "
+                              "xat kelmaydi va admin xabardor qilindi.")
     if a == "later":
         await bot.send_message(sender, "Javob: hali tayyor emas, keyinroq ⏳")
         return await m.answer("Xabar yuborildi ⏳")
@@ -561,6 +617,26 @@ async def feedback_cmd(m: Message):
     await m.answer("Rahmat! Fikringiz adminga yuborildi 🙏")
 
 
+@dp.message(Command("invite"))
+async def invite_cmd(m: Message):
+    me = await bot.get_me()
+    await m.answer(invite_text(m.from_user.id, me.username))
+
+
+@dp.message(Command("reminders"))
+async def reminders_cmd(m: Message):
+    on = st.reminders_on(m.from_user.id)
+    await m.answer(rem_text(on), reply_markup=rem_kb(on))
+
+
+@dp.callback_query(F.data.startswith("rem:"))
+async def rem_cb(c: CallbackQuery):
+    on = c.data[4:] == "1"
+    st.set_reminders(c.from_user.id, on)
+    await c.message.edit_text(rem_text(on), reply_markup=rem_kb(on))
+    await c.answer("Yoqildi ✅" if on else "O'chirildi 🔕")
+
+
 @dp.message(Command("cancel"))
 async def cancel(m: Message, state: FSMContext):
     await state.clear()
@@ -573,15 +649,36 @@ async def admin(m: Message):
         return
     s = st.admin_stats()
     await m.answer(f"📊 <b>Admin hisobot</b>\n\n"
-                   f"👥 Foydalanuvchilar: <b>{s['users']}</b>\n"
-                   f"❤️ Juftliklar: <b>{s['pairs']}</b>\n"
-                   f"💌 Yozilgan xatlar: <b>{s['letters']}</b>\n"
-                   f"💎 Premium a'zolar: <b>{s['prem']}</b>")
+                   f"👥 Foydalanuvchilar: <b>{s['users']}</b> "
+                   f"(bugun +{s['new_today']})\n"
+                   f"⚡️ Bugun faol: <b>{s['active_today']}</b>\n"
+                   f"❤️ Juftliklar: <b>{s['pairs']}</b> (bugun +{s['pairs_today']})\n"
+                   f"💌 Xatlar: <b>{s['letters']}</b> (bugun {s['letters_today']})\n"
+                   f"🎁 Referral: <b>{s['refs']}</b>\n"
+                   f"📩 Feedback: <b>{s['feedback']}</b> · "
+                   f"⚠️ Shikoyat: <b>{s['reports']}</b>\n"
+                   f"💎 Premium: <b>{s['prem_active']}</b> faol / {s['prem']} jami")
 
 
 # ------------------------------ XAT OQIMI -------------------------------
 def variants(sit, words):
     return [t.replace("{w}", (words or "").strip() or FALLBACK) for t in AI_TPL[sit]]
+
+
+async def reward_ref(u):
+    """Foydalanuvchi birinchi xatini yozganda referrerni mukofotlaydi."""
+    got = st.claim_ref(u)
+    if not got:
+        return
+    ref, n = got
+    st.apply_ref_reward(ref, n)
+    txt = f"🎉 Taklifingizdan yangi odam birinchi xatini yozdi! +{st.REF_BALL} ball"
+    if n in st.REF_PREM:
+        txt += (f"\n💎 {n} ta taklif — {st.REF_PREM[n]} kunlik premium sovg'a!")
+    try:
+        await bot.send_message(ref, txt)
+    except Exception:  # noqa: BLE001
+        pass
 
 
 async def do_new(m: Message, state: FSMContext):
@@ -693,6 +790,7 @@ async def theme(c: CallbackQuery, state: FSMContext):
     await state.clear()
     me = await bot.get_me()
     st.touch(c.from_user.id)
+    await reward_ref(c.from_user.id)
     await c.message.answer("Xat tayyor. Havolani juftingizga o'zingiz yuboring:\n"
                            f"https://t.me/{me.username}?start=l_{lid}")
     await c.answer()
@@ -1100,6 +1198,8 @@ async def run_reminders():
     out = []
     now_h = st.now().hour          # mahalliy vaqt (UTC+5), UTC emas
     for u in st.users():
+        if not st.reminders_on(u):      # foydalanuvchi o'chirib qo'ygan
+            continue
         p = st.pair_of(u)
         if not p:
             continue
