@@ -276,6 +276,31 @@ check("o'z havolasini ochsa ogohlantiriladi",
       any("sizning xatingiz" in (a or "") for a in own.answers), own.answers)
 
 
+# --------------------- 14. MINI APP AUTENTIFIKATSIYASI --------------------
+import hashlib  # noqa: E402
+import hmac  # noqa: E402
+import urllib.parse  # noqa: E402
+
+
+def make_init(uid=555, ts=None):
+    p = {"auth_date": str(ts or int(time.time())),
+         "query_id": "AAE-test",
+         "user": json.dumps({"id": uid, "first_name": "Test"}, separators=(",", ":"))}
+    check = "\n".join(f"{k}={v}" for k, v in sorted(p.items()))
+    secret = hmac.new(b"WebAppData", core.TOKEN.encode(), hashlib.sha256).digest()
+    p["hash"] = hmac.new(secret, check.encode(), hashlib.sha256).hexdigest()
+    return urllib.parse.urlencode(p)
+
+
+init = make_init()
+check("to'g'ri initData qabul qilinadi",
+      (api_app.verify(init) or {}).get("id") == 555)
+check("buzilgan initData rad etiladi", api_app.verify(init[:-4] + "0000") is None)
+check("hash'siz initData rad etiladi", api_app.verify("user=%7B%7D") is None)
+check("eskirgan initData rad etiladi",
+      api_app.verify(make_init(ts=int(time.time()) - 10 * 86400)) is None)
+
+
 print()
 if FAILS:
     print(f"❌ {len(FAILS)} ta tekshiruv yiqildi: {FAILS}")
