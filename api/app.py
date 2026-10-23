@@ -320,8 +320,10 @@ def _newletter(u, d):
 
 
 def _remind(u, d):
-    """Eslatmalarni yoqish/o'chirish."""
+    """Eslatmalarni yoqish/o'chirish (parametr yo'q bo'lsa — holatni qaytarish)."""
     import store as st
+    if "on" not in d:
+        return {"ok": True, "remind": st.reminders_on(u)}
     v = d.get("on")
     on = (v is True or v == 1 or
           (isinstance(v, str) and v.strip().lower() in ("1", "true", "on", "yes")))

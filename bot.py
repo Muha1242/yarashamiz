@@ -415,7 +415,8 @@ def invite_text(u, username):
     link = f"https://t.me/{username}?start=ref_{u}" if username else \
         "Havola mavjud emas — BOT_USERNAME sozlanmagan"
     return ("🎁 <b>Do'stlaringizni taklif qiling</b>\n\n"
-            f"Har bir taklif uchun: <b>+{st.REF_BALL} ball</b>\n"
+            f"Har bir taklif uchun: <b>+{st.REF_BALL} ball</b> "
+            "(juftligingizga qo'shiladi)\n"
             "3 ta taklif — <b>7 kun premium</b>\n"
             "10 ta taklif — <b>30 kun premium</b>\n"
             "(sovg'a taklif qilgan odam birinchi xat yozganda beriladi)\n\n"
@@ -578,6 +579,7 @@ async def reply(m: Message):
                     int(ADMIN_ID),
                     "⚠️ <b>Shikoyat</b>\n"
                     f"Kimdan: <code>{sender}</code>\nKimga: <code>{u}</code>\n"
+                    f"Qabul qilingan: {'yo‘q' if L['receiver'] != u else 'ha'}\n"
                     f"Xat #{L['id']}: {html.escape(str(L.get('text') or '')[:200])}")
             except Exception:  # noqa: BLE001
                 pass

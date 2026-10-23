@@ -349,7 +349,9 @@ def set_ref(new, referrer):
         return False
     if new == referrer:
         return False
-    if r.exists(f"streak:{new}") or r.scard(f"mine:{new}"):
+    # faqat hali xat yozmagan odam "yangi" hisoblanadi: botni ochib ko'rgan
+    # do'st ham taklif qilina oladi (konversiya uchun), ferma esa yopiq qoladi
+    if r.scard(f"mine:{new}") or r.exists(f"ref_done:{new}"):
         return False
     if not r.set(f"ref:{new}", referrer, nx=True):
         return False
@@ -398,6 +400,7 @@ def apply_ref_reward(ref, n):
 def seen(lid, u):
     """Foydalanuvchi xatni ochganini belgilaydi (shikoyat uchun)."""
     r.sadd(f"seen:{lid}", u)
+    r.expire(f"seen:{lid}", 90 * 86400)
 
 
 def has_seen(lid, u):
@@ -408,6 +411,7 @@ def add_report(lid, by, sender, text=""):
     """Bir foydalanuvchi bir xatni faqat bir marta shikoyat qiladi."""
     if not r.set(f"rep:{by}:{lid}", 1, nx=True):
         return False
+    r.expire(f"rep:{by}:{lid}", 90 * 86400)
     r.rpush("reports", json.dumps({
         "l": lid, "by": by, "to": sender, "t": str(text)[:200],
         "ts": int(time.time())}))

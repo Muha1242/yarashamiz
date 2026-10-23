@@ -389,9 +389,20 @@ farm_days = st.prem_days(2001)
 check("10 taklif -> 37 kun (farm yo'q)", 30 <= farm_days <= 37, farm_days)
 check("tasdiqlangan takliflar 10", st.refs_ok(2001) == 10, st.refs_ok(2001))
 
-# eski (botni ishlatgan) foydalanuvchi referral bo'la olmaydi
+# eski (xat yozgan) foydalanuvchi referral bo'la olmaydi
 st.add_letter(4001, "eski xat", ["Kino"], "classic")
 check("eski foydalanuvchi referral bo'la olmaydi", st.set_ref(4001, 2002) is False)
+# botni ochgan, lekin hali xat yozmagan do'st — taklif qilina oladi
+st.touch(4501)
+check("botni ochgan do'st taklif bo'ladi", st.set_ref(4501, 2002) is True)
+
+# taklif/shikoyat kalitlarida TTL bor
+l_ttl = st.add_letter(4601, "ttl", ["Kino"], "classic")
+st.seen(l_ttl, 4602)
+check("seen TTL", st.r.ttl(f"seen:{l_ttl}") > 0, st.r.ttl(f"seen:{l_ttl}"))
+st.add_report(l_ttl, 4602, 4601, "x")
+check("report TTL", st.r.ttl(f"rep:4602:{l_ttl}") > 0,
+      st.r.ttl(f"rep:4602:{l_ttl}"))
 
 # --------------------- 17. ESLATMA SOZLAMALARI ---------------------------
 st.add_pair(1301, 1302)
@@ -470,6 +481,12 @@ check("ilova: 'false' matni o'chiradi",
       api_app._remind(1202, {"on": "false"})["remind"] is False
       and st.reminders_on(1202) is False)
 api_app._remind(1202, {"on": True})
+st.set_reminders(4701, True)
+check("'on' yo'q bo'lsa holat o'zgarmaydi",
+      api_app._remind(4701, {})["remind"] is True)
+st.set_reminders(4702, False)
+check("'on' yo'q bo'lsa o'chirilgan qoladi",
+      api_app._remind(4702, {})["remind"] is False)
 
 print()
 if FAILS:
