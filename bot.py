@@ -163,18 +163,39 @@ WELCOME = (
     "⚠️ Muammo bo'lsa: " + SUPPORT
 )
 
+# WEBAPP_URL (yoki Vercel domeni) aniqlanmasa — Ilova tugmasisiz rejim
+WELCOME_NO_APP = (
+    "💌 <b>Yarashamiz</b>\n\n"
+    "Arazni chiroyli tugating.\n\n"
+    "✍️ «Xat yozish» — uzr yoki sevgi xatingizni yozing.\n"
+    "Havolani juftingizga yuboring, u javob beradi.\n\n"
+    "⚠️ Muammo bo'lsa: " + SUPPORT
+)
+
+PRIVACY = (
+    "🔒 <b>Maxfiylik</b>\n\n"
+    "• Xatlaringiz va o'yin javoblaringiz faqat siz va juftingiz uchun.\n"
+    "• Ma'lumotlar uchinchi shaxslarga sotilmaydi va berilmaydi.\n"
+    "• Xat havolasi — maxfiy: uni faqat o'zingiz ishonadigan odamga yuboring.\n"
+    "• Ma'lumotlaringizni o'chirishni xohlasangiz, " + SUPPORT + " ga yozing.\n\n"
+    "Botdan foydalanishda rozilik bildirasiz."
+)
+
 HELP = ("<b>Qanday ishlaydi?</b>\n\n"
         "1. «✍️ Xat yozish» — uzr yoki sevgi xatingizni yozing.\n"
         "2. Uchrashuv taklifini tanlang va havolani juftingizga yuboring.\n"
         "3. U xatni ochadi va javob beradi.\n"
         "4. Yarashgach, «🎮 O'yinlar» bo'limida birga o'ynab ball to'playsiz.\n\n"
-        "/menu — bosh menyu\n/cancel — bekor qilish\n/help — yordam")
+        "/menu — bosh menyu\n/cancel — bekor qilish\n/help — yordam\n"
+        "/privacy — maxfiylik\n/feedback — fikr va taklif\n\n"
+        "⚠️ Muammo bo'lsa: " + SUPPORT)
 
 import base64  # noqa: E402
 import datetime as dt  # noqa: E402
 import html  # noqa: E402
 import json  # noqa: E402
 import time  # noqa: E402
+import traceback  # noqa: E402
 
 from aiogram.filters import Command, CommandObject, CommandStart, StateFilter  # noqa: E402
 from aiogram.fsm.context import FSMContext  # noqa: E402
@@ -208,29 +229,38 @@ def reset_storage():
 # ============================ XATO HANDLERI =============================
 @dp.errors()
 async def on_error(event):
-    """Kutilmagan xatoni foydalanuvchiga ko'rsatadi (diagnostika)."""
+    """Xatoni foydalanuvchiga ko'rsatmaymiz — Redis'ga yozamiz (diagnostika)."""
+    exc = event.exception
+    tb = "".join(traceback.format_exception(type(exc), exc, exc.__traceback__))
+    print("[error]", tb[-1500:], flush=True)
     try:
-        tb = f"{type(event.exception).__name__}: {event.exception}"[:280]
-        print("[error]", tb, flush=True)
+        st.r.set("ybot:lasterror", tb[-1200:])
+    except Exception:  # noqa: BLE001
+        pass
+    try:
         u = None
         if event.update.message:
             u = event.update.message.from_user.id
         elif event.update.callback_query:
             u = event.update.callback_query.from_user.id
         if u:
-            await bot.send_message(u, "⚠️ Xatolik: " + html.escape(tb))
-    except Exception:
+            # faqat tushunarli xabar - ichki xato matni foydalanuvchiga chiqmaydi
+            await bot.send_message(u, "⚠️ Kutilmagan xatolik yuz berdi. "
+                                      "Qayta urinib ko'ring yoki " + SUPPORT + " ga yozing.")
+    except Exception:  # noqa: BLE001
         pass
     return True
 
-today = lambda: dt.date.today().isoformat()
-mission_of_day = lambda: MISSIONS[dt.date.today().toordinal() % len(MISSIONS)]
-dq_of_day = lambda: DAILY_Q[dt.date.today().toordinal() % len(DAILY_Q)]
+today = lambda: st.today()  # noqa: E731  (mahalliy sana, UTC emas)
+mission_of_day = lambda: MISSIONS[st.now().date().toordinal() % len(MISSIONS)]  # noqa: E731
+dq_of_day = lambda: DAILY_Q[st.now().date().toordinal() % len(DAILY_Q)]  # noqa: E731
 
 
 # ============================= KO'RINISHLAR =============================
 def main_kb():
     """Bot chatida faqat Ilova tugmasi - qolgan hammasi ilova ichida."""
+    if not URL:            # WEBAPP_URL aniqlanmasa Telegram xato beradi
+        return None
     return ReplyKeyboardMarkup(resize_keyboard=True, keyboard=[
         [KeyboardButton(text="📱 Ilovani ochish",
                         web_app=WebAppInfo(url=f"{URL}/"))],
@@ -297,9 +327,9 @@ def profile_view(u):
     p = ps["pair"]
     pts, days = ps["pts"], "—"
     if p and ps["since"]:
-        days = (dt.date.today() - dt.date.fromtimestamp(ps["since"])).days
+        days = max(0, (int(st.now().timestamp()) - ps["since"]) // 86400)
     st_, prem = ps["streak"], ps["prem"]
-    tip = TIPS[dt.date.today().toordinal() % len(TIPS)]
+    tip = TIPS[st.now().date().toordinal() % len(TIPS)]
     return (f"📊 <b>Hisobingiz</b>\n\n"
             f"🔥 Ketma-kunlik seriya: <b>{st_}</b> kun\n"
             f"⭐ Juftlik bali: <b>{pts}</b>\n"
@@ -329,7 +359,7 @@ def library_view(u):
         return "💌 Xotiralar bo'sh. Birinchi xatingizni yozing!"
     out = ["💌 <b>Xotiralar</b>\n"]
     for i, x in enumerate(rows):
-        d = dt.datetime.fromtimestamp(x["ts"]).strftime("%d.%m")
+        d = dt.datetime.fromtimestamp(x["ts"] + st.TZ_OFFSET * 3600).strftime("%d.%m")
         who = "siz →" if x["sender"] == u else "→ siz"
         out.append(f"{i+1}. {d} {who} «{html.escape(x['text'][:40])}…»")
     return "\n".join(out) + "\n\n<b>Premium</b> bilan xotiralar cheksiz saqlanadi 💎"
@@ -359,7 +389,7 @@ def prem_kb():
 
 def qidx(g, step):
     qs = {"ab": AB, "wh": WHO, "qz": QZ}[g]
-    return (dt.date.today().toordinal() + step) % len(qs)
+    return (st.now().date().toordinal() + step) % len(qs)
 
 
 # ============================= FSM HOLATLAR =============================
@@ -388,11 +418,16 @@ async def start(m: Message, command: CommandObject, state: FSMContext):
             return await m.answer(
                 "Bu sizning xatingiz 💌\n\nUni Ilovada ko'rishingiz va dizaynini\n"
                 "o'zgartirishingiz mumkin.",
-                reply_markup=ReplyKeyboardMarkup(resize_keyboard=True, keyboard=[
-                    [KeyboardButton(text="📱 Ilova",
-                                    web_app=WebAppInfo(url=f"{URL}/"))]]))
+                reply_markup=main_kb())
         if st.is_blocked(m.from_user.id, L["sender"]):
             return await m.answer("Bu yuboruvchidan xat olmaslikni tanlagansiz.")
+        if L["receiver"] and L["receiver"] != m.from_user.id:
+            return await m.answer("Bu xat allaqachon boshqa odamga tegishli 🙂")
+        if not URL:
+            # Ilova sozlanmagan bo'lsa ham xat matni ko'rinsin
+            return await m.answer("Sizga xat bor 💌\n\n«" + html.escape(L["text"]) +
+                                  "»\n\nTaklif: " +
+                                  html.escape(", ".join(L["offers"])))
         payload = base64.urlsafe_b64encode(json.dumps(
             {"t": L["text"], "o": L["offers"], "theme": L["theme"]}).encode()).decode()
         return await m.answer("Sizga xat bor 💌",
@@ -408,20 +443,27 @@ async def start(m: Message, command: CommandObject, state: FSMContext):
         return await m.answer("Bu sovg'a allaqachon ishlatilgan yoki yaroqsiz.")
 
     st.touch(m.from_user.id)
-    await m.answer(WELCOME, reply_markup=main_kb())
+    await m.answer(WELCOME if URL else WELCOME_NO_APP,
+                   reply_markup=main_kb() or menu_kb(m.from_user.id))
 
 
 @dp.message(F.web_app_data)
 async def reply(m: Message):
-    r = json.loads(m.web_app_data.data)
-    u = m.from_user.id
+    try:
+        r = json.loads(m.web_app_data.data or "{}")
+    except Exception:  # noqa: BLE001
+        return await m.answer("Ma'lumot noto'g'ri. Ilovani qayta oching.")
+    u, a = m.from_user.id, str(r.get("a") or "")
     L = st.letter(r.get("l"))
     if not L:
         return await m.answer("Xat topilmadi.")
     sender = L["sender"]
     if sender == u:
         return await m.answer("Bu o'z xatingiz 🙂")
-    if r.get("a") == "reply":
+    # xat allaqachon boshqa odam tomonidan qabul qilingan bo'lsa
+    if L["receiver"] and L["receiver"] != u:
+        return await m.answer("Bu xat allaqachon boshqa odamga tegishli 🙂")
+    if a == "reply":
         txt = str(r.get("t") or "").strip()[:300]
         if not txt:
             return await m.answer("Bo'sh javob yuborilmadi.")
@@ -432,26 +474,35 @@ async def reply(m: Message):
             + "\n\nDavom ettirish uchun javob yozing.",
             reply_markup=menu_kb(sender))
         return await m.answer("✅ Javobingiz yuborildi.")
-    if r["a"] == "stop":
+    if a == "stop":
         st.block(u, sender)
         return await m.answer("Tushunarli. Bu yuboruvchidan boshqa xat kelmaydi.")
-    if r["a"] == "heart":
+    if a == "heart":
         st.touch(u)
         await bot.send_message(sender, "💝 Sizga yurak yuborildi! Javobingizni kutmoqda.")
         return await m.answer("💝 Yurak yuborildi.")
-    if r["a"] == "yes":
-        if not st.pair_of(u):
+    if a == "yes":
+        p_u, p_s = st.pair_of(u), st.pair_of(sender)
+        # juftlik faqat bitta bo'ladi: ikkinchi "yarashamiz" ma'lumotni buzmasin
+        if p_u and st.other(p_u, u) != sender:
+            return await m.answer("Siz allaqachon boshqa juftlik bilan ulangansiz ❤️")
+        if p_s and st.other(p_s, sender) != u:
+            await bot.send_message(sender, "Javob: bu odam allaqachon juftlikda 🙂")
+            return await m.answer("Bu odam allaqachon juftlikda 🙂")
+        if not p_u:
             st.add_pair(sender, u)
-        st.set_receiver(int(r["l"]), u)
+        st.set_receiver(L["id"], u)
         st.touch(u)
         st.touch(sender)
         await bot.send_message(sender, "Javob: <b>yarashamiz</b> 🎉 "
-                               f"Taklif: {r.get('o')}\nEndi birga o'ynashingiz mumkin.",
+                               f"Taklif: {html.escape(str(r.get('o') or ''))}\n"
+                               "Endi birga o'ynashingiz mumkin.",
                                reply_markup=menu_kb(sender))
         return await m.answer("Yarashdingiz 🎉 Endi birga o'ynang.",
                               reply_markup=menu_kb(u))
-    if r["a"] == "later":
+    if a == "later":
         await bot.send_message(sender, "Javob: hali tayyor emas, keyinroq ⏳")
+        return await m.answer("Xabar yuborildi ⏳")
     await m.answer("Javobingiz yuborildi.")
 
 
@@ -463,6 +514,33 @@ async def menu_cmd(m: Message):
 @dp.message(Command("help"))
 async def help_cmd(m: Message):
     await m.answer(HELP)
+
+
+@dp.message(Command("privacy"))
+async def privacy_cmd(m: Message):
+    await m.answer(PRIVACY)
+
+
+@dp.message(Command("feedback"))
+async def feedback_cmd(m: Message):
+    """Foydalanuvchi fikri — adminga yuboriladi va Redis'da saqlanadi."""
+    txt = (m.text or "").partition(" ")[2].strip()[:500]
+    if not txt:
+        return await m.answer("Fikringizni yozing: <code>/feedback xabar matni</code>")
+    try:
+        st.r.rpush("feedback", json.dumps(
+            {"u": m.from_user.id, "t": txt, "ts": int(time.time())}))
+        st.r.ltrim("feedback", -500, -1)
+    except Exception:  # noqa: BLE001
+        pass
+    if ADMIN_ID:
+        try:
+            await bot.send_message(int(ADMIN_ID),
+                                   f"📩 Feedback <code>{m.from_user.id}</code>:\n"
+                                   + html.escape(txt))
+        except Exception:  # noqa: BLE001
+            pass
+    await m.answer("Rahmat! Fikringiz adminga yuborildi 🙏")
 
 
 @dp.message(Command("cancel"))
@@ -507,7 +585,7 @@ async def new(c: CallbackQuery, state: FSMContext):
 
 @dp.message(W.text, F.text)
 async def got_text(m: Message, state: FSMContext):
-    await state.update_data(text=m.text[:300], offers=[])
+    await state.update_data(text=m.text[:300], offers=[], own_count=0)
     await state.set_state(W.offers)
     await m.answer("Qanday uchrashuv taklif qilasiz? (bir nechtasini tanlang)",
                    reply_markup=offer_kb([]))
@@ -515,8 +593,11 @@ async def got_text(m: Message, state: FSMContext):
 
 @dp.callback_query(W.offers, F.data.startswith("o:"))
 async def toggle(c: CallbackQuery, state: FSMContext):
-    o = OFFERS[int(c.data[2:])]
-    sel = (await state.get_data())["offers"]
+    try:
+        o = OFFERS[int(c.data[2:])]
+    except (ValueError, IndexError):
+        return await c.answer()
+    sel = list((await state.get_data()).get("offers") or [])
     sel = [x for x in sel if x != o] if o in sel else sel + [o]
     await state.update_data(offers=sel)
     await c.message.edit_reply_markup(reply_markup=offer_kb(sel))
@@ -572,7 +653,7 @@ async def own_offer_del(c: CallbackQuery, state: FSMContext):
 @dp.callback_query(W.offers, F.data == "done")
 async def finish(c: CallbackQuery, state: FSMContext):
     d = await state.get_data()
-    if not d["offers"]:
+    if not d.get("offers"):
         return await c.answer("Kamida bitta taklif tanlang", show_alert=True)
     await state.set_state(W.theme)
     await c.message.answer("Xat qanday ko'rinishda bo'lsin?",
@@ -586,6 +667,10 @@ async def theme(c: CallbackQuery, state: FSMContext):
     if not theme_ok(t, c.from_user.id):
         return await c.answer("Bu shablon premium uchun 💎", show_alert=True)
     d = await state.get_data()
+    if not d.get("text") or not d.get("offers"):
+        await state.clear()
+        return await c.answer("Xat matni topilmadi. Qaytadan boshlang: /menu",
+                              show_alert=True)
     lid = st.add_letter(c.from_user.id, d["text"], d["offers"], t)
     await state.clear()
     me = await bot.get_me()
@@ -652,8 +737,11 @@ async def ai_variant(c: CallbackQuery, state: FSMContext):
 @dp.callback_query(F.data == "aiu")
 async def ai_use(c: CallbackQuery, state: FSMContext):
     d = await state.get_data()
-    vs, i = d.get("variants") or [""], d.get("vi", 0)
-    await state.update_data(text=vs[i][:300], offers=[])
+    vs = d.get("variants") or []
+    if not vs:
+        return await c.answer("Variant topilmadi, qaytadan boshlang", show_alert=True)
+    i = int(d.get("vi", 0)) % len(vs)
+    await state.update_data(text=vs[i][:300], offers=[], own_count=0)
     await state.set_state(W.offers)
     await c.message.answer("Zo'r! Endi uchrashuv taklifini tanlang:",
                            reply_markup=offer_kb([]))
@@ -711,7 +799,10 @@ async def m_answer_menu(c: CallbackQuery):
 @dp.callback_query(F.data.startswith("buy:"))
 async def buy(c: CallbackQuery):
     kind = c.data[4:]
-    payload = ("gift" if kind == "gift" else f"prem:{kind}") + f":{c.from_user.id}"
+    if kind not in ("month", "year", "gift"):
+        return await c.answer()
+    payload = (f"gift:{c.from_user.id}" if kind == "gift"
+               else f"prem:{kind}:{c.from_user.id}")
     await bot.send_invoice(
         chat_id=c.from_user.id, title="Yarashamiz Premium 💎",
         description={"month": "1 oylik premium: cheksiz xat, AI yordamchi.",
@@ -729,12 +820,17 @@ async def pre(q: PreCheckoutQuery):
 
 @dp.message(F.successful_payment)
 async def paid(m: Message):
-    parts = m.successful_payment.invoice_payload.split(":")
-    if parts[0] == "prem":
-        st.add_prem(int(parts[2]), PREMIUM_DAYS[parts[1]])
-        await m.answer(f"💎 Premium faollashdi! {PREMIUM_DAYS[parts[1]]} kunlik "
+    parts = (m.successful_payment.invoice_payload or "").split(":")
+    if parts[0] == "prem" and len(parts) >= 3 and parts[1] in PREMIUM_DAYS:
+        try:
+            uid = int(parts[2])
+        except ValueError:
+            return
+        days = PREMIUM_DAYS[parts[1]]
+        st.add_prem(uid, days)
+        await m.answer(f"💎 Premium faollashdi! {days} kunlik "
                        "imtiyozlar sizniki.")
-    else:
+    elif parts[0] == "gift":
         token = st.make_gift(GIFT_DAYS)
         me = await bot.get_me()
         await m.answer("🎁 Sovg'a tayyor! Havolani juftingizga yuboring:\n"
@@ -802,31 +898,41 @@ async def after(u, p, g):
         return await bot.send_message(
             o, hint,
             reply_markup=IM(inline_keyboard=[[IB(text="🎮 O'yinlar", callback_data="games")]]))
-    d1, d2, gg = st.get(p[0], g, u), st.get(p[0], g, o), GAMES[g]
-    if gg["mode"] == "talk":
-        pts = 5
-    elif gg["mode"] == "match":
-        pts = 2 * sum(d1[i] == d2[i] for i in range(gg["n"]))
-        if d1 == d2:
-            pts += 5
-    elif g == "ab":
-        pts = sum(2 * (d1[i][1] == d2[i][0]) + 2 * (d2[i][1] == d1[i][0])
-                  + (d1[i][0] == d2[i][0]) for i in range(5))
-    else:
-        pts = 10
-    st.add_pts(p[0], pts)
-    st.touch(u)
-    if g == "kq":
-        # ikkalasi ham javob bergan — bir-birining javobini ko'rsatamiz
-        await bot.send_message(u, f"💬 Juftingizning bugungi javobi:\n\n«{d2[0]}»\n\n"
-                               f"+{pts} ball 🎯")
-        await bot.send_message(o, f"💬 Juftingizning bugungi javobi:\n\n«{d1[0]}»\n\n"
-                               f"+{pts} ball 🎯")
-        return
-    await asyncio.gather(*[
-        bot.send_message(x, f"«{gg['name']}» natijasi: {pts} ball 🎯 "
-                            "Ikkalangiz ham qatnashdingiz.")
-        for x in (u, o)], return_exceptions=True)
+    # ikki marta (masalan, ilova + bot) yuborilsa ball ikki marta qo'shilmasin
+    with st.lock(f"after:{p[0]}:{g}:{st.today()}") as ok:
+        if not ok:
+            return
+        scored = f"scored:{p[0]}:{g}:{st.today()}"
+        if st.r.get(scored):
+            return
+        st.r.set(scored, 1, ex=2 * 86400)
+        d1, d2, gg = st.get(p[0], g, u), st.get(p[0], g, o), GAMES[g]
+        if d1 is None or d2 is None:
+            return
+        if gg["mode"] == "talk":
+            pts = 5
+        elif gg["mode"] == "match":
+            pts = 2 * sum(d1[i] == d2[i] for i in range(gg["n"]))
+            if d1 == d2:
+                pts += 5
+        elif g == "ab":
+            pts = sum(2 * (d1[i][1] == d2[i][0]) + 2 * (d2[i][1] == d1[i][0])
+                      + (d1[i][0] == d2[i][0]) for i in range(gg["n"]))
+        else:
+            pts = 10
+        st.add_pts(p[0], pts)
+        st.touch(u)
+        if g == "kq":
+            # ikkalasi ham javob bergan — bir-birining javobini ko'rsatamiz
+            await bot.send_message(u, f"💬 Juftingizning bugungi javobi:\n\n«{d2[0]}»\n\n"
+                                   f"+{pts} ball 🎯")
+            await bot.send_message(o, f"💬 Juftingizning bugungi javobi:\n\n«{d1[0]}»\n\n"
+                                   f"+{pts} ball 🎯")
+            return
+        await asyncio.gather(*[
+            bot.send_message(x, f"«{gg['name']}» natijasi: {pts} ball 🎯 "
+                                "Ikkalangiz ham qatnashdingiz.")
+            for x in (u, o)], return_exceptions=True)
 
 
 @dp.callback_query(F.data.startswith("go:"))
@@ -835,7 +941,9 @@ async def go(c: CallbackQuery, state: FSMContext):
     u, p = c.from_user.id, st.pair_of(c.from_user.id)
     if not p:
         return await c.answer("Avval xat orqali yarashing ❤️", show_alert=True)
-    gg = GAMES[g]
+    gg = GAMES.get(g)
+    if not gg:
+        return await c.answer()
     if gg.get("prem") and not st.is_prem(u):
         return await c.answer("Bu o'yin premium uchun 💎", show_alert=True)
     if st.done(p[0], g, u):
@@ -863,6 +971,9 @@ async def dq_answer(m: Message, state: FSMContext):
     if not p:
         await state.clear()
         return await m.answer("Juftingiz topilmadi.")
+    if st.done(p[0], "kq", u):
+        await state.clear()
+        return await m.answer("Bugun allaqachon javob bergansiz ✅")
     st.put(p[0], "kq", u, [m.text[:300]])
     await state.clear()
     await m.answer("Javobingiz qabul qilindi! Juftingizning javobini u ham javob "
@@ -877,7 +988,7 @@ async def ab_own(c: CallbackQuery):
     if not p:
         return await c.answer("Avval yarashing ❤️", show_alert=True)
     d = st.get(p[0], "ab", u) or []
-    if int(i) != qidx("ab", len(d)):
+    if int(i) != qidx("ab", len(d)) or int(o) not in (0, 1):
         return await c.answer()
     q, a, b = AB[int(i)]
     await c.message.edit_text(f"{q}\nSiz: {(a, b)[int(o)]}. Juftingiz nimani tanlaydi?",
@@ -894,7 +1005,7 @@ async def ab_guess(c: CallbackQuery):
     if not p:
         return await c.answer("Avval yarashing ❤️", show_alert=True)
     d = st.get(p[0], "ab", u) or []
-    if int(i) != qidx("ab", len(d)):
+    if int(i) != qidx("ab", len(d)) or int(o) not in (0, 1) or int(g) not in (0, 1):
         return await c.answer()
     d.append([int(o), int(g)])
     st.put(p[0], "ab", u, d)
@@ -913,13 +1024,21 @@ async def mg(c: CallbackQuery):
     u, p = c.from_user.id, st.pair_of(c.from_user.id)
     if not p:
         return await c.answer("Avval yarashing ❤️", show_alert=True)
-    gg = GAMES[g]
+    gg = GAMES.get(g)
+    if not gg or gg.get("mode") not in ("match",):
+        return await c.answer()
     if gg.get("prem") and not st.is_prem(u):
         return await c.answer("Bu o'yin premium uchun 💎", show_alert=True)
-    d = st.get(p[0], g, u) or []
-    if len(d) != int(step):
+    try:
+        step, x = int(step), int(x)
+    except ValueError:
         return await c.answer()
-    d.append(int(x))
+    if x not in (0, 1):
+        return await c.answer()
+    d = st.get(p[0], g, u) or []
+    if len(d) != step:
+        return await c.answer()
+    d.append(x)
     st.put(p[0], g, u, d)
     if len(d) < gg["n"]:
         q = {"wh": WHO, "qz": QZ}[g][qidx(g, len(d))]
@@ -935,9 +1054,14 @@ async def mg(c: CallbackQuery):
 
 
 @dp.callback_query(F.data == "msd")
-async def ms_done(c: CallbackQuery):
+async def ms_done(c: CallbackQuery, state: FSMContext):
     u, p = c.from_user.id, st.pair_of(c.from_user.id)
+    if not p:
+        return await c.answer("Avval yarashing ❤️", show_alert=True)
+    if st.done(p[0], "ms", u):
+        return await c.answer("Bugun allaqachon bajarilgan ✅", show_alert=True)
     st.put(p[0], "ms", u, {"ok": 1})
+    await state.clear()
     await c.message.edit_text("Missiya bajarildi ✅")
     await after(u, p, "ms")
     await c.answer()
@@ -947,7 +1071,7 @@ async def ms_done(c: CallbackQuery):
 async def run_reminders():
     """Cron tomonidan chaqiriladi. (u, xabar) juftliklar ro'yxatini qaytaradi."""
     out = []
-    now_h = dt.datetime.now().hour
+    now_h = st.now().hour          # mahalliy vaqt (UTC+5), UTC emas
     for u in st.users():
         p = st.pair_of(u)
         if not p:
@@ -967,3 +1091,24 @@ async def run_reminders():
                            "Bugun bir o'yin o'ynang."))
             st.mark(u, "st")
     return out
+
+
+# ============================== ZAXIRA ==================================
+@dp.message()
+async def fallback(m: Message, state: FSMContext):
+    """Mos handler topilmagan xabarlar (matn, sticker, rasm...).
+
+    Foydalanuvchi javobsiz qolmasin: yo'l ko'rsatamiz.
+    """
+    cur = await state.get_state()
+    if m.text and m.text.startswith("/"):
+        return await m.answer("Bunday komanda yo'q. /menu yoki /help dan foydalaning.",
+                              reply_markup=menu_kb(m.from_user.id))
+    if cur:
+        return await m.answer("Iltimos, matn ko'rinishida yozing yoki /cancel bilan "
+                              "bekor qiling.")
+    if URL:
+        return await m.answer("Barcha imkoniyatlar Ilovada 👇\n"
+                              "Pastdagi «📱 Ilovani ochish» tugmasini bosing.",
+                              reply_markup=main_kb())
+    await m.answer("Asosiy menyu 👇", reply_markup=menu_kb(m.from_user.id))

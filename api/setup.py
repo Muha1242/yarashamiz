@@ -6,7 +6,12 @@ SETUP_KEY muhit o'zgaruvchisiga o'zingiz xohlagan maxfiy so'z qo'ying.
 """
 import asyncio
 import os
+import sys
 from http.server import BaseHTTPRequestHandler
+
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if ROOT not in sys.path:
+    sys.path.insert(0, ROOT)
 
 import bot as core  # noqa: E402
 
@@ -15,6 +20,7 @@ async def _set():
     # Har chaqiruvda toza sessiya - aks holda ikkinchi chaqiruvda
     # "Timeout context manager should be used inside a task" xatosi chiqadi
     from aiogram.client.session.aiohttp import AiohttpSession
+    from aiogram.types import BotCommand
     core.bot.session = AiohttpSession()
 
     a = (os.environ.get("WEBAPP_URL") or "").strip().rstrip("/")
@@ -27,6 +33,26 @@ async def _set():
         a = base
     url = a + "/api/webhook"
     await core.bot.set_webhook(url, drop_pending_updates=True)
+    # menyu va tavsif - bot ommaga chiroyli ko'rinadi
+    try:
+        await core.bot.set_my_commands([
+            BotCommand(command="start", description="Boshlash / Ilovani ochish"),
+            BotCommand(command="menu", description="Asosiy menyu"),
+            BotCommand(command="help", description="Yordam"),
+            BotCommand(command="privacy", description="Maxfiylik"),
+            BotCommand(command="feedback", description="Fikr va taklif"),
+            BotCommand(command="cancel", description="Bekor qilish"),
+        ])
+        await core.bot.set_my_short_description(
+            "Arazni chiroyli tugating 💌 — xat yozing, yarashing, birga o'ynang.")
+        await core.bot.set_my_description(
+            "💌 Yarashamiz — sevishganlarni yarashtirish boti.\n\n"
+            "✍️ Uzr yoki sevgi xati yozing va havolani juftingizga yuboring.\n"
+            "❤️ U «Yarashamiz» desa — juftlik ochiladi.\n"
+            "🎮 Birga o'yin o'ynang, kunlik seriya va ball to'plang.\n"
+            "💎 Premium: cheksiz xat, AI yordamchi va maxsus shablonlar.")
+    except Exception:  # noqa: BLE001
+        pass
     try:
         await core.bot.session.close()
     except Exception:
@@ -39,7 +65,15 @@ class handler(BaseHTTPRequestHandler):
         key = ""
         if "?s=" in self.path:
             key = self.path.split("?s=", 1)[1].split("&")[0]
-        if key != os.environ.get("SETUP_KEY", ""):
+        expected = os.environ.get("SETUP_KEY", "")
+        if not expected:
+            # SETUP_KEY o'rnatilmagan bo'lsa — webhookni istalgan odam
+            # o'zgartirib yubormasligi uchun yopiq qoldiramiz
+            self.send_response(500)
+            self.end_headers()
+            self.wfile.write(b"SETUP_KEY env o'zgaruvchisini o'rnating")
+            return
+        if key != expected:
             self.send_response(403)
             self.end_headers()
             self.wfile.write(b"forbidden")

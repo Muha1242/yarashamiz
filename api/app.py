@@ -55,6 +55,7 @@ def _me(u, usr):
         ts = st.pair_ts(u, o) or 0
         days = max(0, (int(time.time()) - ts) // 86400) if ts else 0
         partner = st.r.get(f"ini:{o}") or st.r.get(f"name:{o}")
+    prem = st.is_prem(u)
     return {
         "ok": True,
         "user": {"id": u, "name": usr.get("first_name") or "Do'st",
@@ -63,8 +64,8 @@ def _me(u, usr):
         "partner": partner,
         "pts": pts,
         "streak": st.streak(u),
-        "prem": st.is_prem(u),
-        "premDays": st.prem_days(u) if st.is_prem(u) else 0,
+        "prem": prem,
+        "premDays": st.prem_days(u) if prem else 0,
         "letters": st.count_letters(u),
         "days": days,
         "prices": core.PRICES,
@@ -98,15 +99,15 @@ def _games(u):
         if item["prem"] and not st.is_prem(u):
             item["locked"] = True
         if g == "ab":
-            item["qs"] = [list(q) for q in core.AB[:gg["n"]]]
+            item["qs"] = [list(core.AB[core.qidx("ab", k)]) for k in range(gg["n"])]
         elif g == "qz":
-            item["qs"] = core.QZ[:gg["n"]]
+            item["qs"] = [core.QZ[core.qidx("qz", k)] for k in range(gg["n"])]
             item["opt"] = ["Ha", "Yo'q"]
         elif g == "wh":
-            item["qs"] = core.WHO[:gg["n"]]
+            item["qs"] = [core.WHO[core.qidx("wh", k)] for k in range(gg["n"])]
             item["opt"] = ["Men", "U"]
         elif g == "ms":
-            item["qs"] = [core.MISSIONS[int(time.time()) // 86400 % len(core.MISSIONS)]]
+            item["qs"] = [core.mission_of_day()]
         elif g == "kq":
             item["qs"] = [core.dq_of_day()]
         out.append(item)
@@ -170,13 +171,16 @@ def _answer(u, d):
 
 
 def _letter(u, d):
-    """Xatni ko'rish (o'zi yozgan bo'lsa ham)."""
+    """Xatni ko'rish (faqat egasi yoki qabul qiluvchi)."""
     import bot as core
     import store as st
     lid = d.get("l")
     L = st.letter(lid) if lid else st.last_mine(u)
     if not L:
         return {"ok": False, "err": "none"}
+    # maxfiylik: begona xatni id orqali o'qib bo'lmaydi
+    if L["sender"] != u and L["receiver"] != u:
+        return {"ok": False, "err": "not_yours"}
     valid = dict(core.THEMES)
     return {
         "ok": True, "id": L["id"], "text": L["text"], "offers": L["offers"],

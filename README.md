@@ -67,7 +67,8 @@ Vercel → **Settings → Environment Variables**:
 | `BOT_TOKEN` | ✅ | @BotFather'dan |
 | `REDIS_URL` | ✅ | Upstash TCP manzili (`rediss://...`) |
 | `WEBAPP_URL` | tavsiya | `https://<loyiha>.vercel.app/mini_app` (bo'lmasa avtomatik aniqlanadi) |
-| `SETUP_KEY` | tavsiya | `/api/setup` ni qulflash uchun |
+| `SETUP_KEY` | ✅ | `/api/setup` ni qulflash uchun (bo'lmasa endpoint yopiq) |
+| `TZ_OFFSET` | ixtiyoriy | Mahalliy vaqt siljishi, standart `5` (Toshkent, UTC+5) |
 | `GEMINI_API_KEY` | ixtiyoriy | [aistudio.google.com/apikey](https://aistudio.google.com/apikey) |
 | `ADMIN_ID` | ixtiyoriy | Sizning Telegram ID (admin panel uchun) |
 | `WEBHOOK_SECRET` | ixtiyoriy | Webhook'ni himoyalash |
@@ -130,7 +131,28 @@ python bot.py
 | `/start` | Salom + bosh menyu |
 | `/menu` | Asosiy menyu |
 | `/help` | Yordam |
+| `/privacy` | Maxfiylik siyosati |
+| `/feedback` | Fikr/taklif (adminga boradi) |
 | `/cancel` | Joriy amalni bekor qilish |
 | `/admin` | Statistika (faqat `ADMIN_ID`) |
+
+`/api/setup` ni bir marta ochganda bot menyusi, qisqa tavsif va to'liq tavsif ham
+avtomatik o'rnatiladi.
+
+---
+
+## 🧪 Sinov (offline)
+
+Tashqi xizmatlarsiz — `fakeredis` bilan:
+
+```bash
+pip install -r requirements.txt fakeredis
+python tests/smoke.py
+```
+
+Testlar: xat yaratish va kunlik limit, xat maxfiyligi, juftlik (ikki marta
+juftlanmaslik), o'yin savollarining bot va Ilovada bir xil bo'lishi, ball
+ikki marta qo'shilmasligi, eslatma vaqti (UTC+5), xato handleri, sovg'a va
+to'liq xat yozish oqimi (FSM).
 
 <!-- build: fsm-loop-fix -->
