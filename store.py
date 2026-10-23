@@ -30,6 +30,12 @@ def today():
     """Mahalliy sana (YYYY-MM-DD)."""
     return now().date().isoformat()
 
+
+def day_start_ts():
+    """Mahalliy yarim tun (epoch soniyada) — kunlik limit uchun."""
+    local_midnight = now().replace(hour=0, minute=0, second=0, microsecond=0)
+    return int((local_midnight - dt.timedelta(hours=TZ_OFFSET)).timestamp())
+
 GAMES = {
     "ab": {"name": "A yoki B", "n": 5, "mode": "guess"},
     "wh": {"name": "Kim ko'proq?", "n": 5, "mode": "match"},
@@ -92,9 +98,13 @@ def letter(lid):
     d = r.hgetall(f"letter:{lid}")
     if not d or "sender" not in d:
         return None
-    return {"id": int(lid), "sender": int(d["sender"]), "text": d["text"],
-            "offers": json.loads(d["offers"]), "theme": d["theme"],
-            "ts": int(d["ts"]), "receiver": int(d["receiver"] or 0),
+    try:
+        offers = json.loads(d.get("offers") or "[]")
+    except Exception:  # noqa: BLE001
+        offers = []
+    return {"id": int(lid), "sender": int(d["sender"]), "text": d.get("text", ""),
+            "offers": offers, "theme": d.get("theme") or "classic",
+            "ts": int(d.get("ts") or 0), "receiver": int(d.get("receiver") or 0),
             "thn": int(d.get("thn") or 0)}
 
 

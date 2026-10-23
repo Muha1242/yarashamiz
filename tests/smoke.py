@@ -301,6 +301,54 @@ check("eskirgan initData rad etiladi",
       api_app.verify(make_init(ts=int(time.time()) - 10 * 86400)) is None)
 
 
+
+# ------------------ 15. SHERIK TEKSHIRUVI TOPGAN HOLATLAR -----------------
+# (a) chala (maydonlari yo'q) xat crash qilmasligi
+st.r.hset("letter:990001", mapping={"sender": 990002})
+chala = st.letter(990001)
+check("chala xat o'qiladi", bool(chala) and chala["text"] == ""
+      and chala["receiver"] == 0 and chala["offers"] == [], chala)
+
+# (b) kunlik limit — mahalliy yarim tun
+saved_now = st.now
+st.now = lambda: dt.datetime(2026, 10, 24, 0, 10)      # 00:10 Toshkent
+start_ts = st.day_start_ts()
+st.r.hset(f"letter:{lid}", "ts", start_ts + 60)
+check("yarim tundan keyingi xat sanaladi", st.count_today_letters(101, start_ts) == 1)
+st.r.hset(f"letter:{lid}", "ts", start_ts - 60)
+check("kechagi xat bugungi limitga kirmaydi",
+      st.count_today_letters(101, start_ts) == 0)
+st.now = saved_now
+
+# (c) "Yarashamiz" ikki marta bosilsa — bitta xabar
+st.add_pair(1001, 1002)
+l4 = st.add_letter(1001, "Yarashamizmi?", ["Kino"], "classic")
+SENT.clear()
+first_yes = FakeMsg(1002, {"a": "yes", "l": l4, "o": "Kino"})
+asyncio.run(core.reply(first_yes))
+second_yes = FakeMsg(1002, {"a": "yes", "l": l4, "o": "Kino"})
+asyncio.run(core.reply(second_yes))
+sender_msgs = [t for cid, t in SENT if cid == 1001 and "yarashamiz" in t]
+check("takroriy 'yes' yuboruvchiga bir marta xabar beradi", len(sender_msgs) == 1,
+      sender_msgs)
+check("takroriy 'yes' holatni buzmaydi", st.letter(l4)["receiver"] == 1002)
+check("takroriy 'yes' qayta javob beradi",
+      any("Allaqachon" in (a or "") for a in second_yes.answers), second_yes.answers)
+
+# (d) kunlik savol javobi HTML-escape qilinadi
+st.add_pair(1101, 1102)
+pid2 = st.pair_of(1101)[0]
+st.put(pid2, "kq", 1101, ["<b>salom</b>"])
+st.put(pid2, "kq", 1102, ["<script>x</script>"])
+SENT.clear()
+asyncio.run(core.after(1101, st.pair_of(1101), "kq"))
+kq_msgs = [t for cid, t in SENT if "javobi" in t]
+check("kunlik savol javobi escape qilinadi",
+      bool(kq_msgs) and all("<b>salom</b>" not in t and "<script>" not in t
+                            for t in kq_msgs), kq_msgs)
+check("escape qilingan matn ko'rinadi",
+      any("&lt;b&gt;salom&lt;/b&gt;" in t for t in kq_msgs), kq_msgs)
+
 print()
 if FAILS:
     print(f"❌ {len(FAILS)} ta tekshiruv yiqildi: {FAILS}")

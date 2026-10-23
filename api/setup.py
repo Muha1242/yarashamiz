@@ -5,6 +5,7 @@ Deploy'dan keyin brauzerda bir marta oching:
 SETUP_KEY muhit o'zgaruvchisiga o'zingiz xohlagan maxfiy so'z qo'ying.
 """
 import asyncio
+import hmac
 import os
 import sys
 from http.server import BaseHTTPRequestHandler
@@ -31,6 +32,9 @@ async def _set():
         if base and not base.lower().startswith("http"):
             base = "https://" + base
         a = base
+    if not a:
+        raise RuntimeError("WEBAPP_URL (yoki VERCEL_PROJECT_PRODUCTION_URL) "
+                           "aniqlanmadi — webhook manzilini bilmayapman")
     url = a + "/api/webhook"
     await core.bot.set_webhook(url, drop_pending_updates=True)
     # menyu va tavsif - bot ommaga chiroyli ko'rinadi
@@ -73,7 +77,7 @@ class handler(BaseHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(b"SETUP_KEY env o'zgaruvchisini o'rnating")
             return
-        if key != expected:
+        if not hmac.compare_digest(key, expected):
             self.send_response(403)
             self.end_headers()
             self.wfile.write(b"forbidden")

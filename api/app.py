@@ -254,7 +254,7 @@ def _form(u, d):
     import store as st
     prem = st.is_prem(u)
     left = None if prem else max(0, core.DAILY_LIMIT -
-                                 st.count_today_letters(u, time.time() - 86400))
+                                 st.count_today_letters(u, st.day_start_ts()))
     return {
         "ok": True, "isPrem": prem, "left": left, "limit": core.DAILY_LIMIT,
         "textMax": 300,
@@ -291,14 +291,14 @@ def _newletter(u, d):
     if theme in core.PREMIUM_THEMES and not prem:
         return {"ok": False, "err": "premium"}
 
-    if not prem and st.count_today_letters(u, time.time() - 86400) >= core.DAILY_LIMIT:
+    if not prem and st.count_today_letters(u, st.day_start_ts()) >= core.DAILY_LIMIT:
         return {"ok": False, "err": "limit", "limit": core.DAILY_LIMIT}
 
     lid = st.add_letter(u, text, offers, theme)
     st.touch(u)
     uname = bot_username()
     left = None if prem else max(0, core.DAILY_LIMIT -
-                                 st.count_today_letters(u, time.time() - 86400))
+                                 st.count_today_letters(u, st.day_start_ts()))
     return {"ok": True, "id": lid,
             "link": ("https://t.me/" + uname + "?start=l_" + str(lid)) if uname else "",
             "left": left}

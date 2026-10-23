@@ -281,12 +281,14 @@ function letterOpen(v) {
   const replyBtn = h('button', 'btn btn-ghost', '✍️ Javob yozish');
   replyBtn.onclick = () => {
     haptic();
-    menu.innerHTML = '';
+    menu.style.display = 'none';           // xat oynasi yo'qolmasin
+    const box = h('div');
+    box.style.cssText = 'display:flex;flex-direction:column;gap:9px;margin-top:10px';
     const ta = document.createElement('textarea');
     ta.placeholder = 'Javobingizni yozing (300 belgigacha)...';
     ta.maxLength = 300;
     ta.style.cssText = 'width:100%;min-height:100px;border-radius:14px;border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.08);color:#fff3f7;padding:12px;font:400 15px Nunito;resize:none';
-    menu.appendChild(ta);
+    box.appendChild(ta);
     const send = h('button', 'btn btn-main', 'Yuborish');
     send.onclick = () => {
       const t = ta.value.trim();
@@ -294,10 +296,11 @@ function letterOpen(v) {
       haptic('medium');
       sendReply(t);
     };
-    menu.appendChild(send);
+    box.appendChild(send);
     const back = h('button', 'btn btn-ghost', 'Orqaga');
-    back.onclick = () => { haptic(); setTab('write'); };
-    menu.appendChild(back);
+    back.onclick = () => { haptic(); box.remove(); menu.style.display = 'flex'; };
+    box.appendChild(back);
+    v.appendChild(box);
     ta.focus();
   };
   menu.appendChild(replyBtn);

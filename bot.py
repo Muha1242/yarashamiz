@@ -243,6 +243,10 @@ async def on_error(event):
             u = event.update.message.from_user.id
         elif event.update.callback_query:
             u = event.update.callback_query.from_user.id
+            try:
+                await event.update.callback_query.answer()   # spinner osilib qolmasin
+            except Exception:  # noqa: BLE001
+                pass
         if u:
             # faqat tushunarli xabar - ichki xato matni foydalanuvchiga chiqmaydi
             await bot.send_message(u, "⚠️ Kutilmagan xatolik yuz berdi. "
@@ -482,18 +486,32 @@ async def reply(m: Message):
         await bot.send_message(sender, "💝 Sizga yurak yuborildi! Javobingizni kutmoqda.")
         return await m.answer("💝 Yurak yuborildi.")
     if a == "yes":
-        p_u, p_s = st.pair_of(u), st.pair_of(sender)
-        # juftlik faqat bitta bo'ladi: ikkinchi "yarashamiz" ma'lumotni buzmasin
-        if p_u and st.other(p_u, u) != sender:
-            return await m.answer("Siz allaqachon boshqa juftlik bilan ulangansiz ❤️")
-        if p_s and st.other(p_s, sender) != u:
-            await bot.send_message(sender, "Javob: bu odam allaqachon juftlikda 🙂")
-            return await m.answer("Bu odam allaqachon juftlikda 🙂")
-        if not p_u:
-            st.add_pair(sender, u)
-        st.set_receiver(L["id"], u)
-        st.touch(u)
-        st.touch(sender)
+        refused = None
+        with st.lock(f"yes:{L['id']}") as ok:
+            if not ok:
+                return await m.answer("⏳ Bir oz kuting, qayta urinib ko'ring.")
+            fresh = st.letter(L["id"]) or L
+            if fresh["receiver"] == u:
+                # takroriy bosish: holat o'zgarmaydi, xabar ikki marta ketmaydi
+                return await m.answer("Allaqachon qabul qilingan ✅")
+            p_u, p_s = st.pair_of(u), st.pair_of(sender)
+            # juftlik faqat bitta bo'ladi: ikkinchi "yarashamiz" ma'lumotni buzmasin
+            if p_u and st.other(p_u, u) != sender:
+                refused = "Siz allaqachon boshqa juftlik bilan ulangansiz ❤️"
+            elif p_s and st.other(p_s, sender) != u:
+                refused = "Bu odam allaqachon juftlikda 🙂"
+                try:
+                    await bot.send_message(sender, "Javob: bu odam allaqachon juftlikda 🙂")
+                except Exception:  # noqa: BLE001
+                    pass
+            else:
+                if not p_u:
+                    st.add_pair(sender, u)
+                st.set_receiver(L["id"], u)
+                st.touch(u)
+                st.touch(sender)
+        if refused:
+            return await m.answer(refused)
         await bot.send_message(sender, "Javob: <b>yarashamiz</b> 🎉 "
                                f"Taklif: {html.escape(str(r.get('o') or ''))}\n"
                                "Endi birga o'ynashingiz mumkin.",
@@ -568,7 +586,7 @@ def variants(sit, words):
 
 async def do_new(m: Message, state: FSMContext):
     u = m.from_user.id
-    if st.count_today_letters(u, time.time() - 86400) >= DAILY_LIMIT and not st.is_prem(u):
+    if st.count_today_letters(u, st.day_start_ts()) >= DAILY_LIMIT and not st.is_prem(u):
         return await m.answer("Bugungi bepul limit (3 xat) tugadi. Ertaga yozing yoki "
                               "💎 Premium oling — cheksiz xat yoziladi.")
     await state.set_state(W.text)
@@ -905,7 +923,6 @@ async def after(u, p, g):
         scored = f"scored:{p[0]}:{g}:{st.today()}"
         if st.r.get(scored):
             return
-        st.r.set(scored, 1, ex=2 * 86400)
         d1, d2, gg = st.get(p[0], g, u), st.get(p[0], g, o), GAMES[g]
         if d1 is None or d2 is None:
             return
@@ -921,13 +938,14 @@ async def after(u, p, g):
         else:
             pts = 10
         st.add_pts(p[0], pts)
+        st.r.set(scored, 1, ex=2 * 86400)   # faqat ball muvaffaqiyatli qo'shilgach
         st.touch(u)
         if g == "kq":
             # ikkalasi ham javob bergan — bir-birining javobini ko'rsatamiz
-            await bot.send_message(u, f"💬 Juftingizning bugungi javobi:\n\n«{d2[0]}»\n\n"
-                                   f"+{pts} ball 🎯")
-            await bot.send_message(o, f"💬 Juftingizning bugungi javobi:\n\n«{d1[0]}»\n\n"
-                                   f"+{pts} ball 🎯")
+            await bot.send_message(u, "💬 Juftingizning bugungi javobi:\n\n"
+                                   f"«{html.escape(str(d2[0]))}»\n\n+{pts} ball 🎯")
+            await bot.send_message(o, "💬 Juftingizning bugungi javobi:\n\n"
+                                   f"«{html.escape(str(d1[0]))}»\n\n+{pts} ball 🎯")
             return
         await asyncio.gather(*[
             bot.send_message(x, f"«{gg['name']}» natijasi: {pts} ball 🎯 "
@@ -989,7 +1007,10 @@ async def ab_own(c: CallbackQuery):
         return await c.answer("Avval yarashing ❤️", show_alert=True)
     d = st.get(p[0], "ab", u) or []
     if int(i) != qidx("ab", len(d)) or int(o) not in (0, 1):
-        return await c.answer()
+        if int(i) == qidx("ab", len(d) - 1) and len(d) > 0:
+            return await c.answer()          # allaqachon javob berilgan
+        return await c.answer("Savol yangilandi. /menu → 🎮 O'yinlar",
+                              show_alert=True)
     q, a, b = AB[int(i)]
     await c.message.edit_text(f"{q}\nSiz: {(a, b)[int(o)]}. Juftingiz nimani tanlaydi?",
                               reply_markup=IM(inline_keyboard=[
@@ -1006,7 +1027,10 @@ async def ab_guess(c: CallbackQuery):
         return await c.answer("Avval yarashing ❤️", show_alert=True)
     d = st.get(p[0], "ab", u) or []
     if int(i) != qidx("ab", len(d)) or int(o) not in (0, 1) or int(g) not in (0, 1):
-        return await c.answer()
+        if int(i) == qidx("ab", len(d) - 1) and len(d) > 0:
+            return await c.answer()          # allaqachon javob berilgan
+        return await c.answer("Savol yangilandi. /menu → 🎮 O'yinlar",
+                              show_alert=True)
     d.append([int(o), int(g)])
     st.put(p[0], "ab", u, d)
     if len(d) < GAMES["ab"]["n"]:
@@ -1037,7 +1061,10 @@ async def mg(c: CallbackQuery):
         return await c.answer()
     d = st.get(p[0], g, u) or []
     if len(d) != step:
-        return await c.answer()
+        if step == len(d) - 1:
+            return await c.answer()          # takroriy bosish
+        return await c.answer("Savol yangilandi. /menu → 🎮 O'yinlar",
+                              show_alert=True)
     d.append(x)
     st.put(p[0], g, u, d)
     if len(d) < gg["n"]:
