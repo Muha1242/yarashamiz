@@ -67,8 +67,9 @@ def add_pair(a, b):
     r.set(f"mate:{a}", b)
     r.set(f"mate:{b}", a)
     r.set(f"mets:{_pid(a, b)}", int(time.time()))
-    r.incr("cnt:pairs")
-    r.incr(f"cnt:pairs:{today()}")
+    if r.set(f"pairdone:{_pid(a, b)}", 1, nx=True):   # har juftlik bir marta
+        r.incr("cnt:pairs")
+        r.incr(f"cnt:pairs:{today()}")
 
 
 def pair_ts(a, b):
@@ -227,6 +228,9 @@ def touch(u):
         n = int(cur["n"]) + 1 if cur["last"] == y else 1
         r.hset(f"streak:{u}", mapping={"last": t, "n": n})
     r.sadd(f"active:{t}", u)        # bugungi faol foydalanuvchilar
+    r.expire(f"active:{t}", 400 * 86400)
+    if not cur:
+        r.expire(f"new:{t}", 400 * 86400)
     return n
 
 
@@ -322,7 +326,10 @@ def reminders_on(u):
 
 
 def set_reminders(u, on):
-    r.set(f"remind:{u}", 1 if on else 0)
+    """on: True/1/"1"/"true"/"on" -> yoqilgan, qolganlari -> o'chirilgan."""
+    val = 1 if (on is True or on == 1 or
+                (isinstance(on, str) and on.strip().lower() in ("1", "true", "on", "yes"))) else 0
+    r.set(f"remind:{u}", val)
 
 
 # ------------------------------ REFERRAL --------------------------------
@@ -331,12 +338,18 @@ REF_PREM = {3: 7, 10: 30}      # takliflar soni -> premium kunlari
 
 
 def set_ref(new, referrer):
-    """Yangi foydalanuvchi uchun referrerni bir marta yozadi."""
+    """Yangi foydalanuvchi uchun referrerni bir marta yozadi.
+
+    Faqat botni hali ishlatmagan (streak/xat yo'q) odam "yangi" hisoblanadi —
+    eski akkauntlar bilan referral ferma qilib bo'lmaydi.
+    """
     try:
         new, referrer = int(new), int(referrer)
     except (TypeError, ValueError):
         return False
     if new == referrer:
+        return False
+    if r.exists(f"streak:{new}") or r.scard(f"mine:{new}"):
         return False
     if not r.set(f"ref:{new}", referrer, nx=True):
         return False
@@ -346,41 +359,60 @@ def set_ref(new, referrer):
 
 
 def refs(u):
+    """Havolani bosganlar (ro'yxatdan o'tganlar)."""
     return int(r.get(f"refs:{u}") or 0)
+
+
+def refs_ok(u):
+    """Birinchi xat yozib, taklifni tasdiqlaganlar."""
+    return int(r.get(f"refs_ok:{u}") or 0)
 
 
 def claim_ref(u):
     """Birinchi xat yozilganda referrerni qaytaradi (bir marta).
 
-    Qaytaradi: (referrer, takliflar_soni) yoki None.
+    Qaytaradi: (referrer, tasdiqlangan_takliflar_soni) yoki None.
     """
     ref = r.get(f"ref:{u}")
     if not ref:
-        return None
-    if not r.set(f"ref_done:{u}", 1, nx=True):
         return None
     try:
         ref = int(ref)
     except ValueError:
         return None
-    return ref, refs(ref)
+    if not r.set(f"ref_done:{u}", 1, nx=True):
+        return None
+    return ref, r.incr(f"refs_ok:{ref}")
 
 
 def apply_ref_reward(ref, n):
-    """Referrer mukofoti: juftlikka ball + bosqichli premium."""
+    """Referrer mukofoti: juftlikka ball + har bosqich uchun bir marta premium."""
     p = pair_of(ref)
     if p:
         add_pts(p[0], REF_BALL)
-    if n in REF_PREM:
+    if n in REF_PREM and r.set(f"ref_prem:{ref}:{n}", 1, nx=True):
         add_prem(ref, REF_PREM[n])
 
 
 # -------------------------------- SHIKOYAT -------------------------------
+def seen(lid, u):
+    """Foydalanuvchi xatni ochganini belgilaydi (shikoyat uchun)."""
+    r.sadd(f"seen:{lid}", u)
+
+
+def has_seen(lid, u):
+    return bool(r.sismember(f"seen:{lid}", u))
+
+
 def add_report(lid, by, sender, text=""):
+    """Bir foydalanuvchi bir xatni faqat bir marta shikoyat qiladi."""
+    if not r.set(f"rep:{by}:{lid}", 1, nx=True):
+        return False
     r.rpush("reports", json.dumps({
         "l": lid, "by": by, "to": sender, "t": str(text)[:200],
         "ts": int(time.time())}))
     r.ltrim("reports", -300, -1)
+    return True
 
 
 def reports(n=10):
@@ -394,8 +426,24 @@ def count_reports():
 # ------------------------------- ADMIN ----------------------------------
 def admin_stats():
     t = today()
-    prem_all = [int(x) for x in r.smembers("prems")]
-    prem_active = sum(1 for u in prem_all if is_prem(u))
+    prem_all = []
+    for x in r.smembers("prems"):
+        try:
+            prem_all.append(int(x))
+        except (TypeError, ValueError):
+            continue
+    prem_active = 0
+    if prem_all:
+        nowts = int(dt.datetime.now().timestamp())
+        pipe = r.pipeline()
+        for u in prem_all:
+            pipe.get(f"prem:{u}")
+        for v in pipe.execute():
+            try:
+                if v and int(v) >= nowts:
+                    prem_active += 1
+            except (TypeError, ValueError):
+                continue
     return {"users": r.scard("users"),
             "pairs": int(r.get("cnt:pairs") or 0),
             "letters": int(r.get("seq:letters") or 0),

@@ -373,11 +373,25 @@ check("birinchi xatdan keyin +10 ball", st.get_pts(pid_ref) == pts_before + 10,
       st.get_pts(pid_ref))
 asyncio.run(core.reward_ref(1201))
 check("referral mukofoti bir marta", st.get_pts(pid_ref) == pts_before + 10)
-check("referral soni 1", st.refs(1202) == 1)
+check("referral soni 1", st.refs(1202) == 1 and st.refs_ok(1202) == 1)
 
 st.apply_ref_reward(1202, 3)
 check("3 ta taklif -> 7 kun premium", st.is_prem(1202) and st.prem_days(1202) >= 6)
 check("referral matni", "ref_1202" in core.invite_text(1202, "testbot"))
+
+# premium fermasi yo'qligi: 10 ta taklif -> 7 + 30 = 37 kun (300 emas)
+st.add_pair(2001, 2002)
+for i in range(10):
+    nu = 3000 + i
+    st.set_ref(nu, 2001)
+    asyncio.run(core.reward_ref(nu))
+farm_days = st.prem_days(2001)
+check("10 taklif -> 37 kun (farm yo'q)", 30 <= farm_days <= 37, farm_days)
+check("tasdiqlangan takliflar 10", st.refs_ok(2001) == 10, st.refs_ok(2001))
+
+# eski (botni ishlatgan) foydalanuvchi referral bo'la olmaydi
+st.add_letter(4001, "eski xat", ["Kino"], "classic")
+check("eski foydalanuvchi referral bo'la olmaydi", st.set_ref(4001, 2002) is False)
 
 # --------------------- 17. ESLATMA SOZLAMALARI ---------------------------
 st.add_pair(1301, 1302)
@@ -390,6 +404,12 @@ check("eslatma o'chirilganda yuborilmaydi",
       all(u != 1301 for u, _ in msgs_off), [(u, t[:20]) for u, t in msgs_off])
 st.set_reminders(1301, True)
 check("eslatma qayta yoqiladi", st.reminders_on(1301) is True)
+st.set_reminders(1303, "0")
+check("'0' matni -> o'chirilgan", st.reminders_on(1303) is False)
+st.set_reminders(1304, "false")
+check("'false' matni -> o'chirilgan", st.reminders_on(1304) is False)
+st.set_reminders(1305, "1")
+check("'1' matni -> yoqilgan", st.reminders_on(1305) is True)
 
 # -------------------- 18. SHIKOYAT / MODERATSIYA -------------------------
 before_rep = st.count_reports()
@@ -397,6 +417,12 @@ core.ADMIN_ID = "424242"
 SENT.clear()
 st.add_pair(1401, 1402)
 l_report = st.add_letter(1401, "yomon xat", ["Kino"], "classic")
+# xatni ko'rmagan odam shikoyat qila olmaydi
+m_unseen = FakeMsg(1403, {"a": "report", "l": l_report})
+asyncio.run(core.reply(m_unseen))
+check("ko'rmagan odam shikoyat qila olmaydi",
+      any("topilmadi" in (a or "") for a in m_unseen.answers), m_unseen.answers)
+st.seen(l_report, 1402)
 m_rep = FakeMsg(1402, {"a": "report", "l": l_report})
 asyncio.run(core.reply(m_rep))
 check("shikoyat yozildi", st.count_reports() == before_rep + 1)
@@ -405,6 +431,19 @@ check("adminga shikoyat xabari ketdi",
       any(cid == 424242 and "Shikoyat" in txt for cid, txt in SENT), SENT)
 check("shikoyatga javob berildi",
       any("Shikoyat qabul" in (a or "") for a in m_rep.answers), m_rep.answers)
+# takroriy shikoyat hisoblanmaydi
+m_rep2 = FakeMsg(1402, {"a": "report", "l": l_report})
+asyncio.run(core.reply(m_rep2))
+check("takroriy shikoyat hisoblanmaydi", st.count_reports() == before_rep + 1)
+check("takroriy shikoyatga javob",
+      any("allaqachon" in (a or "") for a in m_rep2.answers), m_rep2.answers)
+# bloklangandan keyin javob yuborilmaydi
+SENT.clear()
+m_blk = FakeMsg(1402, {"a": "reply", "l": l_report, "t": "salom"})
+asyncio.run(core.reply(m_blk))
+check("bloklangandan keyin javob ketmaydi",
+      not any(cid == 1401 for cid, _ in SENT)
+      and any("olmaslik" in (a or "") for a in m_blk.answers), m_blk.answers)
 core.ADMIN_ID = ""
 
 # ------------------------- 19. ADMIN ANALITIKA ---------------------------
@@ -419,13 +458,18 @@ check("admin: referral", stats["refs"] >= 1, stats["refs"])
 os.environ["BOT_USERNAME"] = "testbot"
 me2 = api_app._me(1202, {"first_name": "Ref"})
 check("ilova: taklif havolasi", me2["invite"].endswith("start=ref_1202"), me2["invite"])
-check("ilova: taklif soni", me2["refs"] == 1, me2["refs"])
+check("ilova: taklif soni", me2["refs"] == 1 and me2["refsOk"] == 1,
+      (me2["refs"], me2["refsOk"]))
 check("ilova: eslatma holati", me2["remind"] is True)
 check("ilova: eslatmani o'chirish",
       api_app._remind(1202, {"on": False})["remind"] is False
       and st.reminders_on(1202) is False)
 api_app._remind(1202, {"on": True})
 check("ilova: eslatmani yoqish", st.reminders_on(1202) is True)
+check("ilova: 'false' matni o'chiradi",
+      api_app._remind(1202, {"on": "false"})["remind"] is False
+      and st.reminders_on(1202) is False)
+api_app._remind(1202, {"on": True})
 
 print()
 if FAILS:

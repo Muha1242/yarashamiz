@@ -408,18 +408,20 @@ def rem_text(on):
 
 
 def invite_text(u, username):
-    n = st.refs(u)
-    nxt = next((k for k in sorted(st.REF_PREM) if k > n), None)
-    tip = (f"Keyingi sovg'a: <b>{nxt} ta taklif</b> → "
+    n, ok = st.refs(u), st.refs_ok(u)
+    nxt = next((k for k in sorted(st.REF_PREM) if k > ok), None)
+    tip = (f"Keyingi sovg'a: <b>{nxt} ta tasdiqlangan taklif</b> → "
            f"{st.REF_PREM[nxt]} kun premium" if nxt else "Barcha sovg'alarni oldingiz 🎉")
-    link = f"https://t.me/{username}?start=ref_{u}" if username else "—"
+    link = f"https://t.me/{username}?start=ref_{u}" if username else \
+        "Havola mavjud emas — BOT_USERNAME sozlanmagan"
     return ("🎁 <b>Do'stlaringizni taklif qiling</b>\n\n"
             f"Har bir taklif uchun: <b>+{st.REF_BALL} ball</b>\n"
             "3 ta taklif — <b>7 kun premium</b>\n"
             "10 ta taklif — <b>30 kun premium</b>\n"
             "(sovg'a taklif qilgan odam birinchi xat yozganda beriladi)\n\n"
             f"🔗 Sizning havolangiz:\n{link}\n\n"
-            f"👥 Taklif qilganlaringiz: <b>{n}</b>\n{tip}")
+            f"👥 Havolani bosganlar: <b>{n}</b> · "
+            f"birinchi xat yozganlar: <b>{ok}</b>\n{tip}")
 
 
 def qidx(g, step):
@@ -463,6 +465,7 @@ async def start(m: Message, command: CommandObject, state: FSMContext):
             return await m.answer("Sizga xat bor 💌\n\n«" + html.escape(L["text"]) +
                                   "»\n\nTaklif: " +
                                   html.escape(", ".join(L["offers"])))
+        st.seen(lid, m.from_user.id)     # shikoyat qilish huquqi uchun
         payload = base64.urlsafe_b64encode(json.dumps(
             {"t": L["text"], "o": L["offers"], "theme": L["theme"]}).encode()).decode()
         return await m.answer("Sizga xat bor 💌",
@@ -506,6 +509,9 @@ async def reply(m: Message):
     sender = L["sender"]
     if sender == u:
         return await m.answer("Bu o'z xatingiz 🙂")
+    # bloklangan yuboruvchidan kelgan xatga javob berilmaydi
+    if a != "report" and st.is_blocked(u, sender):
+        return await m.answer("Siz bu yuboruvchidan xat olmaslikni tanlagansiz.")
     # xat allaqachon boshqa odam tomonidan qabul qilingan bo'lsa
     if L["receiver"] and L["receiver"] != u:
         return await m.answer("Bu xat allaqachon boshqa odamga tegishli 🙂")
@@ -561,7 +567,10 @@ async def reply(m: Message):
         return await m.answer("Yarashdingiz 🎉 Endi birga o'ynang.",
                               reply_markup=menu_kb(u))
     if a == "report":
-        st.add_report(L["id"], u, sender, L.get("text", ""))
+        if not st.has_seen(L["id"], u):
+            return await m.answer("Xat topilmadi. Uni havola orqali qayta oching.")
+        if not st.add_report(L["id"], u, sender, L.get("text", "")):
+            return await m.answer("Siz bu xatni allaqachon shikoyat qilgansiz.")
         st.block(u, sender)
         if ADMIN_ID:
             try:
@@ -672,9 +681,13 @@ async def reward_ref(u):
         return
     ref, n = got
     st.apply_ref_reward(ref, n)
-    txt = f"🎉 Taklifingizdan yangi odam birinchi xatini yozdi! +{st.REF_BALL} ball"
+    p = st.pair_of(ref)
+    txt = "🎉 Taklifingizdan yangi odam birinchi xatini yozdi!"
+    txt += (f"\n⭐ Juftlikka +{st.REF_BALL} ball qo'shildi." if p else
+            "\n⭐ Juftlik topilgach ball qo'shiladi.")
     if n in st.REF_PREM:
-        txt += (f"\n💎 {n} ta taklif — {st.REF_PREM[n]} kunlik premium sovg'a!")
+        txt += (f"\n💎 {n} ta tasdiqlangan taklif — "
+                f"{st.REF_PREM[n]} kunlik premium sovg'a!")
     try:
         await bot.send_message(ref, txt)
     except Exception:  # noqa: BLE001

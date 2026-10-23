@@ -260,7 +260,16 @@ const CARD_COLORS = {
 };
 
 function wrapLines(ctx, text, maxW) {
-  const words = String(text || '').split(/\s+/);
+  const words = [];
+  String(text || '').split(/\s+/).forEach((w) => {
+    let chunk = '';
+    for (const ch of w) {
+      if (chunk && ctx.measureText(chunk + ch).width > maxW) {
+        words.push(chunk); chunk = ch;
+      } else chunk += ch;
+    }
+    if (chunk) words.push(chunk);
+  });
   const lines = [];
   let line = '';
   words.forEach((w) => {
@@ -289,17 +298,29 @@ function saveCard(v, text, theme) {
   ctx.font = '700 36px Nunito, sans-serif';
   ctx.fillText('💌 Yarashamiz', W / 2, 120);
   ctx.font = '400 30px Nunito, sans-serif';
-  const lines = wrapLines(ctx, text, W - 150).slice(0, 14);
+  const all = wrapLines(ctx, text, W - 150);
+  const lines = all.slice(0, 14);
+  if (all.length > 14) {
+    lines[13] = lines[13].replace(/\s+\S*$/, '') + '…';
+  }
   let y = 250;
   lines.forEach((ln) => { ctx.fillText(ln, W / 2, y); y += 46; });
   ctx.font = '400 22px Nunito, sans-serif';
   ctx.fillStyle = 'rgba(255,243,247,.65)';
   ctx.fillText('t.me — Yarashamiz ❤️', W / 2, H - 70);
 
+  let url;
+  try {
+    url = cv.toDataURL('image/png');
+  } catch (e) {
+    alert('Rasm yaratilmadi, qayta urinib ko‘ring');
+    return;
+  }
+
   const card = h('div', 'card');
   card.appendChild(h('h2', '', '🖼 Rasm tayyor'));
   const img = h('img');
-  img.src = cv.toDataURL('image/png');
+  img.src = url;
   img.style.cssText = 'width:100%;border-radius:14px;margin-top:8px';
   card.appendChild(img);
   card.appendChild(h('p', 'hint', 'Rasmni uzoq bosib «Saqlash»ni tanlang'));
@@ -561,6 +582,8 @@ async function viewMe(v) {
   const rf = h('div', 'card');
   rf.appendChild(h('h2', '', '🎁 Do‘stlarni taklif qilish'));
   rf.appendChild(h('p', '', 'Har bir taklif: +10 ball · 3 ta — 7 kun premium, 10 ta — 30 kun'));
+  rf.appendChild(h('p', 'hint',
+    'Bosganlar: ' + (ME.refs || 0) + ' · Birinchi xat yozganlar: ' + (ME.refsOk || 0)));
   if (ME.invite) {
     const lk = h('p', 'hint', ME.invite);
     lk.style.cssText = 'word-break:break-all;font-size:12px';
@@ -576,6 +599,9 @@ async function viewMe(v) {
       if (tg && tg.openTelegramLink) tg.openTelegramLink(u); else window.open(u);
     };
     rf.appendChild(sh);
+  } else {
+    rf.appendChild(h('p', 'hint',
+      'Havola hozircha mavjud emas (BOT_USERNAME sozlanmagan). Botda /invite dan foydalaning.'));
   }
   const rm = h('button', 'btn btn-ghost',
     ME.remind ? '🔕 Eslatmalarni o‘chirish' : '🔔 Eslatmalarni yoqish');

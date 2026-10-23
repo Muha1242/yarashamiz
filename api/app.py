@@ -72,6 +72,7 @@ def _me(u, usr):
         "mission": core.dq_of_day(),
         "themeCount": len(core.THEMES),
         "refs": st.refs(u),
+        "refsOk": st.refs_ok(u),
         "remind": st.reminders_on(u),
         "invite": invite_link(u),
     }
@@ -321,7 +322,9 @@ def _newletter(u, d):
 def _remind(u, d):
     """Eslatmalarni yoqish/o'chirish."""
     import store as st
-    on = bool(d.get("on"))
+    v = d.get("on")
+    on = (v is True or v == 1 or
+          (isinstance(v, str) and v.strip().lower() in ("1", "true", "on", "yes")))
     st.set_reminders(u, on)
     return {"ok": True, "remind": on}
 
