@@ -117,8 +117,10 @@ THEMES = [
     ("ocean", "Okean \U0001F30A"), ("royal", "Shohona \U0001F451"),
     ("aurora", "Shimol yog\'dusi \U0001F30C"), ("blossom", "Gulzor \U0001F338"),
     ("velvet", "Baxmal \U0001F377"), ("sky", "Osmon \u2601\ufe0f"),
+    ("neon", "Neon \u2728"), ("paper", "Qog'oz \U0001F4DC"),
 ]
-PREMIUM_THEMES = {"night", "gold", "ocean", "royal", "aurora", "blossom", "velvet", "sky"}
+PREMIUM_THEMES = {"night", "gold", "ocean", "royal", "aurora", "blossom", "velvet",
+                  "sky", "neon", "paper"}
 
 AI_SIT = {"sorry": "Kechirim so'ramoqchiman", "miss": "Sog'indim", "love": "Sevgi izhori",
           "thank": "Minnatdorchilik", "date": "Uchrashuvga taklif"}

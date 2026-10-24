@@ -86,14 +86,26 @@ Yangi mavzu g'oyalari: «Binafsha tun», «Qog'oz» (texture), «Yulduzli osmon�
 ```bash
 node --check mini_app/app.js && node --check public/mini_app/app.js
 diff -r mini_app public/mini_app        # farq bo'lmasin
-python3 tests/smoke.py                  # 98/98
+python3 tests/smoke.py                  # 102/102
 ```
 Qo'lda: 360×640 va 390×844 da yozish/ochish/o'yin ekranlari; yorqin mavzuda
 matn o'qilishi; iOS safe-area; konvert animatsiyasi; PNG karta.
 
-## 8. Hozirgi holat
+## 8. Hozirgi holat (v4 dizayn bajarildi)
 
-- «Marmar» mavzusi qo'shildi (bepul): oq-ko'k qog'oz, to'q matn, PNG kartada
-  ham to'g'ri rang.
-- Qolgan dizayn ishlari: umumiy palitra, konvert sahnasi, o'yin kartalari,
-  «Bog'im» illustratsiyasi, ikonkalar.
+- **Yangi vizual tizim**: yangilangan palitra/tokenlar, gradient sarlavhalar,
+  shisha kartalar, yorqin tugma, tablar glow bilan, o'yin/xotira/premium
+  kartalari, 3D konvertga **mum muhr** va chuqurroq soyalar, `prefers-reduced-motion`.
+- **15 shablon** (5 bepul + 10 premium): yangi «Marmar 🤍» (bepul),
+  «Neon ✨» va «Qog‘oz 📜» (premium). Har birida: matn rangi, PNG karta rangi,
+  `--sw` rangli nishon (`.tbtn[data-theme]::before`).
+- Dizayn tanlashda har mavzu yonida **rangli doira** ko'rinadi.
+- Testlar: `python3 tests/smoke.py` → **102/102**; CSS `tinycss2` bilan
+  sintaksis tekshiruvidan o'tadi (212 qoida, 0 xato).
+
+### Keyingi dizayn g‘oyalari (ixtiyoriy)
+- Konvert sahnasiga yulduz/porlash zarralari (canvas emas, CSS).
+- «Bog'im» uchun SVG o'simlik bosqichlari (emoji o'rniga).
+- Xat varaqlariga nozik chiziqlar/tekstura.
+- Yangi premium mavzular: «Binafsha tun», «Suv rang», «Oltin ramka».
+

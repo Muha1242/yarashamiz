@@ -502,21 +502,40 @@ check("'on' yo'q bo'lsa o'chirilgan qoladi",
       api_app._remind(4702, {})["remind"] is False)
 
 
-# ---------------------- 21. YANGI DIZAYN: MARMAR -------------------------
+# ------------------- 21. DIZAYN TIZIMI VA MAVZULAR -----------------------
 themes = dict(core.THEMES)
-check("marmar dizayni qo'shilgan", "marmar" in themes)
-check("marmar bepul", "marmar" not in core.PREMIUM_THEMES
-      and core.theme_ok("marmar", 99999) is True)
+ids = [t for t, _ in core.THEMES]
+check("yangi mavzular qo'shilgan",
+      {"marmar", "neon", "paper"} <= set(ids), ids)
+check("marmar bepul, neon/paper premium",
+      "marmar" not in core.PREMIUM_THEMES
+      and core.theme_ok("marmar", 99999) is True
+      and {"neon", "paper"} <= core.PREMIUM_THEMES
+      and core.theme_ok("neon", 99999) is False)
 form = api_app._form(101, {})
-check("ilova marmarni ko'rsatadi",
-      any(t["id"] == "marmar" and t["prem"] is False and t["ok"]
-          for t in form["themes"]), form["themes"][-1] if form["themes"] else None)
+check("ilova barcha mavzularni ko'rsatadi",
+      {t["id"] for t in form["themes"]} == set(ids), len(form["themes"]))
 js = open(os.path.join(ROOT, "mini_app/app.js"), encoding="utf-8").read()
 css = open(os.path.join(ROOT, "mini_app/style.css"), encoding="utf-8").read()
-check("JS: marmar nomi va karta rangi",
-      "marmar" in js and "Marmar" in js and "CARD_INK" in js)
-check("CSS: marmar uslubi",
-      ".card.theme-marmar" in css and ".pl-inner.theme-marmar" in css)
+
+# har mavzu: nom, PNG rangi, qog'oz va karta uslubi, swatch
+missing = [t for t in ids if f"{t}:" not in js]
+check("JS: har mavzuda nom va rang bor", not missing, missing)
+missing_css = [t for t in ids if t != "classic"
+               and (f".pl-inner.theme-{t}" not in css or f".card.theme-{t}" not in css)]
+check("CSS: har mavzuda karta va qog'oz uslubi", not missing_css, missing_css)
+missing_sw = [t for t in ids if f'.tbtn[data-theme="{t}"]' not in css]
+check("CSS: har mavzuda rangli nishon", not missing_sw, missing_sw)
+check("yorqin mavzular uchun to'q matn",
+      "CARD_INK" in js and "marmar:" in js.split("CARD_INK")[1]
+      and "paper:" in js.split("CARD_INK")[1])
+check("CSS: reduced-motion qo'llab-quvvatlanadi",
+      "prefers-reduced-motion" in css)
+
+# CSS qavslari muvozanati (sintaksis tekshiruvi)
+check("CSS qavslari muvozanatli",
+      css.count("{") == css.count("}") and css.count("(") == css.count(")"))
+
 
 print()
 if FAILS:

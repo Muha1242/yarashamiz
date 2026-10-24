@@ -13,7 +13,7 @@ Sevishganlarni yarashtirish uchun Telegram boti — **Vercel'da bepul** ishlaydi
 
 | Bo'lim | Tafsilot |
 |---|---|
-| ✍️ **Xat yozish** | 300 belgigacha, **13 shablon** (5 bepul + 8 premium, yangi «Marmar 🤍») |
+| ✍️ **Xat yozish** | 300 belgigacha, **15 shablon** (5 bepul + 10 premium; yangi «Marmar 🤍», «Neon ✨», «Qog'oz 📜») |
 | ✨ **AI yordamchi** | Gemini bilan haqiqiy xat: *uzr, sog'inch, sevgi, minnatdorchilik, uchrashuv* |
 | ❤️ **Juftlik** | Mini App'da «Yarashamiz» bosilsa ikkalasi ham xabar oladi |
 | 🎮 **O'yinlar (5 xil)** | *A yoki B*, *Kim ko'proq?*, *Kunlik missiya*, **💬 Kunlik savol**, **Sevgi kvizi** 💎 |
@@ -112,7 +112,7 @@ https://<loyiha>.vercel.app/api/setup?s=<SETUP_KEY>
 | Yillik | **500 ⭐** | 425 kun (1 yil + 2 oy) |
 | Juftlikka sovg'a | **80 ⭐** | 30 kun |
 
-**Premium beradi:** cheksiz xat · AI yordamchi · 8 premium shablon · Sevgi kvizi · cheksiz xotiralar.
+**Premium beradi:** cheksiz xat · AI yordamchi · 10 premium shablon · Sevgi kvizi · cheksiz xotiralar.
 
 **Sozlash:** @BotFather → `/mybots` → botni tanlang → **Payments** → **Telegram Stars** yoqilgan bo'lsin.
 

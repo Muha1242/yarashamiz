@@ -46,6 +46,7 @@ const THEME_NAMES = {
   marmar: 'Marmar 🤍',
   night: 'Tun 🌙', gold: 'Oltin ⭐', ocean: 'Okean 🌊', royal: 'Shohona 👑',
   aurora: "Shimol yog'dusi 🌌", blossom: 'Gulzor 🌸', velvet: 'Baxmal 🍷', sky: 'Osmon ☁️',
+  neon: 'Neon ✨', paper: 'Qog‘oz 📜',
 };
 
 /* 3D konvert + ichidagi qog'oz (xat) */
@@ -259,9 +260,10 @@ const CARD_COLORS = {
   ocean: ['#0a2a4a', '#04101c'], royal: ['#3a1050', '#140620'],
   aurora: ['#103a3a', '#061414'], blossom: ['#4a1030', '#1a0612'],
   velvet: ['#3a0a1a', '#14040a'], sky: ['#1a2a4a', '#080d18'],
+  neon: ['#150a33', '#05030f'], paper: ['#fbf5e8', '#e6d6b6'],
 };
 // och fonli dizaynlarda matn rangi
-const CARD_INK = { marmar: '#243044' };
+const CARD_INK = { marmar: '#243044', paper: '#4a3520' };
 
 function wrapLines(ctx, text, maxW) {
   const words = [];
@@ -573,7 +575,7 @@ async function viewMe(v) {
   pr.appendChild(h('h2', '', '💎 Premium'));
   if (ME.prem) pr.appendChild(h('p', '', 'Faol — ' + ME.premDays + ' kun qoldi'));
   else {
-    pr.appendChild(h('p', '', 'Cheksiz xat · AI yordamchi · 8 shablon · Sevgi kvizi'));
+    pr.appendChild(h('p', '', 'Cheksiz xat · AI yordamchi · 10 shablon · Sevgi kvizi'));
     const pz = h('div', 'price');
     const pm = h('div'); pm.appendChild(h('b', '', ME.prices.month + ' ⭐')); pm.appendChild(h('small', '', '1 oy'));
     const py = h('div'); py.appendChild(h('b', '', ME.prices.year + ' ⭐')); py.appendChild(h('small', '', '1 yil + 2 oy'));
