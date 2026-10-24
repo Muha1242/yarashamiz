@@ -137,6 +137,9 @@ body::before{content:"";position:fixed;inset:-20%;pointer-events:none;z-index:0;
 .card.theme-love{background:rgba(255,77,109,.16);border-color:rgba(255,120,140,.4)}
 .card.theme-sunset{background:linear-gradient(150deg,rgba(255,140,90,.22),rgba(255,90,140,.13));border-color:rgba(255,150,100,.4)}
 .card.theme-mint{background:linear-gradient(150deg,rgba(110,230,180,.18),rgba(90,200,160,.11));border-color:rgba(120,230,190,.35)}
+.card.theme-marmar{background:linear-gradient(150deg,rgba(248,251,255,.95),rgba(212,225,245,.88));border-color:rgba(232,240,252,.7);color:#243044}
+.card.theme-marmar h2{color:#3a4a66}
+.card.theme-marmar .letter-text{color:#243044}
 .card.theme-night{background:rgba(20,26,54,.65);border-color:rgba(90,110,220,.4)}
 .card.theme-gold{background:rgba(70,54,20,.55);border-color:rgba(255,215,0,.35)}
 .card.theme-ocean{background:linear-gradient(150deg,rgba(40,120,220,.22),rgba(30,180,200,.13));border-color:rgba(80,170,240,.4)}
@@ -164,6 +167,11 @@ body::before{content:"";position:fixed;inset:-20%;pointer-events:none;z-index:0;
 .pl-inner.theme-love{background:radial-gradient(circle at 30% 22%,#ffe6ee,#ffc2d6 75%)}
 .pl-inner.theme-sunset{background:linear-gradient(160deg,#ffe0c2,#ffb3c8)}
 .pl-inner.theme-mint{background:linear-gradient(160deg,#e6fff4,#c2f0dc)}
+.pl-inner.theme-marmar{background:
+  radial-gradient(circle at 22% 18%,rgba(255,255,255,.96),transparent 42%),
+  radial-gradient(circle at 78% 72%,rgba(198,214,240,.85),transparent 46%),
+  linear-gradient(160deg,#fdfefe,#eaf0fa 55%,#d3dff1);color:#243044}
+.pl-inner.theme-marmar .pl-text{color:#243044}
 .pl-inner.theme-night{background:linear-gradient(160deg,#2b3566,#151c3d);color:#e9edff}
 .pl-inner.theme-night .pl-text{color:#e9edff}
 .pl-inner.theme-gold{background:linear-gradient(160deg,#fff6d6,#f2d48a)}

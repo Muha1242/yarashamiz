@@ -111,6 +111,7 @@ THEMES = [
     # --- bepul ---
     ("classic", "Klassik"), ("love", "Sevgi \u2764\ufe0f"),
     ("sunset", "Quyosh \U0001F305"), ("mint", "Yalpiz \U0001F343"),
+    ("marmar", "Marmar \U0001F90D"),
     # --- premium \U0001F48E ---
     ("night", "Tun \U0001F319"), ("gold", "Oltin \u2b50"),
     ("ocean", "Okean \U0001F30A"), ("royal", "Shohona \U0001F451"),
@@ -572,7 +573,11 @@ async def reply(m: Message):
             return await m.answer("Xat topilmadi. Uni havola orqali qayta oching.")
         if not st.add_report(L["id"], u, sender, L.get("text", "")):
             return await m.answer("Siz bu xatni allaqachon shikoyat qilgansiz.")
-        st.block(u, sender)
+        # faqat haqiqiy qabul qiluvchi uchun blok; begona (forward) shikoyat
+        # yuboruvchini bloklamaydi — faqat admin tekshiradi
+        accepted = L["receiver"] == u
+        if accepted:
+            st.block(u, sender)
         if ADMIN_ID:
             try:
                 await bot.send_message(
@@ -583,8 +588,11 @@ async def reply(m: Message):
                     f"Xat #{L['id']}: {html.escape(str(L.get('text') or '')[:200])}")
             except Exception:  # noqa: BLE001
                 pass
-        return await m.answer("⚠️ Shikoyat qabul qilindi. Bu yuboruvchidan boshqa "
-                              "xat kelmaydi va admin xabardor qilindi.")
+        return await m.answer(
+            "⚠️ Shikoyat qabul qilindi. Bu yuboruvchidan boshqa xat kelmaydi va "
+            "admin xabardor qilindi." if accepted else
+            "⚠️ Shikoyat qabul qilindi. Admin tekshiradi; bu yuboruvchidan xat "
+            "qabul qilmasangiz bo'ladi.")
     if a == "later":
         await bot.send_message(sender, "Javob: hali tayyor emas, keyinroq ⏳")
         return await m.answer("Xabar yuborildi ⏳")
@@ -678,11 +686,10 @@ def variants(sit, words):
 
 async def reward_ref(u):
     """Foydalanuvchi birinchi xatini yozganda referrerni mukofotlaydi."""
-    got = st.claim_ref(u)
+    got = st.claim_reward(u)
     if not got:
         return
     ref, n = got
-    st.apply_ref_reward(ref, n)
     p = st.pair_of(ref)
     txt = "🎉 Taklifingizdan yangi odam birinchi xatini yozdi!"
     txt += (f"\n⭐ Juftlikka +{st.REF_BALL} ball qo'shildi." if p else

@@ -308,9 +308,7 @@ def _newletter(u, d):
 
     lid = st.add_letter(u, text, offers, theme)
     st.touch(u)
-    got = st.claim_ref(u)
-    if got:                         # taklif qilgan odamga mukofot
-        st.apply_ref_reward(*got)
+    st.claim_reward(u)              # claim + ball/premium birga (atomar)
     uname = bot_username()
     left = None if prem else max(0, core.DAILY_LIMIT -
                                  st.count_today_letters(u, st.day_start_ts()))

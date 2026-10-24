@@ -370,10 +370,11 @@ def refs_ok(u):
     return int(r.get(f"refs_ok:{u}") or 0)
 
 
-def claim_ref(u):
-    """Birinchi xat yozilganda referrerni qaytaradi (bir marta).
+def claim_reward(u):
+    """Referral mukofotini atomar qo'llaydi (claim + ball/premium birga).
 
     Qaytaradi: (referrer, tasdiqlangan_takliflar_soni) yoki None.
+    Agar mukofot qo'llanmasa — holat qaytariladi va keyingi xatda qayta uriniladi.
     """
     ref = r.get(f"ref:{u}")
     if not ref:
@@ -384,7 +385,17 @@ def claim_ref(u):
         return None
     if not r.set(f"ref_done:{u}", 1, nx=True):
         return None
-    return ref, r.incr(f"refs_ok:{ref}")
+    n = int(r.incr(f"refs_ok:{ref}"))
+    try:
+        apply_ref_reward(ref, n)
+    except Exception:  # noqa: BLE001
+        try:
+            r.delete(f"ref_done:{u}")
+            r.decr(f"refs_ok:{ref}")
+        except Exception:  # noqa: BLE001
+            pass
+        return None
+    return ref, n
 
 
 def apply_ref_reward(ref, n):

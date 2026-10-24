@@ -81,7 +81,7 @@ lid = st.add_letter(101, "Salom, kechir meni", ["Kofe ichamiz"], "classic")
 check("xat yaratildi", st.letter(lid)["text"] == "Salom, kechir meni")
 check("bo'sh id -> None", st.letter(None) is None and st.letter("") is None)
 check("bugungi xatlar = 1", st.count_today_letters(101, 0) == 1)
-st.add_letter(101, "Yana bir xat", ["Sayr qilamiz"], "love")
+lid2 = st.add_letter(101, "Yana bir xat", ["Sayr qilamiz"], "love")
 check("bugungi xatlar = 2", st.count_today_letters(101, 0) == 2)
 check("kelajakdagi chegara -> 0", st.count_today_letters(101, time.time() + 10) == 0)
 
@@ -313,6 +313,7 @@ check("chala xat o'qiladi", bool(chala) and chala["text"] == ""
 saved_now = st.now
 st.now = lambda: dt.datetime(2026, 10, 24, 0, 10)      # 00:10 Toshkent
 start_ts = st.day_start_ts()
+st.r.hset(f"letter:{lid2}", "ts", start_ts - 60)       # ikkalasi ham kechagi
 st.r.hset(f"letter:{lid}", "ts", start_ts + 60)
 check("yarim tundan keyingi xat sanaladi", st.count_today_letters(101, start_ts) == 1)
 st.r.hset(f"letter:{lid}", "ts", start_ts - 60)
@@ -437,20 +438,32 @@ st.seen(l_report, 1402)
 m_rep = FakeMsg(1402, {"a": "report", "l": l_report})
 asyncio.run(core.reply(m_rep))
 check("shikoyat yozildi", st.count_reports() == before_rep + 1)
-check("shikoyat qilgan bloklandi", st.is_blocked(1402, 1401))
+check("qabul qilinmagan xatda blok yo'q (begona forward)",
+      st.is_blocked(1402, 1401) is False)
 check("adminga shikoyat xabari ketdi",
       any(cid == 424242 and "Shikoyat" in txt for cid, txt in SENT), SENT)
 check("shikoyatga javob berildi",
-      any("Shikoyat qabul" in (a or "") for a in m_rep.answers), m_rep.answers)
+      any("tekshiradi" in (a or "") for a in m_rep.answers), m_rep.answers)
 # takroriy shikoyat hisoblanmaydi
 m_rep2 = FakeMsg(1402, {"a": "report", "l": l_report})
 asyncio.run(core.reply(m_rep2))
 check("takroriy shikoyat hisoblanmaydi", st.count_reports() == before_rep + 1)
 check("takroriy shikoyatga javob",
       any("allaqachon" in (a or "") for a in m_rep2.answers), m_rep2.answers)
+
+# qabul qilingan xat shikoyati -> blok
+l_yes = st.add_letter(1401, "yana bir xat", ["Kino"], "classic")
+st.seen(l_yes, 1402)
+st.set_receiver(l_yes, 1402)
+m_rep3 = FakeMsg(1402, {"a": "report", "l": l_yes})
+asyncio.run(core.reply(m_rep3))
+check("qabul qilingan xatda blok ishlaydi", st.is_blocked(1402, 1401) is True)
+check("blok haqida javob",
+      any("boshqa xat kelmaydi" in (a or "") for a in m_rep3.answers), m_rep3.answers)
+
 # bloklangandan keyin javob yuborilmaydi
 SENT.clear()
-m_blk = FakeMsg(1402, {"a": "reply", "l": l_report, "t": "salom"})
+m_blk = FakeMsg(1402, {"a": "reply", "l": l_yes, "t": "salom"})
 asyncio.run(core.reply(m_blk))
 check("bloklangandan keyin javob ketmaydi",
       not any(cid == 1401 for cid, _ in SENT)
@@ -487,6 +500,23 @@ check("'on' yo'q bo'lsa holat o'zgarmaydi",
 st.set_reminders(4702, False)
 check("'on' yo'q bo'lsa o'chirilgan qoladi",
       api_app._remind(4702, {})["remind"] is False)
+
+
+# ---------------------- 21. YANGI DIZAYN: MARMAR -------------------------
+themes = dict(core.THEMES)
+check("marmar dizayni qo'shilgan", "marmar" in themes)
+check("marmar bepul", "marmar" not in core.PREMIUM_THEMES
+      and core.theme_ok("marmar", 99999) is True)
+form = api_app._form(101, {})
+check("ilova marmarni ko'rsatadi",
+      any(t["id"] == "marmar" and t["prem"] is False and t["ok"]
+          for t in form["themes"]), form["themes"][-1] if form["themes"] else None)
+js = open(os.path.join(ROOT, "mini_app/app.js"), encoding="utf-8").read()
+css = open(os.path.join(ROOT, "mini_app/style.css"), encoding="utf-8").read()
+check("JS: marmar nomi va karta rangi",
+      "marmar" in js and "Marmar" in js and "CARD_INK" in js)
+check("CSS: marmar uslubi",
+      ".card.theme-marmar" in css and ".pl-inner.theme-marmar" in css)
 
 print()
 if FAILS:

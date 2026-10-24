@@ -43,6 +43,7 @@ document.querySelectorAll('.tabs button').forEach((b) => (b.onclick = () => { ha
 /* ================= 1. XAT ================= */
 const THEME_NAMES = {
   classic: 'Klassik', love: 'Sevgi ❤️', sunset: 'Quyosh 🌅', mint: 'Yalpiz 🍃',
+  marmar: 'Marmar 🤍',
   night: 'Tun 🌙', gold: 'Oltin ⭐', ocean: 'Okean 🌊', royal: 'Shohona 👑',
   aurora: "Shimol yog'dusi 🌌", blossom: 'Gulzor 🌸', velvet: 'Baxmal 🍷', sky: 'Osmon ☁️',
 };
@@ -253,11 +254,14 @@ function letterCard(id, text, offers, theme) {
 const CARD_COLORS = {
   classic: ['#2a0f3d', '#12061c'], love: ['#5a1030', '#2a0716'],
   sunset: ['#5a2a10', '#1f0d06'], mint: ['#0f3d2e', '#06140f'],
+  marmar: ['#f6f9ff', '#c9d7ef'],
   night: ['#101a3d', '#060814'], gold: ['#4a3a10', '#171105'],
   ocean: ['#0a2a4a', '#04101c'], royal: ['#3a1050', '#140620'],
   aurora: ['#103a3a', '#061414'], blossom: ['#4a1030', '#1a0612'],
   velvet: ['#3a0a1a', '#14040a'], sky: ['#1a2a4a', '#080d18'],
 };
+// och fonli dizaynlarda matn rangi
+const CARD_INK = { marmar: '#243044' };
 
 function wrapLines(ctx, text, maxW) {
   const words = [];
@@ -288,13 +292,15 @@ function saveCard(v, text, theme) {
   const ctx = cv.getContext('2d');
   if (!ctx) return;
   const c = CARD_COLORS[theme] || CARD_COLORS.classic;
+  const ink = CARD_INK[theme] || '#fff3f7';
   const g = ctx.createLinearGradient(0, 0, W, H);
   g.addColorStop(0, c[0]); g.addColorStop(1, c[1]);
   ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
-  ctx.strokeStyle = 'rgba(255,255,255,.22)'; ctx.lineWidth = 2;
+  ctx.strokeStyle = theme === 'marmar' ? 'rgba(36,48,68,.18)' : 'rgba(255,255,255,.22)';
+  ctx.lineWidth = 2;
   ctx.strokeRect(30, 30, W - 60, H - 60);
   ctx.textAlign = 'center';
-  ctx.fillStyle = '#fff3f7';
+  ctx.fillStyle = ink;
   ctx.font = '700 36px Nunito, sans-serif';
   ctx.fillText('💌 Yarashamiz', W / 2, 120);
   ctx.font = '400 30px Nunito, sans-serif';
@@ -306,7 +312,7 @@ function saveCard(v, text, theme) {
   let y = 250;
   lines.forEach((ln) => { ctx.fillText(ln, W / 2, y); y += 46; });
   ctx.font = '400 22px Nunito, sans-serif';
-  ctx.fillStyle = 'rgba(255,243,247,.65)';
+  ctx.fillStyle = theme === 'marmar' ? 'rgba(36,48,68,.6)' : 'rgba(255,243,247,.65)';
   ctx.fillText('t.me — Yarashamiz ❤️', W / 2, H - 70);
 
   let url;
@@ -567,7 +573,7 @@ async function viewMe(v) {
   pr.appendChild(h('h2', '', '💎 Premium'));
   if (ME.prem) pr.appendChild(h('p', '', 'Faol — ' + ME.premDays + ' kun qoldi'));
   else {
-    pr.appendChild(h('p', '', 'Cheksiz xat · AI yordamchi · 4 shablon · Sevgi kvizi'));
+    pr.appendChild(h('p', '', 'Cheksiz xat · AI yordamchi · 8 shablon · Sevgi kvizi'));
     const pz = h('div', 'price');
     const pm = h('div'); pm.appendChild(h('b', '', ME.prices.month + ' ⭐')); pm.appendChild(h('small', '', '1 oy'));
     const py = h('div'); py.appendChild(h('b', '', ME.prices.year + ' ⭐')); py.appendChild(h('small', '', '1 yil + 2 oy'));
