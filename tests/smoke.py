@@ -80,6 +80,17 @@ class FakeState:
 lid = st.add_letter(101, "Salom, kechir meni", ["Kofe ichamiz"], "classic")
 check("xat yaratildi", st.letter(lid)["text"] == "Salom, kechir meni")
 check("bo'sh id -> None", st.letter(None) is None and st.letter("") is None)
+check("buzilgan id crash qilmaydi", st.letter("abc") is None and st.letter("-5") is None)
+check("imzosiz havola rad etiladi",
+      st.letter_by_code(str(lid)) is None and st.letter_by_code("") is None)
+check("imzolangan havola ishlaydi",
+      (st.letter_by_code(st.link_code(lid)) or {}).get("id") == lid)
+check("boshqa xat kodi mos kelmaydi", st.code_ok(lid, st.link_code(lid + 1)) is False)
+_code = st.link_code(lid)
+check("havola kodi Telegram alfavitida",
+      len(_code) <= 64 and all(c.isalnum() or c in "_-" for c in _code), _code)
+check("non-ASCII imzo crash qilmaydi",
+      st.lid_from_code("1_ñ") is None and st.code_ok(lid, "1_ñ") is False)
 check("bugungi xatlar = 1", st.count_today_letters(101, 0) == 1)
 st.add_letter(101, "Yana bir xat", ["Sayr qilamiz"], "love")
 check("bugungi xatlar = 2", st.count_today_letters(101, 0) == 2)
@@ -117,7 +128,7 @@ check("mavjud bo'lmagan xat -> none",
 # --------------------------- 5. "YARASHAMIZ" -----------------------------
 st.add_pair(202, 203)      # 202 allaqachon juftlikda
 l1 = st.add_letter(201, "Kechir", ["Kino"], "classic")
-m = FakeMsg(202, {"a": "yes", "l": l1, "o": "Kino"})
+m = FakeMsg(202, {"a": "yes", "l": l1, "o": "Kino", "k": st.link_code(l1)})
 SENT.clear()
 asyncio.run(core.reply(m))
 check("juftlikda bo'lgan odam qayta juftlanmaydi",
@@ -126,13 +137,13 @@ check("xat qabul qiluvchisi o'zgarmadi", st.letter(l1)["receiver"] == 0)
 check("yuboruvchi ham juftlanmadi", st.pair_of(201) is None)
 
 l2 = st.add_letter(301, "Yarashamizmi?", ["Sayr"], "love")
-m2 = FakeMsg(302, {"a": "yes", "l": l2, "o": "Sayr"})
+m2 = FakeMsg(302, {"a": "yes", "l": l2, "o": "Sayr", "k": st.link_code(l2)})
 asyncio.run(core.reply(m2))
 check("erkin foydalanuvchi juftlashdi", st.pair_of(302) is not None
       and st.pair_of(301) is not None)
 check("xat qabul qiluvchisi yozildi", st.letter(l2)["receiver"] == 302)
 
-m3 = FakeMsg(303, {"a": "yes", "l": l2, "o": "Sayr"})
+m3 = FakeMsg(303, {"a": "yes", "l": l2, "o": "Sayr", "k": st.link_code(l2)})
 asyncio.run(core.reply(m3))
 check("qabul qilingan xatni boshqa odam olmaydi",
       any("allaqachon" in x for x in m3.answers), m3.answers)
@@ -187,8 +198,16 @@ check("holatda bo'lsa yo'l ko'rsatiladi", bool(m5.answers) and "/cancel" in m5.a
 
 # ----------------------------- 10. SOVG'A --------------------------------
 token = st.make_gift(30)
+check("sovg'a TTL oladi", 0 < st.r.ttl(f"gift:{token}") <= 90 * 86400,
+      st.r.ttl(f"gift:{token}"))
 check("sovg'a ishlatildi", st.use_gift(token, 801) == 30 and st.is_prem(801))
 check("sovg'a qayta ishlatilmaydi", st.use_gift(token, 802) == 0 and not st.is_prem(802))
+check("yaroqsiz sovg'a -> 0", st.use_gift("yoq-bunday-token", 803) == 0
+      and st.use_gift(None, 803) == 0)
+old_gift = st.make_gift(30)
+st.r.hset(f"gift:{old_gift}", "used", 1)     # deploydan oldin ishlatilgan sovg'a
+check("eski ishlatilgan sovg'a qayta berilmaydi",
+      st.use_gift(old_gift, 804) == 0 and not st.is_prem(804))
 
 # --------------------------- 11. WEBAPP YO'Q -----------------------------
 saved = core.URL
@@ -249,10 +268,25 @@ async def flow():
     letters = st.my_library(9001)
     assert letters and letters[0]["text"] == "Kechir meni, xato qildim"
     assert any("start=l_" in (s or "") for s in out.answers), out.answers[-2:]
+    link_txt = [s for s in out.answers if "start=l_" in (s or "")][-1]
+    flow_code = link_txt.split("start=l_", 1)[1].strip()
+    assert st.letter_by_code(flow_code), flow_code
+    kb = core.open_letter_kb(letters[0]["id"], "payload", flow_code)
+    url = kb.keyboard[0][0].web_app.url
+    assert "&l=" in url and "&k=" + flow_code in url, url
 
 
 asyncio.run(flow())
 check("xat yozish oqimi (FSM) ishlaydi", True)
+
+# /link — eski raqamli havolalar o'rniga yangi imzolangan havola
+lc = FakeOut(9001)
+asyncio.run(core.link_cmd(lc))
+check("link buyrug'i imzolangan havola beradi",
+      any("start=l_" in (a or "") for a in lc.answers), lc.answers)
+if lc.answers:
+    _lc = lc.answers[0].split("start=l_", 1)[-1].split()[0]
+    check("link havolasi xatni topadi", bool(st.letter_by_code(_lc)), _lc)
 
 # kunlik limit
 for i in range(core.DAILY_LIMIT):
@@ -269,11 +303,58 @@ l3 = st.add_letter(9101, "Seni sog'indim", ["Kofe"], "love")
 from aiogram.filters import CommandObject  # noqa: E402
 
 own = FakeOut(9101)
-asyncio.run(core.start(own, CommandObject(prefix="/", command="start", args=f"l_{l3}"),
+asyncio.run(core.start(own, CommandObject(prefix="/", command="start",
+                                          args=f"l_{st.link_code(l3)}"),
                        FSMContext(storage=core.dp.storage,
                                   key=StorageKey(bot_id=123456, chat_id=9101, user_id=9101))))
 check("o'z havolasini ochsa ogohlantiriladi",
       any("sizning xatingiz" in (a or "") for a in own.answers), own.answers)
+
+# raqamni taxmin qilib (imzosiz) begona xatni ochib bo'lmaydi
+guess = FakeOut(9199)
+asyncio.run(core.start(guess, CommandObject(prefix="/", command="start", args=f"l_{l3}"),
+                       FSMContext(storage=core.dp.storage,
+                                  key=StorageKey(bot_id=123456, chat_id=9199, user_id=9199))))
+check("imzosiz havola bilan begona xat ochilmaydi",
+      any("topilmadi" in (a or "") for a in guess.answers), guess.answers)
+
+# xat havolasini ochish yangi odamni "eski" qilib qo'ymaydi (referral uchun)
+st.r.delete("streak:9701")
+asyncio.run(core.start(
+    FakeOut(9701),
+    CommandObject(prefix="/", command="start", args=f"l_{st.link_code(l3)}"),
+    FSMContext(storage=core.dp.storage,
+               key=StorageKey(bot_id=123456, chat_id=9701, user_id=9701))))
+check("xat havolasi referral huquqini yo'qotmaydi",
+      not st.r.exists("streak:9701") and not st.r.exists("mine:9701"))
+
+# web_app_data ham imzo talab qiladi (id'ni bilib qo'yib bo'lmaydi)
+st.add_pair(9201, 9202)
+l_sec = st.add_letter(9201, "Maxfiy xat", ["Kino ko'ramiz"], "classic")
+m_nokey = FakeMsg(9202, {"a": "yes", "l": l_sec, "o": "Kino ko'ramiz"})
+asyncio.run(core.reply(m_nokey))
+check("kod bo'lmasa 'yes' rad etiladi",
+      st.letter(l_sec)["receiver"] == 0
+      and any("noto'g'ri" in (a or "") for a in m_nokey.answers), m_nokey.answers)
+
+# eski tugma (k'siz) — xatni haqiqatan ko'rgan foydalanuvchi uchun ishlaydi
+l_legacy = st.add_letter(9251, "Eski havola", ["Kino ko'ramiz"], "classic")
+st.seen(l_legacy, 9252)
+m_legacy = FakeMsg(9252, {"a": "yes", "l": l_legacy, "o": "Kino ko'ramiz"})
+asyncio.run(core.reply(m_legacy))
+check("eski tugma ko'rgan odamda ishlaydi",
+      st.letter(l_legacy)["receiver"] == 9252, st.letter(l_legacy))
+
+# imzo to'g'ri bo'lsa ham, taklif matni xatdagi ro'yxatdan tekshiriladi
+l_off = st.add_letter(9301, "Kino?", ["Kino ko'ramiz"], "classic")
+m_off = FakeMsg(9302, {"a": "yes", "l": l_off, "o": "<b>soxta</b>",
+                       "k": st.link_code(l_off)})
+SENT.clear()
+asyncio.run(core.reply(m_off))
+off_msgs = [t for cid, t in SENT if cid == 9301 and "yarashamiz" in t]
+check("soxta taklif matni o'tmaydi",
+      bool(off_msgs) and "Kino" in off_msgs[0] and "soxta" not in off_msgs[0],
+      off_msgs)
 
 
 # --------------------- 14. MINI APP AUTENTIFIKATSIYASI --------------------
@@ -313,6 +394,9 @@ check("chala xat o'qiladi", bool(chala) and chala["text"] == ""
 saved_now = st.now
 st.now = lambda: dt.datetime(2026, 10, 24, 0, 10)      # 00:10 Toshkent
 start_ts = st.day_start_ts()
+# vaqtga bog'liq bo'lmasligi uchun 101 ning boshqa xatlarini kechagi qilamiz
+for _x in st.r.smembers("mine:101"):
+    st.r.hset(f"letter:{_x}", "ts", start_ts - 60)
 st.r.hset(f"letter:{lid}", "ts", start_ts + 60)
 check("yarim tundan keyingi xat sanaladi", st.count_today_letters(101, start_ts) == 1)
 st.r.hset(f"letter:{lid}", "ts", start_ts - 60)
@@ -324,9 +408,9 @@ st.now = saved_now
 st.add_pair(1001, 1002)
 l4 = st.add_letter(1001, "Yarashamizmi?", ["Kino"], "classic")
 SENT.clear()
-first_yes = FakeMsg(1002, {"a": "yes", "l": l4, "o": "Kino"})
+first_yes = FakeMsg(1002, {"a": "yes", "l": l4, "o": "Kino", "k": st.link_code(l4)})
 asyncio.run(core.reply(first_yes))
-second_yes = FakeMsg(1002, {"a": "yes", "l": l4, "o": "Kino"})
+second_yes = FakeMsg(1002, {"a": "yes", "l": l4, "o": "Kino", "k": st.link_code(l4)})
 asyncio.run(core.reply(second_yes))
 sender_msgs = [t for cid, t in SENT if cid == 1001 and "yarashamiz" in t]
 check("takroriy 'yes' yuboruvchiga bir marta xabar beradi", len(sender_msgs) == 1,
@@ -393,6 +477,28 @@ check("tasdiqlangan takliflar 10", st.refs_ok(2001) == 10, st.refs_ok(2001))
 st.add_letter(4001, "eski xat", ["Kino"], "classic")
 check("eski foydalanuvchi referral bo'la olmaydi", st.set_ref(4001, 2002) is False)
 
+# juftligi yo'q referrerga ball yo'qolmaydi — juftlik paydo bo'lganda qo'shiladi
+st.set_ref(4003, 4002)
+asyncio.run(core.reward_ref(4003))
+check("juftliksiz referral balli saqlanadi", st.r.get("refball:4002") == "10",
+      st.r.get("refball:4002"))
+st.add_pair(4002, 4004)
+check("juftlik paydo bo'lganda ball qo'shiladi",
+      st.get_pts(st.pair_of(4002)[0]) == 10, st.get_pts(st.pair_of(4002)[0]))
+
+# ikkala tomonda ham kutilayotgan ball bo'lsa — ikkalasi bir marta qo'shiladi
+st.set_ref(4006, 4005)
+asyncio.run(core.reward_ref(4006))
+st.set_ref(4008, 4007)
+asyncio.run(core.reward_ref(4008))
+st.add_pair(4005, 4007)
+pid_both = st.pair_of(4005)[0]
+check("ikki tomonning ballari qo'shiladi", st.get_pts(pid_both) == 20,
+      st.get_pts(pid_both))
+st.add_pair(4005, 4007)          # takroriy chaqiruv ballni takrorlamaydi
+check("takroriy add_pair ballni takrorlamaydi", st.get_pts(pid_both) == 20,
+      st.get_pts(pid_both))
+
 # --------------------- 17. ESLATMA SOZLAMALARI ---------------------------
 st.add_pair(1301, 1302)
 st.touch(1301)
@@ -418,12 +524,12 @@ SENT.clear()
 st.add_pair(1401, 1402)
 l_report = st.add_letter(1401, "yomon xat", ["Kino"], "classic")
 # xatni ko'rmagan odam shikoyat qila olmaydi
-m_unseen = FakeMsg(1403, {"a": "report", "l": l_report})
+m_unseen = FakeMsg(1403, {"a": "report", "l": l_report, "k": st.link_code(l_report)})
 asyncio.run(core.reply(m_unseen))
 check("ko'rmagan odam shikoyat qila olmaydi",
       any("topilmadi" in (a or "") for a in m_unseen.answers), m_unseen.answers)
 st.seen(l_report, 1402)
-m_rep = FakeMsg(1402, {"a": "report", "l": l_report})
+m_rep = FakeMsg(1402, {"a": "report", "l": l_report, "k": st.link_code(l_report)})
 asyncio.run(core.reply(m_rep))
 check("shikoyat yozildi", st.count_reports() == before_rep + 1)
 check("shikoyat qilgan bloklandi", st.is_blocked(1402, 1401))
@@ -432,14 +538,15 @@ check("adminga shikoyat xabari ketdi",
 check("shikoyatga javob berildi",
       any("Shikoyat qabul" in (a or "") for a in m_rep.answers), m_rep.answers)
 # takroriy shikoyat hisoblanmaydi
-m_rep2 = FakeMsg(1402, {"a": "report", "l": l_report})
+m_rep2 = FakeMsg(1402, {"a": "report", "l": l_report, "k": st.link_code(l_report)})
 asyncio.run(core.reply(m_rep2))
 check("takroriy shikoyat hisoblanmaydi", st.count_reports() == before_rep + 1)
 check("takroriy shikoyatga javob",
       any("allaqachon" in (a or "") for a in m_rep2.answers), m_rep2.answers)
 # bloklangandan keyin javob yuborilmaydi
 SENT.clear()
-m_blk = FakeMsg(1402, {"a": "reply", "l": l_report, "t": "salom"})
+m_blk = FakeMsg(1402, {"a": "reply", "l": l_report, "t": "salom",
+                       "k": st.link_code(l_report)})
 asyncio.run(core.reply(m_blk))
 check("bloklangandan keyin javob ketmaydi",
       not any(cid == 1401 for cid, _ in SENT)
@@ -470,6 +577,85 @@ check("ilova: 'false' matni o'chiradi",
       api_app._remind(1202, {"on": "false"})["remind"] is False
       and st.reminders_on(1202) is False)
 api_app._remind(1202, {"on": True})
+
+# ------------------- 21. ILOVA: QO'SHIMCHA HIMOYA ------------------------
+# bepul foydalanuvchi 1 tadan ortiq o'z taklifini server orqali ham qo'sha olmaydi
+res_custom = api_app._newletter(
+    5001, {"text": "Salom", "offers": [core.OFFERS[0], "A", "B"], "theme": "classic"})
+check("bepul: 2 ta o'z taklifi rad etiladi",
+      res_custom == {"ok": False, "err": "custom_limit"}, res_custom)
+
+# havola kod bilan yasaladi (raqamni taxmin qilib bo'lmaydi)
+st.r.set("ybot:username", "testbot")
+api_app._BOTNAME = "testbot"
+res_ok = api_app._newletter(
+    5002, {"text": "Salom", "offers": [core.OFFERS[0], "A"], "theme": "classic"})
+check("bepul: 1 ta o'z taklifi ruxsat", res_ok.get("ok") is True, res_ok)
+if res_ok.get("ok"):
+    link_code = res_ok["link"].split("start=l_", 1)[1]
+    check("ilova havolasi imzolangan",
+          (st.letter_by_code(link_code) or {}).get("id") == res_ok["id"])
+
+# juft ismi ilovada ko'rinadi
+st.save_name(1203, "Ali")
+check("ilova: juft ismi", api_app._me(1202, {"first_name": "Ref"})["partner"] == "Ali")
+
+# sovuq startda taklif havolasi Redis keshidan olinadi
+api_app._BOTNAME = None
+os.environ.pop("BOT_USERNAME", None)
+st.r.set("ybot:username", "cachebot")
+me3 = api_app._me(1202, {"first_name": "Ref"})
+check("ilova: sovuq startda taklif havolasi",
+      "t.me/cachebot?start=ref_1202" in me3["invite"], me3["invite"])
+
+# kelajakdagi auth_date rad etiladi
+check("kelajakdagi initData rad etiladi",
+      api_app.verify(make_init(ts=int(time.time()) + 3600)) is None)
+
+# --------------------- 22. HTTP HANDLER (do_POST) ------------------------
+import io  # noqa: E402
+
+
+class FakeHTTP:
+    """BaseHTTPRequestHandler o'rniga minimal soxta obyekt."""
+
+    def __init__(self, body: bytes):
+        self.headers = {"Content-Length": str(len(body))}
+        self.rfile = io.BytesIO(body)
+        self.wfile = io.BytesIO()
+        self.out = None
+
+    def _json(self, code, data):
+        self.out = (code, data)
+
+
+fh = FakeHTTP(json.dumps({"init": init, "action": "me"}).encode())
+api_app.handler.do_POST(fh)
+check("HTTP: me -> 200", fh.out and fh.out[0] == 200 and fh.out[1]["ok"], fh.out)
+check("HTTP: ism Redis'ga saqlandi", st.r.get("name:555") == "Test",
+      st.r.get("name:555"))
+
+fh_bad = FakeHTTP(json.dumps({"init": "user=%7B%7D", "action": "me"}).encode())
+api_app.handler.do_POST(fh_bad)
+check("HTTP: yaroqsiz init -> 401",
+      fh_bad.out and fh_bad.out[0] == 401 and fh_bad.out[1]["err"] == "auth", fh_bad.out)
+
+fh_custom = FakeHTTP(json.dumps({
+    "init": init, "action": "newletter", "text": "Salom",
+    "offers": [core.OFFERS[0], "A", "B"], "theme": "classic"}).encode())
+api_app.handler.do_POST(fh_custom)
+check("HTTP: custom_limit qaytadi",
+      fh_custom.out and fh_custom.out[1].get("err") == "custom_limit", fh_custom.out)
+
+# ------------------- 23. MINI APP KODINING SINXRONLIGI -------------------
+_root = ROOT
+for _rel in ("mini_app/app.js", "public/mini_app/app.js"):
+    _src = open(os.path.join(_root, _rel), encoding="utf-8").read()
+    check(f"{_rel}: havola kodi yuboriladi",
+          "const LETTER_KEY" in _src and "k: LETTER_KEY" in _src)
+check("mini_app nusxalari bir xil",
+      open(os.path.join(_root, "mini_app/app.js"), encoding="utf-8").read() ==
+      open(os.path.join(_root, "public/mini_app/app.js"), encoding="utf-8").read())
 
 print()
 if FAILS:

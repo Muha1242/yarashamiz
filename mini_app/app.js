@@ -7,6 +7,7 @@ const $ = (id) => document.getElementById(id);
 const P = new URLSearchParams(location.search);
 const API_BASE = P.get('api') || location.origin;
 const LETTER_ID = P.get('l') || '';
+const LETTER_KEY = P.get('k') || '';
 
 /* --- xat yuklamasi (havoladan) --- */
 function decodePayload(d) {
@@ -205,6 +206,7 @@ function buildForm(v, f) {
     if (!r.ok) {
       return alert(r.err === 'limit' ? 'Bugungi limit tugadi (' + f.limit + ')'
         : r.err === 'premium' ? 'Bu dizayn Premium uchun 💎'
+        : r.err === 'custom_limit' ? "Bepul versiyada faqat 1 ta o'z taklifi. Premium — cheksiz 💎"
         : r.err === 'offers' ? 'Kamida bitta taklif tanlang'
         : 'Xatolik yuz berdi');
     }
@@ -411,13 +413,13 @@ function letterOpen(v) {
 
 function sendAnswer(a, o) {
   if (!LETTER_ID) return tg.close();
-  tg.sendData(JSON.stringify({ a, l: LETTER_ID, o: o || '' }));
+  tg.sendData(JSON.stringify({ a, l: LETTER_ID, k: LETTER_KEY, o: o || '' }));
   tg.close();
 }
 
 function sendReply(txt) {
   if (!LETTER_ID) return tg.close();
-  tg.sendData(JSON.stringify({ a: 'reply', l: LETTER_ID, t: txt }));
+  tg.sendData(JSON.stringify({ a: 'reply', l: LETTER_ID, k: LETTER_KEY, t: txt }));
   tg.close();
 }
 
@@ -552,7 +554,9 @@ async function viewMe(v) {
 
   const hi = h('div', 'card');
   hi.appendChild(h('h2', '', 'Salom, ' + (ME.user.name || "Do'st")));
-  hi.appendChild(h('p', '', ME.pair ? 'Juftingiz bilan ulangansiz ❤️' : 'Hali juft ulanmagansiz'));
+  hi.appendChild(h('p', '', ME.pair
+    ? 'Juftingiz: ' + (ME.partner || '…') + ' ❤️'
+    : 'Hali juft ulanmagansiz'));
   v.appendChild(hi);
 
   const gr = h('div', 'stat-grid');

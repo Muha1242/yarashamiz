@@ -75,7 +75,8 @@ Vercel → **Settings → Environment Variables**:
 | `TZ_OFFSET` | ixtiyoriy | Mahalliy vaqt siljishi, standart `5` (Toshkent, UTC+5) |
 | `GEMINI_API_KEY` | ixtiyoriy | [aistudio.google.com/apikey](https://aistudio.google.com/apikey) |
 | `ADMIN_ID` | ixtiyoriy | Sizning Telegram ID (admin panel + shikoyatlar uchun) |
-| `BOT_USERNAME` | ixtiyoriy | Ilovada referral havolasi uchun (masalan `yarashamiz_bot`) |
+| `BOT_USERNAME` | ixtiyoriy | Referral havolasi uchun; `/api/setup` avtomatik keshga yozadi |
+| `LINK_SECRET` | ixtiyoriy | Xat havolalari imzosi uchun; bo'lmasa `BOT_TOKEN`dan olinadi (o'zgartirsangiz eski havolalar ishlamaydi) |
 | `WEBHOOK_SECRET` | ixtiyoriy | Webhook'ni himoyalash |
 | `CRON_SECRET` | ixtiyoriy | `/api/cron` ni qulflash |
 
@@ -136,6 +137,7 @@ python bot.py
 | `/start` | Salom + bosh menyu |
 | `/menu` | Asosiy menyu |
 | `/help` | Yordam |
+| `/link` | Oxirgi xatning yangi (imzolangan) havolasini qaytaradi |
 | `/invite` | Do'stlarni taklif qilish havolasi + sovg'alar |
 | `/reminders` | Kunlik eslatmalarni yoqish/o'chirish |
 | `/privacy` | Maxfiylik siyosati |
@@ -157,9 +159,15 @@ pip install -r requirements.txt fakeredis
 python tests/smoke.py
 ```
 
-Testlar: xat yaratish va kunlik limit, xat maxfiyligi, juftlik (ikki marta
-juftlanmaslik), o'yin savollarining bot va Ilovada bir xil bo'lishi, ball
-ikki marta qo'shilmasligi, eslatma vaqti (UTC+5), xato handleri, sovg'a va
-to'liq xat yozish oqimi (FSM).
+Testlar: xat yaratish va kunlik limit, xat maxfiyligi (imzolangan havolalar),
+juftlik (ikki marta juftlanmaslik), o'yin savollarining bot va Ilovada bir xil
+bo'lishi, ball ikki marta qo'shilmasligi, eslatma vaqti (UTC+5), xato handleri,
+sovg'aning bir marta ishlatilishi, referral ballari va to'liq xat yozish oqimi
+(FSM).
+
+> 🔐 **Muhim:** xat havolalari endi imzolangan (`?start=l_<id>_<imzo>`).
+> Deploydan oldin yuborilgan eski raqamli havolalar xavfsizlik uchun ishlamaydi —
+> yuboruvchi `/link` buyrug'i bilan oxirgi xatining yangi havolasini olib,
+> qayta yuborishi mumkin.
 
 <!-- build: fsm-loop-fix -->

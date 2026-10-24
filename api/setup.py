@@ -37,11 +37,20 @@ async def _set():
                            "aniqlanmadi — webhook manzilini bilmayapman")
     url = a + "/api/webhook"
     await core.bot.set_webhook(url, drop_pending_updates=True)
+    # Bot username'ini keshga yozamiz — ilovadagi taklif havolasi sovuq startda
+    # ham darhol ishlashi uchun (tarmoqqa har safar chiqmaymiz).
+    try:
+        me = await core.bot.get_me()
+        if me.username:
+            core.st.r.set("ybot:username", me.username)
+    except Exception:  # noqa: BLE001
+        pass
     # menyu va tavsif - bot ommaga chiroyli ko'rinadi
     try:
         await core.bot.set_my_commands([
             BotCommand(command="start", description="Boshlash / Ilovani ochish"),
             BotCommand(command="menu", description="Asosiy menyu"),
+            BotCommand(command="link", description="Oxirgi xat havolasini qayta olish"),
             BotCommand(command="invite", description="Do'stlarni taklif qilish 🎁"),
             BotCommand(command="reminders", description="Eslatmalar yoqish/o'chirish"),
             BotCommand(command="help", description="Yordam"),

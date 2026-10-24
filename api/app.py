@@ -36,7 +36,8 @@ def verify(init_data: str):
         calc = hmac.new(secret, check.encode(), hashlib.sha256).hexdigest()
         if not hmac.compare_digest(calc, got):
             return None
-        if time.time() - int(p.get("auth_date") or 0) > MAX_AGE:
+        ts = int(p.get("auth_date") or 0)
+        if ts > time.time() + 300 or time.time() - ts > MAX_AGE:
             return None
         return json.loads(p.get("user") or "{}")
     except Exception:  # noqa: BLE001
@@ -46,6 +47,7 @@ def verify(init_data: str):
 def _me(u, usr):
     import bot as core
     import store as st
+    st.save_name(u, usr.get("first_name"))
     p = st.pair_of(u)
     pts = st.get_pts(p[0]) if p else 0
     days = 0
@@ -54,7 +56,7 @@ def _me(u, usr):
         o = st.other(p, u)
         ts = st.pair_ts(u, o) or 0
         days = max(0, (int(time.time()) - ts) // 86400) if ts else 0
-        partner = st.r.get(f"ini:{o}") or st.r.get(f"name:{o}")
+        partner = st.r.get(f"name:{o}") or st.r.get(f"ini:{o}")
     prem = st.is_prem(u)
     return {
         "ok": True,
@@ -226,6 +228,13 @@ def invite_link(u):
     """Referral havolasi (tarmoqqa chiqmasdan, env/keshdan)."""
     name = _BOTNAME or os.environ.get("BOT_USERNAME") or ""
     if not name:
+        # Sovuq startda ham ishlashi uchun /api/setup saqlagan keshni o'qiymiz
+        try:
+            import store as st
+            name = st.r.get("ybot:username") or ""
+        except Exception:  # noqa: BLE001
+            name = ""
+    if not name:
         return ""
     return f"https://t.me/{name}?start=ref_{u}"
 
@@ -296,10 +305,14 @@ def _newletter(u, d):
     if not offers:
         return {"ok": False, "err": "offers"}
 
+    prem = st.is_prem(u)
+    # Bepul foydalanuvchi faqat 1 ta o'z taklifini qo'sha oladi (bot bilan bir xil)
+    if not prem and len([o for o in offers if o not in core.OFFERS]) > 1:
+        return {"ok": False, "err": "custom_limit"}
+
     theme = str(d.get("theme") or "classic")
     if theme not in dict(core.THEMES):
         theme = "classic"
-    prem = st.is_prem(u)
     if theme in core.PREMIUM_THEMES and not prem:
         return {"ok": False, "err": "premium"}
 
@@ -315,7 +328,8 @@ def _newletter(u, d):
     left = None if prem else max(0, core.DAILY_LIMIT -
                                  st.count_today_letters(u, st.day_start_ts()))
     return {"ok": True, "id": lid,
-            "link": ("https://t.me/" + uname + "?start=l_" + str(lid)) if uname else "",
+            "link": ("https://t.me/" + uname + "?start=l_" + st.link_code(lid))
+            if uname else "",
             "left": left}
 
 

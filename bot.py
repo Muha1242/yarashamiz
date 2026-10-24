@@ -187,6 +187,7 @@ HELP = ("<b>Qanday ishlaydi?</b>\n\n"
         "3. U xatni ochadi va javob beradi.\n"
         "4. Yarashgach, «🎮 O'yinlar» bo'limida birga o'ynab ball to'playsiz.\n\n"
         "/menu — bosh menyu\n/cancel — bekor qilish\n/help — yordam\n"
+        "/link — oxirgi xat havolasini qayta olish\n"
         "/invite — do'stlarni taklif qilish (sovg'alar bor)\n"
         "/reminders — eslatmalarni yoqish/o'chirish\n"
         "/privacy — maxfiylik\n/feedback — fikr va taklif\n\n"
@@ -300,9 +301,9 @@ def theme_kb(u):
                                    callback_data=f"th:{t}")] for t, name in THEMES])
 
 
-def open_letter_kb(lid, link):
+def open_letter_kb(lid, link, code):
     btn = KeyboardButton(text="💌 Xatni ochish",
-                         web_app=WebAppInfo(url=f"{URL}/?d={link}&l={lid}"))
+                         web_app=WebAppInfo(url=f"{URL}/?d={link}&l={lid}&k={code}"))
     return ReplyKeyboardMarkup(resize_keyboard=True, keyboard=[[btn]])
 
 
@@ -444,13 +445,17 @@ class W(StatesGroup):
 @dp.message(CommandStart())
 async def start(m: Message, command: CommandObject, state: FSMContext):
     await state.clear()
+    try:
+        st.save_name(m.from_user.id, getattr(m.from_user, "first_name", ""))
+    except Exception:  # noqa: BLE001
+        pass
     arg = command.args or ""
 
     if arg.startswith("l_"):
-        lid = arg[2:]
-        L = st.letter(lid)
+        code = arg[2:]
+        L = st.letter_by_code(code)
         if not L:
-            return await m.answer("Xat topilmadi.")
+            return await m.answer("Xat topilmadi yoki havola eskirgan.")
         if L["sender"] == m.from_user.id:
             return await m.answer(
                 "Bu sizning xatingiz 💌\n\nUni Ilovada ko'rishingiz va dizaynini\n"
@@ -465,11 +470,11 @@ async def start(m: Message, command: CommandObject, state: FSMContext):
             return await m.answer("Sizga xat bor 💌\n\n«" + html.escape(L["text"]) +
                                   "»\n\nTaklif: " +
                                   html.escape(", ".join(L["offers"])))
-        st.seen(lid, m.from_user.id)     # shikoyat qilish huquqi uchun
+        st.seen(L["id"], m.from_user.id)     # shikoyat qilish huquqi uchun
         payload = base64.urlsafe_b64encode(json.dumps(
             {"t": L["text"], "o": L["offers"], "theme": L["theme"]}).encode()).decode()
         return await m.answer("Sizga xat bor 💌",
-                              reply_markup=open_letter_kb(lid, payload))
+                              reply_markup=open_letter_kb(L["id"], payload, code))
 
     if arg.startswith("gift_"):
         days = st.use_gift(arg[5:], m.from_user.id)
@@ -503,9 +508,19 @@ async def reply(m: Message):
     except Exception:  # noqa: BLE001
         return await m.answer("Ma'lumot noto'g'ri. Ilovani qayta oching.")
     u, a = m.from_user.id, str(r.get("a") or "")
+    try:
+        st.save_name(u, getattr(m.from_user, "first_name", ""))
+    except Exception:  # noqa: BLE001
+        pass
     L = st.letter(r.get("l"))
     if not L:
         return await m.answer("Xat topilmadi.")
+    # Havola kodi xatga tegishli bo'lmasa — begona id bilan amal qilib bo'lmaydi.
+    # Istisno: eski (deploydan oldin ochilgan) tugmalarda `k` yo'q; ularda
+    # foydalanuvchi xatni haqiqatan ko'rganini `seen` belgisi tasdiqlaydi.
+    key = str(r.get("k") or "")
+    if not st.code_ok(L["id"], key) and not (not key and st.has_seen(L["id"], u)):
+        return await m.answer("Havola eskirgan yoki noto'g'ri. Xatni qaytadan oching.")
     sender = L["sender"]
     if sender == u:
         return await m.answer("Bu o'z xatingiz 🙂")
@@ -534,6 +549,9 @@ async def reply(m: Message):
         await bot.send_message(sender, "💝 Sizga yurak yuborildi! Javobingizni kutmoqda.")
         return await m.answer("💝 Yurak yuborildi.")
     if a == "yes":
+        # Taklif faqat xatdagi ro'yxatdan bo'lishi mumkin (soxta matn yuborilmaydi)
+        want = str(r.get("o") or "").strip()[:40]
+        offer = want if want in L["offers"] else (L["offers"][0] if L["offers"] else "")
         refused = None
         with st.lock(f"yes:{L['id']}") as ok:
             if not ok:
@@ -561,7 +579,7 @@ async def reply(m: Message):
         if refused:
             return await m.answer(refused)
         await bot.send_message(sender, "Javob: <b>yarashamiz</b> 🎉 "
-                               f"Taklif: {html.escape(str(r.get('o') or ''))}\n"
+                               f"Taklif: {html.escape(offer)}\n"
                                "Endi birga o'ynashingiz mumkin.",
                                reply_markup=menu_kb(sender))
         return await m.answer("Yarashdingiz 🎉 Endi birga o'ynang.",
@@ -630,6 +648,24 @@ async def feedback_cmd(m: Message):
 async def invite_cmd(m: Message):
     me = await bot.get_me()
     await m.answer(invite_text(m.from_user.id, me.username))
+
+
+@dp.message(Command("link"))
+async def link_cmd(m: Message):
+    """Oxirgi xatning yangi (imzolangan) havolasini qaytaradi.
+
+    Eski raqamli havolalar xavfsizlik uchun ishlamaydi — shu buyruq orqali
+    yuboruvchi ularni qayta yuborishi mumkin.
+    """
+    L = st.last_mine(m.from_user.id)
+    if not L:
+        return await m.answer("Siz hali xat yozmagansiz. ✍️ Xat yozish tugmasini bosing.")
+    me = await bot.get_me()
+    if not me.username:
+        return await m.answer("Havola yasash uchun bot username'i aniqlanmadi.")
+    await m.answer("💌 Oxirgi xatingiz havolasi:\n"
+                   f"https://t.me/{me.username}?start=l_{st.link_code(L['id'])}\n\n"
+                   "Uni juftingizga yuboring.")
 
 
 @dp.message(Command("reminders"))
@@ -805,7 +841,7 @@ async def theme(c: CallbackQuery, state: FSMContext):
     st.touch(c.from_user.id)
     await reward_ref(c.from_user.id)
     await c.message.answer("Xat tayyor. Havolani juftingizga o'zingiz yuboring:\n"
-                           f"https://t.me/{me.username}?start=l_{lid}")
+                           f"https://t.me/{me.username}?start=l_{st.link_code(lid)}")
     await c.answer()
 
 

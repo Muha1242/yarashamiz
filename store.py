@@ -6,6 +6,8 @@ v3.1 qo'shimchalari:
 - juftlik/premium hisoblagichlari
 """
 import datetime as dt
+import hashlib
+import hmac
 import json
 import os
 import secrets
@@ -15,6 +17,11 @@ from contextlib import contextmanager
 import redis
 
 r = redis.from_url(os.environ["REDIS_URL"], decode_responses=True)
+
+# Xat havolalari uchun maxfiy kalit. BOT_TOKEN allaqachon maxfiy, shuning uchun
+# alohida LINK_SECRET o'rnatilmasa ham havola kodlari taxmin qilinmaydi.
+LINK_SECRET = (os.environ.get("LINK_SECRET")
+               or os.environ.get("BOT_TOKEN") or "yarashamiz")
 
 # Server (Vercel) UTC'da ishlaydi, foydalanuvchilar esa O'zbekistonda (UTC+5).
 # Kunlik savol / seriya / eslatmalar mahalliy vaqt bo'yicha hisoblanishi kerak.
@@ -64,12 +71,21 @@ def other(p, u):
 
 
 def add_pair(a, b):
+    pid = _pid(a, b)
     r.set(f"mate:{a}", b)
     r.set(f"mate:{b}", a)
-    r.set(f"mets:{_pid(a, b)}", int(time.time()))
+    r.set(f"mets:{pid}", int(time.time()))
     if r.set(f"pairdone:{_pid(a, b)}", 1, nx=True):   # har juftlik bir marta
         r.incr("cnt:pairs")
         r.incr(f"cnt:pairs:{today()}")
+    # Juftliksiz paytda yig'ilgan referral ballarini yangi juftlikka o'tkazamiz
+    for x in (a, b):
+        try:
+            v = int(r.getdel(f"refball:{x}") or 0)   # atomar: ikki marta qo'shilmaydi
+        except (TypeError, ValueError):
+            v = 0
+        if v > 0:
+            add_pts(pid, v)
 
 
 def pair_ts(a, b):
@@ -98,17 +114,76 @@ def add_letter(sender, text, offers, theme):
 def letter(lid):
     if lid is None or lid == "":
         return None
-    d = r.hgetall(f"letter:{lid}")
+    try:
+        n = int(lid)
+    except (TypeError, ValueError):
+        return None
+    if n <= 0:
+        return None
+    d = r.hgetall(f"letter:{n}")
     if not d or "sender" not in d:
         return None
     try:
         offers = json.loads(d.get("offers") or "[]")
     except Exception:  # noqa: BLE001
         offers = []
-    return {"id": int(lid), "sender": int(d["sender"]), "text": d.get("text", ""),
+    return {"id": n, "sender": int(d["sender"]), "text": d.get("text", ""),
             "offers": offers, "theme": d.get("theme") or "classic",
             "ts": int(d.get("ts") or 0), "receiver": int(d.get("receiver") or 0),
             "thn": int(d.get("thn") or 0)}
+
+
+def _sig(n):
+    return hmac.new(LINK_SECRET.encode(), f"letter:{n}".encode(),
+                    hashlib.sha256).hexdigest()[:16]
+
+
+def link_code(lid):
+    """Xat havolasi uchun taxmin qilib bo'lmaydigan kod: `<id>_<imzo>`.
+
+    Telegram deep-link payload'ida faqat A-Z, a-z, 0-9, `_` va `-` ruxsat
+    etilgani uchun ajratuvchi sifatida `_` ishlatiladi.
+    """
+    try:
+        n = int(lid)
+    except (TypeError, ValueError):
+        return ""
+    if n <= 0:
+        return ""
+    return f"{n}_{_sig(n)}"
+
+
+def lid_from_code(code):
+    """Havola kodidan xat id'sini qaytaradi. Yaroqsiz/imzosiz kod -> None."""
+    try:
+        n_s, sig = str(code).split("_", 1)
+        n = int(n_s)
+    except (TypeError, ValueError):
+        return None
+    if n <= 0 or not sig:
+        return None
+    try:
+        ok = hmac.compare_digest(_sig(n), sig)
+    except TypeError:      # non-ASCII imzo — compare_digest yiqilmasin
+        return None
+    if not ok:
+        return None
+    return n
+
+
+def code_ok(lid, code):
+    """Havola kodi aynan shu xatga tegishli ekanini tekshiradi."""
+    n = lid_from_code(code)
+    try:
+        return n is not None and n == int(lid)
+    except (TypeError, ValueError):
+        return False
+
+
+def letter_by_code(code):
+    """Maxfiy kod orqali xatni ochadi (havoladagi raqamni taxmin qilib bo'lmaydi)."""
+    n = lid_from_code(code)
+    return letter(n) if n else None
 
 
 def set_receiver(lid, u):
@@ -247,6 +322,13 @@ def users():
     return [int(x) for x in r.smembers("users")]
 
 
+def save_name(u, name):
+    """Foydalanuvchi ismini saqlaydi (ilovada juft ismi ko'rinishi uchun)."""
+    name = str(name or "").strip()[:64]
+    if name:
+        r.set(f"name:{u}", name)
+
+
 # --------------------------- PROFIL (bitta pipeline) ---------------------
 def profile_stats(u):
     """Profil uchun barcha malumot - 1 ta Redis round trip."""
@@ -298,17 +380,32 @@ def add_prem(u, days):
 # -------------------------------- SOVG'A --------------------------------
 def make_gift(days):
     token = secrets.token_urlsafe(8)
-    r.hset(f"gift:{token}", mapping={"days": days, "used": 0})
+    key = f"gift:{token}"
+    r.hset(key, mapping={"days": days, "used": 0})
+    r.expire(key, 90 * 86400)      # 90 kundan keyin sovg'a havolasi eskiradi
     return token
 
 
 def use_gift(token, u):
+    """Sovg'ani atomar ishlatadi (ikki marta premium berilmaydi)."""
     d = r.hgetall(f"gift:{token}")
-    if not d or int(d.get("used", 0)):
+    if not d:
+        return 0
+    try:
+        days = int(d.get("days") or 0)
+        used = int(d.get("used") or 0)
+    except (TypeError, ValueError):
+        return 0
+    if days <= 0 or used:
+        # `used=1` — eski (deploydan oldin ishlatilgan) sovg'alar ham qayta
+        # ishlatilmasligi kerak
+        return 0
+    # NX: bir vaqtda kelgan ikki so'rovdan faqat bittasi o'tadi
+    if not r.set(f"gift_used:{token}", 1, nx=True, ex=400 * 86400):
         return 0
     r.hset(f"gift:{token}", "used", 1)
-    add_prem(u, int(d["days"]))
-    return int(d["days"])
+    add_prem(u, days)
+    return days
 
 
 # ------------------------------ ESLATMALAR ------------------------------
@@ -390,6 +487,19 @@ def apply_ref_reward(ref, n):
     p = pair_of(ref)
     if p:
         add_pts(p[0], REF_BALL)
+    else:
+        # Hali juftligi yo'q — ball juftlik paydo bo'lganda add_pair() da beriladi
+        r.incr(f"refball:{ref}", REF_BALL)
+        # Poyga holati: add_pair() aynan shu paytda ishlagan bo'lishi mumkin.
+        # Unda yuqoridagi incr hech qachon o'qilmaydi — darhol tekshiramiz.
+        p = pair_of(ref)
+        if p:
+            try:
+                v = int(r.getdel(f"refball:{ref}") or 0)
+            except (TypeError, ValueError):
+                v = 0
+            if v > 0:
+                add_pts(p[0], v)
     if n in REF_PREM and r.set(f"ref_prem:{ref}:{n}", 1, nx=True):
         add_prem(ref, REF_PREM[n])
 
