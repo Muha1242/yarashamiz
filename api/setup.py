@@ -7,6 +7,7 @@ SETUP_KEY muhit o'zgaruvchisiga o'zingiz xohlagan maxfiy so'z qo'ying.
 import asyncio
 import hmac
 import os
+import secrets
 import sys
 from http.server import BaseHTTPRequestHandler
 
@@ -24,19 +25,27 @@ async def _set():
     from aiogram.types import BotCommand
     core.bot.session = AiohttpSession()
 
-    a = (os.environ.get("WEBAPP_URL") or "").strip().rstrip("/")
-    if not a:
-        base = (os.environ.get("VERCEL_PROJECT_PRODUCTION_URL")
-                or os.environ.get("APP_URL")
-                or os.environ.get("VERCEL_URL") or "").strip().rstrip("/")
-        if base and not base.lower().startswith("http"):
-            base = "https://" + base
-        a = base
+    a = core.base_url()
     if not a:
         raise RuntimeError("WEBAPP_URL (yoki VERCEL_PROJECT_PRODUCTION_URL) "
                            "aniqlanmadi — webhook manzilini bilmayapman")
     url = a + "/api/webhook"
-    await core.bot.set_webhook(url, drop_pending_updates=True)
+    # Webhook maxfiy tokeni: env bo'lsa o'sha, bo'lmasa avtomatik yaratiladi va
+    # Redis'ga saqlanadi. webhook.py shu token bilan Telegram so'rovini tekshiradi
+    # (aks holda istalgan odam soxta update yuborib, foydalanuvchi bo'lib ko'rinadi).
+    secret = (os.environ.get("WEBHOOK_SECRET") or "").strip()
+    if not secret:
+        try:
+            secret = core.st.r.get("ybot:webhook_secret") or ""
+        except Exception:  # noqa: BLE001
+            secret = ""
+    if not secret:
+        secret = secrets.token_urlsafe(32)
+    try:
+        core.st.r.set("ybot:webhook_secret", secret)
+    except Exception:  # noqa: BLE001
+        pass
+    await core.bot.set_webhook(url, drop_pending_updates=True, secret_token=secret)
     # Bot username'ini keshga yozamiz — ilovadagi taklif havolasi sovuq startda
     # ham darhol ishlashi uchun (tarmoqqa har safar chiqmaymiz).
     try:

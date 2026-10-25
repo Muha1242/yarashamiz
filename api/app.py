@@ -14,6 +14,7 @@ import sys
 import time
 import traceback
 import urllib.parse
+import urllib.request
 from http.server import BaseHTTPRequestHandler
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -21,7 +22,8 @@ if ROOT not in sys.path:
     sys.path.insert(0, ROOT)
 
 BOT_TOKEN = os.environ.get("BOT_TOKEN", "")
-MAX_AGE = 86400 * 3          # initData 3 kungacha amal qiladi
+MAX_AGE = 7200               # initData 2 soat amal qiladi (replay oynasi kichik)
+MAX_BODY = 64 * 1024         # /api/app so'rovi 64 KB dan katta bo'lmaydi
 
 
 def verify(init_data: str):
@@ -212,7 +214,7 @@ def _retheme(u, d):
         return {"ok": False, "err": "bad_theme"}
     if theme in core.PREMIUM_THEMES and not st.is_prem(u):
         return {"ok": False, "err": "premium"}
-    n = st.set_theme(lid, theme)
+    n = st.set_theme(L["id"], theme)
     if n == 0:
         return {"ok": False, "err": "limit"}
     if n < 0:
@@ -269,6 +271,20 @@ def bot_username():
     return os.environ.get("BOT_USERNAME") or None
 
 
+def notify(u, text):
+    """Foydalanuvchiga bot orqali qisqa xabar (Ilova kontekstida, sinxron)."""
+    if not BOT_TOKEN:
+        return
+    try:
+        data = urllib.parse.urlencode({
+            "chat_id": u, "text": text, "parse_mode": "HTML"}).encode()
+        req = urllib.request.Request(
+            "https://api.telegram.org/bot" + BOT_TOKEN + "/sendMessage", data=data)
+        urllib.request.urlopen(req, timeout=4)
+    except Exception:  # noqa: BLE001
+        pass
+
+
 def _form(u, d):
     """Xat yozish formasi uchun malumot."""
     import bot as core
@@ -298,7 +314,7 @@ def _newletter(u, d):
     raw = d.get("offers") or []
     offers = []
     if isinstance(raw, list):
-        for o in raw[:6]:
+        for o in raw[:12]:
             o = str(o).strip()[:40]
             if o and o not in offers:
                 offers.append(o)
@@ -323,7 +339,15 @@ def _newletter(u, d):
     st.touch(u)
     got = st.claim_ref(u)
     if got:                         # taklif qilgan odamga mukofot
-        st.apply_ref_reward(*got)
+        ref, n = got
+        st.apply_ref_reward(ref, n)
+        txt = "🎉 Taklifingizdan yangi odam birinchi xatini yozdi!"
+        if st.pair_of(ref):
+            txt += f"\n⭐ Juftlikka +{st.REF_BALL} ball qo'shildi."
+        if n in st.REF_PREM:
+            txt += (f"\n💎 {n} ta tasdiqlangan taklif — "
+                    f"{st.REF_PREM[n]} kunlik premium sovg'a!")
+        notify(ref, txt)
     uname = bot_username()
     left = None if prem else max(0, core.DAILY_LIMIT -
                                  st.count_today_letters(u, st.day_start_ts()))
@@ -375,6 +399,8 @@ class handler(BaseHTTPRequestHandler):
     def do_POST(self) -> None:
         try:
             n = int(self.headers.get("Content-Length") or 0)
+            if n < 0 or n > MAX_BODY:
+                return self._json(413, {"ok": False, "err": "too_large"})
             d = json.loads(self.rfile.read(n) if n else b"{}")
         except Exception:  # noqa: BLE001
             return self._json(400, {"ok": False, "err": "bad_json"})
@@ -382,6 +408,13 @@ class handler(BaseHTTPRequestHandler):
         usr = verify(d.get("init") or "")
         if not usr or not usr.get("id"):
             return self._json(401, {"ok": False, "err": "auth"})
+
+        try:
+            import store as st
+            if not st.rate_ok(int(usr["id"])):
+                return self._json(429, {"ok": False, "err": "rate"})
+        except Exception:  # noqa: BLE001
+            pass
 
         fn = ACTIONS.get(d.get("action") or "")
         if not fn:

@@ -1,8 +1,10 @@
 """Diagnostika: qaysi muhit o'zgaruvchilari o'rnatilgani.
 
-Ochish:  https://<loyiha>.vercel.app/api/check
-Hech qanday maxfiy qiymat ko'rsatilmaydi - faqat bor/yo'q.
+Ochish:  https://<loyiha>.vercel.app/api/check?s=SETUP_KEY
+Hech qanday maxfiy qiymat ko'rsatilmaydi - faqat bor/yo'q. SETUP_KEY
+o'rnatilmagan bo'lsa endpoint yopiq (ma'lumot sizib chiqmasin).
 """
+import hmac
 import json
 import os
 from http.server import BaseHTTPRequestHandler
@@ -10,6 +12,27 @@ from http.server import BaseHTTPRequestHandler
 
 class handler(BaseHTTPRequestHandler):
     def do_GET(self) -> None:
+        path = self.path or ""
+        key = path.split("?s=", 1)[1].split("&")[0] if "?s=" in path else ""
+        expected = os.environ.get("SETUP_KEY", "")
+        if not expected:
+            body = b"SETUP_KEY env o'zgaruvchisini o'rnating"
+            self.send_response(503)
+            self.send_header("Content-Type", "text/plain; charset=utf-8")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+            return
+        try:
+            ok = hmac.compare_digest(key, expected)
+        except TypeError:
+            ok = False
+        if not ok:
+            self.send_response(403)
+            self.end_headers()
+            self.wfile.write(b"forbidden")
+            return
+
         redis_url = os.environ.get("REDIS_URL") or ""
         scheme = redis_url.split("://")[0] + "://" if "://" in redis_url else None
 
@@ -21,8 +44,9 @@ class handler(BaseHTTPRequestHandler):
             "APP_URL": os.environ.get("APP_URL") or None,
             "VERCEL_PROJECT_PRODUCTION_URL": os.environ.get("VERCEL_PROJECT_PRODUCTION_URL") or None,
             "GEMINI_API_KEY": bool(os.environ.get("GEMINI_API_KEY")),
-            "ADMIN_ID": os.environ.get("ADMIN_ID") or None,
+            "ADMIN_ID": bool(os.environ.get("ADMIN_ID")),
             "SETUP_KEY": bool(os.environ.get("SETUP_KEY")),
+            "WEBHOOK_SECRET": bool(os.environ.get("WEBHOOK_SECRET")),
             "CRON_SECRET": bool(os.environ.get("CRON_SECRET")),
             "PRICE_MONTH": os.environ.get("PRICE_MONTH") or "50 (standart)",
             "PRICE_YEAR": os.environ.get("PRICE_YEAR") or "500 (standart)",

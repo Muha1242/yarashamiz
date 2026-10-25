@@ -25,19 +25,29 @@ import ai_helper
 TOKEN = os.environ.get("BOT_TOKEN", "")
 
 
-def app_url():
-    """Mini App manzili. WEBAPP_URL bo'lmasa Vercel domenidan aniqlanadi."""
+def base_url():
+    """Saytning asosiy manzili (Mini App yo'li bo'lmasdan).
+
+    `WEBAPP_URL` README'da `/mini_app` bilan ham, ba'zan faqat domen bilan ham
+    beriladi — ikkalasi ham to'g'ri ishlashi uchun `/mini_app` qismini olib
+    tashlaymiz. Webhook ham, Mini App tugmasi ham shu asosdan yasaladi.
+    """
     a = (os.environ.get("WEBAPP_URL") or "").strip().rstrip("/")
-    if a:
-        return a
-    base = (os.environ.get("VERCEL_PROJECT_PRODUCTION_URL")
-            or os.environ.get("APP_URL")
-            or os.environ.get("VERCEL_URL") or "").strip().rstrip("/")
-    if not base:
-        return ""
-    if not base.lower().startswith("http"):
-        base = "https://" + base
-    return base if base.endswith("/mini_app") else base + "/mini_app"
+    if not a:
+        a = (os.environ.get("VERCEL_PROJECT_PRODUCTION_URL")
+             or os.environ.get("APP_URL")
+             or os.environ.get("VERCEL_URL") or "").strip().rstrip("/")
+        if a and not a.lower().startswith("http"):
+            a = "https://" + a
+    if a.lower().endswith("/mini_app"):
+        a = a[: -len("/mini_app")].rstrip("/")
+    return a
+
+
+def app_url():
+    """Mini App manzili (har doim `/mini_app` bilan)."""
+    a = base_url()
+    return a + "/mini_app" if a else ""
 
 
 URL = app_url()
@@ -259,8 +269,8 @@ async def on_error(event):
     return True
 
 today = lambda: st.today()  # noqa: E731  (mahalliy sana, UTC emas)
-mission_of_day = lambda: MISSIONS[st.now().date().toordinal() % len(MISSIONS)]  # noqa: E731
-dq_of_day = lambda: DAILY_Q[st.now().date().toordinal() % len(DAILY_Q)]  # noqa: E731
+mission_of_day = lambda: MISSIONS[dt.date.fromisoformat(st.game_day()).toordinal() % len(MISSIONS)]  # noqa: E731
+dq_of_day = lambda: DAILY_Q[dt.date.fromisoformat(st.game_day()).toordinal() % len(DAILY_Q)]  # noqa: E731
 
 
 # ============================= KO'RINISHLAR =============================
@@ -427,7 +437,7 @@ def invite_text(u, username):
 
 def qidx(g, step):
     qs = {"ab": AB, "wh": WHO, "qz": QZ}[g]
-    return (st.now().date().toordinal() + step) % len(qs)
+    return (dt.date.fromisoformat(st.game_day()).toordinal() + step) % len(qs)
 
 
 # ============================= FSM HOLATLAR =============================
@@ -794,7 +804,7 @@ async def own_offer_text(m: Message, state: FSMContext):
         sel.append(txt)
     await state.update_data(offers=sel, own_count=int(d.get("own_count", 0)) + 1)
     await state.set_state(W.offers)
-    await m.answer(f"✅ «{txt}» qo'shildi", reply_markup=offer_kb(sel))
+    await m.answer(f"✅ «{html.escape(txt)}» qo'shildi", reply_markup=offer_kb(sel))
 
 
 
@@ -828,6 +838,8 @@ async def finish(c: CallbackQuery, state: FSMContext):
 @dp.callback_query(W.theme, F.data.startswith("th:"))
 async def theme(c: CallbackQuery, state: FSMContext):
     t = c.data[3:]
+    if t not in dict(THEMES):
+        return await c.answer("Noto'g'ri shablon tanlandi", show_alert=True)
     if not theme_ok(t, c.from_user.id):
         return await c.answer("Bu shablon premium uchun 💎", show_alert=True)
     d = await state.get_data()
@@ -835,6 +847,13 @@ async def theme(c: CallbackQuery, state: FSMContext):
         await state.clear()
         return await c.answer("Xat matni topilmadi. Qaytadan boshlang: /menu",
                               show_alert=True)
+    # Oqim boshlanganda limit bor edi, lekin Ilovada xat yozilgan bo'lishi mumkin
+    if (not st.is_prem(c.from_user.id) and
+            st.count_today_letters(c.from_user.id, st.day_start_ts()) >= DAILY_LIMIT):
+        await state.clear()
+        return await c.answer(
+            "Bugungi bepul limit (3 xat) tugadi. Ertaga yozing yoki 💎 Premium oling.",
+            show_alert=True)
     lid = st.add_letter(c.from_user.id, d["text"], d["offers"], t)
     await state.clear()
     me = await bot.get_me()
@@ -980,22 +999,57 @@ async def buy(c: CallbackQuery):
 
 @dp.pre_checkout_query()
 async def pre(q: PreCheckoutQuery):
+    info = invoice_info(q.invoice_payload, q.total_amount, q.currency,
+                        q.from_user.id)
+    if not info:
+        return await q.answer(ok=False, error_message="To'lov ma'lumoti noto'g'ri.")
     await q.answer(ok=True)
+
+
+def invoice_info(payload, amount, currency, payer):
+    """Invoice payload/narx/valyutani tekshiradi. Yaroqsiz bo'lsa None."""
+    parts = str(payload or "").split(":")
+    if currency != "XTR":
+        return None
+    try:
+        amt = int(amount)
+    except (TypeError, ValueError):
+        return None
+    if parts[0] == "prem" and len(parts) == 3 and parts[1] in PREMIUM_DAYS:
+        try:
+            uid = int(parts[2])
+        except ValueError:
+            return None
+        if uid != payer or amt != PRICES[parts[1]]:
+            return None
+        return ("prem", parts[1])
+    if parts[0] == "gift" and len(parts) == 2:
+        try:
+            uid = int(parts[1])
+        except ValueError:
+            return None
+        if uid != payer or amt != PRICES["gift"]:
+            return None
+        return ("gift", None)
+    return None
 
 
 @dp.message(F.successful_payment)
 async def paid(m: Message):
-    parts = (m.successful_payment.invoice_payload or "").split(":")
-    if parts[0] == "prem" and len(parts) >= 3 and parts[1] in PREMIUM_DAYS:
-        try:
-            uid = int(parts[2])
-        except ValueError:
-            return
-        days = PREMIUM_DAYS[parts[1]]
-        st.add_prem(uid, days)
+    sp = m.successful_payment
+    info = invoice_info(sp.invoice_payload, sp.total_amount, sp.currency,
+                        m.from_user.id)
+    if not info:
+        return
+    # Har bir to'lov (charge id) faqat bir marta hisoblanadi — replay himoyasi
+    if not st.claim_payment(sp.telegram_payment_charge_id):
+        return
+    if info[0] == "prem":
+        days = PREMIUM_DAYS[info[1]]
+        st.add_prem(m.from_user.id, days)
         await m.answer(f"💎 Premium faollashdi! {days} kunlik "
                        "imtiyozlar sizniki.")
-    elif parts[0] == "gift":
+    else:
         token = st.make_gift(GIFT_DAYS)
         me = await bot.get_me()
         await m.answer("🎁 Sovg'a tayyor! Havolani juftingizga yuboring:\n"
@@ -1064,10 +1118,10 @@ async def after(u, p, g):
             o, hint,
             reply_markup=IM(inline_keyboard=[[IB(text="🎮 O'yinlar", callback_data="games")]]))
     # ikki marta (masalan, ilova + bot) yuborilsa ball ikki marta qo'shilmasin
-    with st.lock(f"after:{p[0]}:{g}:{st.today()}") as ok:
+    with st.lock(f"after:{p[0]}:{g}:{st.game_day()}") as ok:
         if not ok:
             return
-        scored = f"scored:{p[0]}:{g}:{st.today()}"
+        scored = f"scored:{p[0]}:{g}:{st.game_day()}"
         if st.r.get(scored):
             return
         d1, d2, gg = st.get(p[0], g, u), st.get(p[0], g, o), GAMES[g]
@@ -1243,7 +1297,12 @@ async def ms_done(c: CallbackQuery, state: FSMContext):
 
 # ============================== ESLATMALAR ==============================
 async def run_reminders():
-    """Cron tomonidan chaqiriladi. (u, xabar) juftliklar ro'yxatini qaytaradi."""
+    """Cron uchun eslatmalar ro'yxati: (user_id, xabar, tur).
+
+    `mark()` bu yerda chaqirilmaydi — cron xabar muvaffaqiyatli yuborilgandan
+    keyingina belgilaydi. Aks holda yuborish yiqilsa, o'sha kun eslatma
+    butunlay yo'qoladi.
+    """
     out = []
     now_h = st.now().hour          # mahalliy vaqt (UTC+5), UTC emas
     for u in st.users():
@@ -1254,18 +1313,15 @@ async def run_reminders():
             continue
         if now_h >= 19 and not st.sent(u, "ms") and not st.done(p[0], "ms", u):
             out.append((u, "🌙 Bugungi missiya bajarilmagan. "
-                           "Juftingizni bir gaplashib, birga qiling!"))
-            st.mark(u, "ms")
+                           "Juftingizni bir gaplashib, birga qiling!", "ms"))
         if now_h >= 12 and not st.sent(u, "kq") and not st.done(p[0], "kq", u):
             out.append((u, f"💬 Bugungi savol: {dq_of_day()}\n\nJavob yozing — "
-                           "juftingizning javobini ko'rasiz."))
-            st.mark(u, "kq")
+                           "juftingizning javobini ko'rasiz.", "kq"))
         row = st.streak_row(u)
         if row and int(row.get("n", 0)) >= 3 and row.get("last") != today() \
                 and not st.sent(u, "st"):
             out.append((u, f"🔥 Seriyani buzma! {row['n']} kunlik seriyangiz bor. "
-                           "Bugun bir o'yin o'ynang."))
-            st.mark(u, "st")
+                           "Bugun bir o'yin o'ynang.", "st"))
     return out
 
 

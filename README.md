@@ -70,15 +70,16 @@ Vercel → **Settings → Environment Variables**:
 |---|---|---|
 | `BOT_TOKEN` | ✅ | @BotFather'dan |
 | `REDIS_URL` | ✅ | Upstash TCP manzili (`rediss://...`) |
-| `WEBAPP_URL` | tavsiya | `https://<loyiha>.vercel.app/mini_app` (bo'lmasa avtomatik aniqlanadi) |
-| `SETUP_KEY` | ✅ | `/api/setup` ni qulflash uchun (bo'lmasa endpoint yopiq) |
+| `WEBAPP_URL` | tavsiya | `https://<loyiha>.vercel.app` yoki `…/mini_app` — ikkalasi ham qabul qilinadi |
+| `SETUP_KEY` | ✅ | `/api/setup` va `/api/check` ni qulflash uchun (bo'lmasa endpointlar yopiq) |
 | `TZ_OFFSET` | ixtiyoriy | Mahalliy vaqt siljishi, standart `5` (Toshkent, UTC+5) |
+| `GAME_RESET_HOUR` | ixtiyoriy | O'yin kuni necha soatda almashadi, standart `3` |
 | `GEMINI_API_KEY` | ixtiyoriy | [aistudio.google.com/apikey](https://aistudio.google.com/apikey) |
 | `ADMIN_ID` | ixtiyoriy | Sizning Telegram ID (admin panel + shikoyatlar uchun) |
 | `BOT_USERNAME` | ixtiyoriy | Referral havolasi uchun; `/api/setup` avtomatik keshga yozadi |
 | `LINK_SECRET` | ixtiyoriy | Xat havolalari imzosi uchun; bo'lmasa `BOT_TOKEN`dan olinadi (o'zgartirsangiz eski havolalar ishlamaydi) |
-| `WEBHOOK_SECRET` | ixtiyoriy | Webhook'ni himoyalash |
-| `CRON_SECRET` | ixtiyoriy | `/api/cron` ni qulflash |
+| `WEBHOOK_SECRET` | ixtiyoriy | Bo'sh bo'lsa `/api/setup` avtomatik yaratib Redis'ga saqlaydi |
+| `CRON_SECRET` | ✅ | `/api/cron` uchun; bo'lmasa cron endpoint yopiq (503) |
 
 **Premium narxlari** (ixtiyoriy):
 
@@ -97,11 +98,15 @@ Brauzerda bir marta:
 ```
 https://<loyiha>.vercel.app/api/setup?s=<SETUP_KEY>
 ```
-`webhook set: ...` javobini ko'rsangiz — tayyor.
+`webhook set: ...` javobini ko'rsangiz — tayyor. Webhook maxfiy tokeni
+avtomatik yaratiladi va Redis'ga saqlanadi (xohlasangiz `WEBHOOK_SECRET` bilan
+qulflang). Diagnostika: `/api/check?s=<SETUP_KEY>`.
 
 ### 5. Eslatmalar (Vercel Cron)
 `vercel.json` da sozlangan — kuniga bir marta `/api/cron` chaqiriladi
-(15:00 UTC = **20:00** O'zbekiston). Qo'lda sinash: `/api/cron`.
+(15:00 UTC = **20:00** O'zbekiston). `CRON_SECRET` **majburiy**: Vercel shu
+kalitni `Authorization: Bearer ...` sarlavhasida yuboradi. Bo'lmasa endpoint
+503 qaytaradi (spamdan himoya). Qo'lda sinash ham shu sarlavha bilan.
 
 ---
 
@@ -113,7 +118,7 @@ https://<loyiha>.vercel.app/api/setup?s=<SETUP_KEY>
 | Yillik | **500 ⭐** | 425 kun (1 yil + 2 oy) |
 | Juftlikka sovg'a | **80 ⭐** | 30 kun |
 
-**Premium beradi:** cheksiz xat · AI yordamchi · 4 shablon · Sevgi kvizi · cheksiz xotiralar.
+**Premium beradi:** cheksiz xat · AI yordamchi · 12 shablon · Sevgi kvizi · cheksiz xotiralar.
 
 **Sozlash:** @BotFather → `/mybots` → botni tanlang → **Payments** → **Telegram Stars** yoqilgan bo'lsin.
 
@@ -161,13 +166,18 @@ python tests/smoke.py
 
 Testlar: xat yaratish va kunlik limit, xat maxfiyligi (imzolangan havolalar),
 juftlik (ikki marta juftlanmaslik), o'yin savollarining bot va Ilovada bir xil
-bo'lishi, ball ikki marta qo'shilmasligi, eslatma vaqti (UTC+5), xato handleri,
-sovg'aning bir marta ishlatilishi, referral ballari va to'liq xat yozish oqimi
-(FSM).
+bo'lishi, o'yin kuni va yarim tun chegarasi, ball ikki marta qo'shilmasligi,
+eslatma vaqti (UTC+5), xato handleri, sovg'aning bir marta ishlatilishi,
+webhook maxfiy tokeni, to'lov replay himoyasi, cron avtorizatsiyasi, referral
+ballari va to'liq xat yozish oqimi (FSM).
 
 > 🔐 **Muhim:** xat havolalari endi imzolangan (`?start=l_<id>_<imzo>`).
 > Deploydan oldin yuborilgan eski raqamli havolalar xavfsizlik uchun ishlamaydi —
 > yuboruvchi `/link` buyrug'i bilan oxirgi xatining yangi havolasini olib,
 > qayta yuborishi mumkin.
+>
+> Yangi versiya deploy qilingach `/api/setup?s=SETUP_KEY` ni **bir marta qayta
+> oching** — webhook maxfiy tokeni yangilanadi. Aks holda Telegram update'lari
+> 401 bilan qaytariladi.
 
 <!-- build: fsm-loop-fix -->

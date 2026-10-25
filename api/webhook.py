@@ -4,6 +4,7 @@ Webhook manzili:  https://<loyiha>.vercel.app/api/webhook
 (uni /api/setup?s=SETUP_KEY orqali ro'yxatdan o'tkazasiz)
 """
 import asyncio
+import hmac
 import os
 import sys
 import traceback
@@ -13,7 +14,25 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if ROOT not in sys.path:
     sys.path.insert(0, ROOT)
 
-SECRET = os.environ.get("WEBHOOK_SECRET", "")
+MAX_BODY = 1024 * 1024       # Telegram update 1 MB dan katta bo'lmaydi
+
+
+def _secret():
+    """Webhook tokeni: env yoki /api/setup saqlagan Redis kaliti.
+
+    Token topilmasa webhook yopiq (fail closed) — aks holda istalgan odam
+    soxta Update yuborib, istalgan foydalanuvchi bo'lib ko'rinishi mumkin.
+    Har chaqiruvda o'qiymiz: setup tokenni almashtirsa, issiq lambda ham
+    darhol yangi tokenni ko'radi.
+    """
+    s = (os.environ.get("WEBHOOK_SECRET") or "").strip()
+    if not s:
+        try:
+            import store as st
+            s = st.r.get("ybot:webhook_secret") or ""
+        except Exception:  # noqa: BLE001
+            s = ""
+    return s
 
 
 def _process(body: bytes) -> None:
@@ -40,12 +59,22 @@ def _process(body: bytes) -> None:
 
 class handler(BaseHTTPRequestHandler):
     def do_POST(self) -> None:
-        if SECRET and self.headers.get("x-telegram-bot-api-secret-token") != SECRET:
+        secret = _secret()
+        got = self.headers.get("x-telegram-bot-api-secret-token") or ""
+        try:
+            ok = bool(secret) and hmac.compare_digest(got, secret)
+        except TypeError:      # non-ASCII header
+            ok = False
+        if not ok:
             self.send_response(401)
             self.end_headers()
             return
         try:
             length = int(self.headers.get("Content-Length") or 0)
+            if length < 0 or length > MAX_BODY:
+                self.send_response(413)
+                self.end_headers()
+                return
             body = self.rfile.read(length) if length else b"{}"
             _process(body)
         except Exception:  # noqa: BLE001

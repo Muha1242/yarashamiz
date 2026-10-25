@@ -167,13 +167,36 @@ st.touch(502)
 st.now = lambda: dt.datetime(2026, 10, 23, 20, 0)      # 20:00 Toshkent
 msgs = asyncio.run(core.run_reminders())
 check("20:00 da missiya eslatmasi yuboriladi",
-      any(u == 501 and "missiya" in txt for u, txt in msgs),
-      [(u, t[:30]) for u, t in msgs])
+      any(u == 501 and "missiya" in txt for u, txt, _k in msgs),
+      [(u, t[:30]) for u, t, _k in msgs])
 check("20:00 da kunlik savol yuboriladi",
-      any(u == 501 and "savol" in txt for u, txt in msgs))
+      any(u == 501 and "savol" in txt for u, txt, _k in msgs))
+check("run_reminders o'zi mark qilmaydi", not st.sent(501, "ms"))
+for _u, _t, _k in msgs:                 # cron muvaffaqiyatli yuborgandan keyin
+    st.mark(_u, _k)
 msgs2 = asyncio.run(core.run_reminders())
 check("eslatma ikki marta yuborilmaydi",
-      all(u != 501 or "missiya" not in txt for u, txt in msgs2))
+      all(u != 501 or "missiya" not in txt for u, txt, _k in msgs2))
+
+# o'yin kuni 03:00 da almashadi — 23:59 va 00:01 bir kunga tushadi
+st.now = lambda: dt.datetime(2026, 10, 24, 23, 59)
+check("o'yin kuni 23:59 da 24-oktabr", st.game_day() == "2026-10-24", st.game_day())
+st.now = lambda: dt.datetime(2026, 10, 25, 0, 1)
+check("o'yin kuni 00:01 da hali 24-oktabr", st.game_day() == "2026-10-24", st.game_day())
+st.add_pair(9801, 9802)
+pid_mid = st.pair_of(9801)[0]
+st.put(pid_mid, "wh", 9801, [0, 1, 0, 1, 0])
+st.now = lambda: dt.datetime(2026, 10, 25, 0, 1)
+st.put(pid_mid, "wh", 9802, [0, 1, 0, 1, 0])
+check("yarim tundan keyin ham javoblar bir kunda",
+      st.done(pid_mid, "wh", 9801) and st.done(pid_mid, "wh", 9802))
+asyncio.run(core.after(9802, st.pair_of(9802), "wh"))
+check("yarim tundan keyin ball yo'qolmaydi", st.get_pts(pid_mid) == 15,
+      st.get_pts(pid_mid))
+st.now = lambda: dt.datetime(2026, 10, 25, 3, 1)
+check("o'yin kuni 03:01 da yangilanadi", st.game_day() == "2026-10-25", st.game_day())
+# keyingi testlar avvalgi vaqtda davom etsin (section 7 shu vaqtni qo'ygan edi)
+st.now = lambda: dt.datetime(2026, 10, 23, 20, 0)
 
 # --------------------------- 8. XATO HANDLERI ----------------------------
 SENT.clear()
@@ -507,7 +530,8 @@ st.now = lambda: dt.datetime(2026, 10, 23, 20, 0)
 st.set_reminders(1301, False)
 msgs_off = asyncio.run(core.run_reminders())
 check("eslatma o'chirilganda yuborilmaydi",
-      all(u != 1301 for u, _ in msgs_off), [(u, t[:20]) for u, t in msgs_off])
+      all(u != 1301 for u, _t, _k in msgs_off),
+      [(u, t[:20]) for u, t, _k in msgs_off])
 st.set_reminders(1301, True)
 check("eslatma qayta yoqiladi", st.reminders_on(1301) is True)
 st.set_reminders(1303, "0")
@@ -611,6 +635,8 @@ check("ilova: sovuq startda taklif havolasi",
 # kelajakdagi auth_date rad etiladi
 check("kelajakdagi initData rad etiladi",
       api_app.verify(make_init(ts=int(time.time()) + 3600)) is None)
+check("3 soatlik initData rad etiladi (replay oynasi qisqa)",
+      api_app.verify(make_init(ts=int(time.time()) - 3 * 3600)) is None)
 
 # --------------------- 22. HTTP HANDLER (do_POST) ------------------------
 import io  # noqa: E402
@@ -619,14 +645,27 @@ import io  # noqa: E402
 class FakeHTTP:
     """BaseHTTPRequestHandler o'rniga minimal soxta obyekt."""
 
-    def __init__(self, body: bytes):
+    def __init__(self, body: bytes, headers=None):
         self.headers = {"Content-Length": str(len(body))}
+        if headers:
+            self.headers.update(headers)
         self.rfile = io.BytesIO(body)
         self.wfile = io.BytesIO()
         self.out = None
+        self.status = None
+
+    def send_response(self, code):
+        self.status = code
+
+    def send_header(self, *a):
+        pass
+
+    def end_headers(self):
+        pass
 
     def _json(self, code, data):
         self.out = (code, data)
+        self.status = code
 
 
 fh = FakeHTTP(json.dumps({"init": init, "action": "me"}).encode())
@@ -656,6 +695,227 @@ for _rel in ("mini_app/app.js", "public/mini_app/app.js"):
 check("mini_app nusxalari bir xil",
       open(os.path.join(_root, "mini_app/app.js"), encoding="utf-8").read() ==
       open(os.path.join(_root, "public/mini_app/app.js"), encoding="utf-8").read())
+_js = open(os.path.join(_root, "mini_app/app.js"), encoding="utf-8").read()
+check("uzun xat to'liq ko'rsatiladi",
+      "letter-full" in _js and "LETTER.t || LETTER.text" in _js)
+check("limit tugaganda yaratish tugmasi o'chadi",
+      "outOfLimit" in _js and "mk.disabled = outOfLimit" in _js)
+check("preview takliflarni yo'qotmaydi", "const sentOffers" in _js)
+check("premium kviz oldindan bloklanadi", "kq.locked" in _js)
+check("ikki marta yuborish bloklangan", "DATA_SENT" in _js)
+check("xato xabarlari aniq", "apiError" in _js)
+_html = open(os.path.join(_root, "mini_app/index.html"), encoding="utf-8").read()
+check("zoom bloklanmagan", "user-scalable=no" not in _html)
+_css = open(os.path.join(_root, "mini_app/style.css"), encoding="utf-8").read()
+check("to'liq xat va mobil narx CSS'i",
+      ".letter-full" in _css and "@media(max-width:360px)" in _css)
+check("mini_app html/css nusxalari bir xil",
+      _html == open(os.path.join(_root, "public/mini_app/index.html"),
+                    encoding="utf-8").read()
+      and _css == open(os.path.join(_root, "public/mini_app/style.css"),
+                       encoding="utf-8").read())
+
+# --------------------- 24. WEBAPP_URL NORMALLASHTIRISH -------------------
+_saved_webapp = os.environ.get("WEBAPP_URL")
+os.environ["WEBAPP_URL"] = "https://demo.vercel.app/mini_app/"
+check("WEBAPP_URL /mini_app -> asosiy domen",
+      core.base_url() == "https://demo.vercel.app", core.base_url())
+check("Mini App URL /mini_app bilan",
+      core.app_url() == "https://demo.vercel.app/mini_app", core.app_url())
+os.environ["WEBAPP_URL"] = "https://demo.vercel.app"
+check("WEBAPP_URL domenda ham Mini App to'g'ri",
+      core.app_url() == "https://demo.vercel.app/mini_app", core.app_url())
+
+# ------------------------- 25. SETUP + WEBHOOK ---------------------------
+import api.setup as api_setup  # noqa: E402
+import api.webhook as api_webhook  # noqa: E402
+import api.cron as api_cron  # noqa: E402
+
+_captured = {}
+
+
+async def _fake_set_webhook(url, **kw):
+    _captured.update(url=url, **kw)
+
+
+async def _fake_get_me():
+    return types.SimpleNamespace(username="setupbot")
+
+
+async def _fake_noop(*a, **kw):
+    return None
+
+
+_saved_bot = (core.bot.set_webhook, core.bot.get_me, core.bot.set_my_commands,
+              core.bot.set_my_short_description, core.bot.set_my_description)
+os.environ["WEBHOOK_SECRET"] = ""
+os.environ["WEBAPP_URL"] = "https://demo.vercel.app/mini_app"
+st.r.delete("ybot:webhook_secret")
+try:
+    core.bot.set_webhook = _fake_set_webhook
+    core.bot.get_me = _fake_get_me
+    core.bot.set_my_commands = _fake_noop
+    core.bot.set_my_short_description = _fake_noop
+    core.bot.set_my_description = _fake_noop
+    _setup_url = asyncio.run(api_setup._set())
+finally:
+    (core.bot.set_webhook, core.bot.get_me, core.bot.set_my_commands,
+     core.bot.set_my_short_description, core.bot.set_my_description) = _saved_bot
+check("setup webhook URL /mini_app ni olib tashlaydi",
+      _setup_url == "https://demo.vercel.app/api/webhook", _setup_url)
+check("setup webhook secret yaratadi va yuboradi",
+      bool(_captured.get("secret_token")) and
+      _captured.get("secret_token") == st.r.get("ybot:webhook_secret"),
+      _captured.get("secret_token"))
+
+# webhook: token yo'q/noto'g'ri bo'lsa fail closed
+api_webhook._SECRET = ""
+os.environ.pop("WEBHOOK_SECRET", None)
+st.r.delete("ybot:webhook_secret")
+fh_wh = FakeHTTP(b"{}")
+api_webhook.handler.do_POST(fh_wh)
+check("webhook tokensiz -> 401", fh_wh.status == 401, fh_wh.status)
+st.r.set("ybot:webhook_secret", "s3cr3t")
+check("webhook maxfiy tokenni Redis'dan oladi",
+      api_webhook._secret() == "s3cr3t", api_webhook._secret())
+fh_wh2 = FakeHTTP(b"{}", {"x-telegram-bot-api-secret-token": "wrong"})
+api_webhook.handler.do_POST(fh_wh2)
+check("webhook noto'g'ri token -> 401", fh_wh2.status == 401, fh_wh2.status)
+
+# ------------------------ 26. TO'LOV XAVFSIZLIGI -------------------------
+class FakeQ:
+    def __init__(self, payload, amount=None, currency="XTR", uid=6001):
+        self.invoice_payload = payload
+        self.total_amount = (core.PRICES["month"] if amount is None else amount)
+        self.currency = currency
+        self.from_user = types.SimpleNamespace(id=uid)
+        self.answers = []
+
+    async def answer(self, ok, error_message=None):
+        self.answers.append(ok)
+
+
+q_ok = FakeQ("prem:month:6001", core.PRICES["month"])
+asyncio.run(core.pre(q_ok))
+check("to'lov: to'g'ri invoice qabul qilinadi", q_ok.answers == [True], q_ok.answers)
+q_bad_amount = FakeQ("prem:month:6001", 1)
+asyncio.run(core.pre(q_bad_amount))
+check("to'lov: soxta narx rad etiladi", q_bad_amount.answers == [False])
+q_bad_uid = FakeQ("prem:month:9999", core.PRICES["month"])
+asyncio.run(core.pre(q_bad_uid))
+check("to'lov: boshqa odam uid'i rad etiladi", q_bad_uid.answers == [False])
+q_bad_cur = FakeQ("prem:month:6001", core.PRICES["month"], currency="USD")
+asyncio.run(core.pre(q_bad_cur))
+check("to'lov: XTR bo'lmagan valyuta rad etiladi", q_bad_cur.answers == [False])
+q_gift = FakeQ("gift:6001", core.PRICES["gift"])
+asyncio.run(core.pre(q_gift))
+check("to'lov: sovg'a invoice qabul qilinadi", q_gift.answers == [True])
+
+
+class FakePayMsg:
+    def __init__(self, payload, amount, charge, uid=6100, currency="XTR"):
+        self.from_user = types.SimpleNamespace(id=uid)
+        self.successful_payment = types.SimpleNamespace(
+            invoice_payload=payload, total_amount=amount, currency=currency,
+            telegram_payment_charge_id=charge)
+        self.answers = []
+
+    async def answer(self, text, **kw):
+        self.answers.append(text)
+
+
+st.r.delete("prem:6100")
+st.r.delete("pay:chg-ok")
+pay1 = FakePayMsg("prem:month:6100", core.PRICES["month"], "chg-ok")
+asyncio.run(core.paid(pay1))
+_days = st.prem_days(6100)
+check("to'lov: premium berildi", _days >= 29 and bool(pay1.answers), _days)
+pay2 = FakePayMsg("prem:month:6100", core.PRICES["month"], "chg-ok")
+asyncio.run(core.paid(pay2))
+check("to'lov replay: ikkinchi marta berilmaydi",
+      st.prem_days(6100) == _days and not pay2.answers,
+      (st.prem_days(6100), pay2.answers))
+pay_bad = FakePayMsg("prem:month:6100", 1, "chg-bad")
+asyncio.run(core.paid(pay_bad))
+check("to'lov: soxta summa premium bermaydi",
+      st.prem_days(6100) == _days and not pay_bad.answers)
+
+# ------------------- 27. KUNLIK LIMIT BYPASS YOPILDI --------------------
+_ctx = FSMContext(storage=core.dp.storage,
+                  key=StorageKey(bot_id=123456, chat_id=9500, user_id=9500))
+asyncio.run(_ctx.set_state(core.W.theme))
+asyncio.run(_ctx.update_data(text="Ortiqcha xat", offers=["Kino ko'ramiz"]))
+for _i in range(core.DAILY_LIMIT):
+    st.add_letter(9500, f"x{_i}", ["Kino ko'ramiz"], "classic")
+_cb_limit = FakeCb(9500, "th:classic", FakeOut(9500))
+asyncio.run(core.theme(_cb_limit, _ctx))
+check("kunlik limit bypass yopildi",
+      st.count_letters(9500) == core.DAILY_LIMIT and
+      any("limit" in (a or "") for a in _cb_limit.alerts), _cb_limit.alerts)
+
+_ctx2 = FSMContext(storage=core.dp.storage,
+                   key=StorageKey(bot_id=123456, chat_id=9501, user_id=9501))
+asyncio.run(_ctx2.set_state(core.W.theme))
+asyncio.run(_ctx2.update_data(text="Yangi", offers=["Kino ko'ramiz"]))
+_cb_theme = FakeCb(9501, "th:__evil__", FakeOut(9501))
+asyncio.run(core.theme(_cb_theme, _ctx2))
+check("noto'g'ri shablon rad etiladi",
+      st.count_letters(9501) == 0 and
+      any("Noto'g'ri" in (a or "") for a in _cb_theme.alerts), _cb_theme.alerts)
+
+# ----------------------- 28. QO'SHIMCHA HIMOYA ---------------------------
+res_offers = api_app._newletter(
+    5200, {"text": "Salom", "offers": core.OFFERS[:9], "theme": "classic"})
+check("ilova 9 ta taklifni saqlaydi (jim kesmaydi)",
+      bool(res_offers.get("ok")) and
+      len(st.letter(res_offers["id"])["offers"]) == 9, res_offers)
+
+# ilova orqali referral mukofoti haqida referrerga xabar boradi
+_notes = []
+_saved_notify = api_app.notify
+api_app.notify = lambda u, t: _notes.append((u, t))
+st.set_ref(5400, 1202)
+res_ref = api_app._newletter(
+    5400, {"text": "Salom", "offers": [core.OFFERS[0]], "theme": "classic"})
+api_app.notify = _saved_notify
+check("ilova referral xabari yuboriladi",
+      bool(res_ref.get("ok")) and any(u == 1202 and "taklif" in t.lower()
+                                      for u, t in _notes), _notes)
+
+# retheme faqat xat egasiga va to'g'ri id bilan
+_rt = api_app._retheme(101, {"l": str(lid), "theme": "classic"})
+check("retheme o'z xatiga ishlaydi", _rt.get("ok") is True, _rt)
+
+check("rate limit ishlaydi",
+      st.rate_ok(7001, limit=2, window=60) and
+      st.rate_ok(7001, limit=2, window=60) and
+      not st.rate_ok(7001, limit=2, window=60))
+
+st.seen(999998, 1)
+check("seen kaliti TTL oladi", 0 < st.r.ttl("seen:999998") <= 30 * 86400,
+      st.r.ttl("seen:999998"))
+
+fh_big = FakeHTTP(b"x" * (65 * 1024))
+api_app.handler.do_POST(fh_big)
+check("katta so'rov -> 413", fh_big.status == 413, fh_big.status)
+
+_saved_cron = api_cron.CRON_SECRET
+api_cron.CRON_SECRET = ""
+fh_cron = FakeHTTP(b"{}")
+api_cron.handler._handle(fh_cron)
+check("cron secret yo'q -> 503", fh_cron.out and fh_cron.out[0] == 503, fh_cron.out)
+api_cron.CRON_SECRET = "s"
+fh_cron2 = FakeHTTP(b"{}", {"authorization": "Bearer wrong"})
+api_cron.handler._handle(fh_cron2)
+check("cron noto'g'ri token -> 401",
+      fh_cron2.out and fh_cron2.out[0] == 401, fh_cron2.out)
+api_cron.CRON_SECRET = _saved_cron
+
+# WEBAPP_URL ni tiklaymiz
+if _saved_webapp is None:
+    os.environ.pop("WEBAPP_URL", None)
+else:
+    os.environ["WEBAPP_URL"] = _saved_webapp
 
 print()
 if FAILS:

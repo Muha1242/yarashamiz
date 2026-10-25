@@ -157,6 +157,11 @@ body::before{content:"";position:fixed;inset:-20%;pointer-events:none;z-index:0;
 @keyframes bubble{50%{transform:translateY(-5px) rotate(.9deg) scale(1.018)}}
 .pl-text{font-family:Caveat,cursive;font-size:13px;line-height:1.34;color:#3a1a2e;text-align:center;
   display:-webkit-box;-webkit-line-clamp:7;-webkit-box-orient:vertical;overflow:hidden;word-break:break-word}
+.letter-full{font-family:Caveat,cursive;font-size:19px;line-height:1.5;color:var(--ink);
+  white-space:pre-wrap;word-break:break-word;margin-top:8px}
+button:focus-visible,a:focus-visible,textarea:focus-visible,input:focus-visible{
+  outline:2px solid var(--pink);outline-offset:2px}
+@media(max-width:360px){.price{flex-direction:column}}
 .scene.open .env-letter{transform:translateY(-58%) translateZ(34px) scale(1.1)}
 .scene.open .pl-text{-webkit-line-clamp:12;font-size:13.5px}
 

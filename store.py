@@ -21,7 +21,7 @@ r = redis.from_url(os.environ["REDIS_URL"], decode_responses=True)
 # Xat havolalari uchun maxfiy kalit. BOT_TOKEN allaqachon maxfiy, shuning uchun
 # alohida LINK_SECRET o'rnatilmasa ham havola kodlari taxmin qilinmaydi.
 LINK_SECRET = (os.environ.get("LINK_SECRET")
-               or os.environ.get("BOT_TOKEN") or "yarashamiz")
+               or os.environ.get("BOT_TOKEN") or secrets.token_urlsafe(32))
 
 # Server (Vercel) UTC'da ishlaydi, foydalanuvchilar esa O'zbekistonda (UTC+5).
 # Kunlik savol / seriya / eslatmalar mahalliy vaqt bo'yicha hisoblanishi kerak.
@@ -42,6 +42,18 @@ def day_start_ts():
     """Mahalliy yarim tun (epoch soniyada) — kunlik limit uchun."""
     local_midnight = now().replace(hour=0, minute=0, second=0, microsecond=0)
     return int((local_midnight - dt.timedelta(hours=TZ_OFFSET)).timestamp())
+
+
+GAME_RESET_HOUR = int(os.environ.get("GAME_RESET_HOUR", "3"))
+
+
+def game_day():
+    """O'yin kuni (standart 03:00 da almashadi).
+
+    23:59 va 00:01 da javob bergan juftlik bir xil kunga tushishi uchun
+    yarim tunda emas, 03:00 da yangilanadi — ball yo'qolmaydi.
+    """
+    return (now() - dt.timedelta(hours=GAME_RESET_HOUR)).date().isoformat()
 
 GAMES = {
     "ab": {"name": "A yoki B", "n": 5, "mode": "guess"},
@@ -252,12 +264,12 @@ def block(u, sender):
 
 # ------------------------------ O'YINLAR --------------------------------
 def get(pid, g, u):
-    d = r.get(f"ans:{pid}:{today()}:{g}:{u}")
+    d = r.get(f"ans:{pid}:{game_day()}:{g}:{u}")
     return json.loads(d) if d else None
 
 
 def put(pid, g, u, d):
-    r.set(f"ans:{pid}:{today()}:{g}:{u}", json.dumps(d))
+    r.set(f"ans:{pid}:{game_day()}:{g}:{u}", json.dumps(d))
 
 
 def done(pid, g, u):
@@ -286,6 +298,15 @@ def lock(key, ttl=15):
                     r.delete(full)
             except Exception:  # noqa: BLE001
                 pass
+
+
+def rate_ok(u, limit=120, window=60):
+    """Foydalanuvchi bo'yicha daqiqalik so'rov limiti (Redis hisoblagichi)."""
+    key = f"rl:{u}:{int(time.time()) // window}"
+    n = r.incr(key)
+    if n == 1:
+        r.expire(key, window * 2)
+    return n <= limit
 
 
 # ------------------------------- SERIYA ---------------------------------
@@ -369,12 +390,38 @@ def prem_days(u):
 
 
 def add_prem(u, days):
-    base = dt.datetime.now().timestamp()
-    v = r.get(f"prem:{u}")
+    """Premium qo'shadi. WATCH bilan atomar — ikki to'lov kunlarni yo'qotmaydi."""
+    key = f"prem:{u}"
+    for _ in range(3):
+        try:
+            with r.pipeline() as pipe:
+                pipe.watch(key)
+                v = pipe.get(key)
+                base = int(dt.datetime.now().timestamp())
+                if v and int(v) > base:
+                    base = int(v)
+                pipe.multi()
+                pipe.set(key, int(base + days * 86400))
+                pipe.sadd("prems", u)
+                pipe.execute()
+                return
+        except redis.WatchError:
+            continue
+    # Juda kam holat: 3 urinish ham to'qnashdi — oddiy yozuv
+    v = r.get(key)
+    base = int(dt.datetime.now().timestamp())
     if v and int(v) > base:
         base = int(v)
-    r.set(f"prem:{u}", int(base + days * 86400))
+    r.set(key, int(base + days * 86400))
     r.sadd("prems", u)
+
+
+def claim_payment(charge_id):
+    """Telegram to'lovini bir marta hisoblaydi (replay himoyasi)."""
+    charge_id = str(charge_id or "").strip()
+    if not charge_id:
+        return False
+    return bool(r.set(f"pay:{charge_id}", 1, nx=True, ex=400 * 86400))
 
 
 # -------------------------------- SOVG'A --------------------------------
@@ -507,7 +554,9 @@ def apply_ref_reward(ref, n):
 # -------------------------------- SHIKOYAT -------------------------------
 def seen(lid, u):
     """Foydalanuvchi xatni ochganini belgilaydi (shikoyat uchun)."""
-    r.sadd(f"seen:{lid}", u)
+    key = f"seen:{lid}"
+    r.sadd(key, u)
+    r.expire(key, 30 * 86400)      # eski 'seen' abadiy qolmasin
 
 
 def has_seen(lid, u):
