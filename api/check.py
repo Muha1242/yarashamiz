@@ -5,6 +5,7 @@ Hech qanday maxfiy qiymat ko'rsatilmaydi - faqat bor/yo'q.
 """
 import json
 import os
+import urllib.request
 from http.server import BaseHTTPRequestHandler
 
 
@@ -27,7 +28,11 @@ class handler(BaseHTTPRequestHandler):
             "PRICE_MONTH": os.environ.get("PRICE_MONTH") or "50 (standart)",
             "PRICE_YEAR": os.environ.get("PRICE_YEAR") or "500 (standart)",
             "PRICE_GIFT": os.environ.get("PRICE_GIFT") or "80 (standart)",
+            "request_host": self.headers.get("host"),
         }
+        token = os.environ.get("BOT_TOKEN") or ""
+        info["token_bot_id"] = token.split(":", 1)[0] if ":" in token else None
+        info["token_len"] = len(token)
 
         # Muammolarni aniqlash
         warn = []
@@ -56,6 +61,29 @@ class handler(BaseHTTPRequestHandler):
                 info["last_update"] = rc2.get("ybot:lastupdate")
             except Exception as e:  # noqa: BLE001
                 info["last_error"] = repr(e)
+
+        # Bot va webhook tirikligini tekshirish (?bot=1)
+        # Bu Mini App "auth" xatosining sababini darhol ko'rsatadi:
+        # token haqiqiy emas / webhook boshqa domenga ketgan / xato bor.
+        if "bot=1" in (self.path or ""):
+            try:
+                base = "https://api.telegram.org/bot" + token
+                with urllib.request.urlopen(base + "/getMe", timeout=8) as r:
+                    me = json.loads(r.read())
+                res = me.get("result") or {}
+                info["getMe"] = {"ok": bool(me.get("ok")),
+                                 "id": res.get("id"),
+                                 "username": res.get("username"),
+                                 "error": None if me.get("ok") else me.get("description")}
+                with urllib.request.urlopen(base + "/getWebhookInfo", timeout=8) as r:
+                    wh = json.loads(r.read()).get("result") or {}
+                info["webhook"] = {k: wh.get(k) for k in (
+                    "url", "pending_update_count", "last_error_message",
+                    "last_error_date", "max_connections")}
+                info["webhook_ok"] = bool(wh.get("url")) and not wh.get("last_error_message")
+            except Exception as e:  # noqa: BLE001
+                info["getMe"] = {"ok": False, "error": repr(e)}
+                info["webhook_ok"] = False
 
         # Redis kechikishini olchash (?ping=1)
         if "ping" in (self.path or ""):

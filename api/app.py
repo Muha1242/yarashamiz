@@ -24,23 +24,55 @@ BOT_TOKEN = os.environ.get("BOT_TOKEN", "")
 MAX_AGE = 86400 * 3          # initData 3 kungacha amal qiladi
 
 
-def verify(init_data: str):
-    """Telegram initData ni tekshiradi. Foydalanuvchi dict yoki None."""
+def _dcs(fields: dict) -> str:
+    """Telegram data-check-string."""
+    return "\n".join(f"{k}={v}" for k, v in sorted(fields.items()))
+
+
+def verify_ex(init_data: str):
+    """initData ni tekshiradi. Qaytaradi: (user | None, sabab).
+
+    sabab: ok / no_init / no_token / no_hash / bad_hash / bad_date /
+           expired / no_user / bad_data
+    """
+    if not init_data:
+        return None, "no_init"
+    if not BOT_TOKEN:
+        return None, "no_token"
     try:
         p = dict(urllib.parse.parse_qsl(init_data, keep_blank_values=True))
         got = p.pop("hash", "")
-        if not got or not BOT_TOKEN:
-            return None
-        check = "\n".join(f"{k}={v}" for k, v in sorted(p.items()))
+        if not got:
+            return None, "no_hash"
         secret = hmac.new(b"WebAppData", BOT_TOKEN.encode(), hashlib.sha256).digest()
-        calc = hmac.new(secret, check.encode(), hashlib.sha256).hexdigest()
-        if not hmac.compare_digest(calc, got):
-            return None
-        if time.time() - int(p.get("auth_date") or 0) > MAX_AGE:
-            return None
-        return json.loads(p.get("user") or "{}")
+        # Bot API 8+: `signature` ba'zi mijozlarda data-check-string ga
+        # kirmaydi — ikkala variantni ham qabul qilamiz (xavfsizlik yo'qolmaydi)
+        variants = [p]
+        if "signature" in p:
+            variants.append({k: v for k, v in p.items() if k != "signature"})
+        if not any(
+            hmac.compare_digest(
+                hmac.new(secret, _dcs(f).encode(), hashlib.sha256).hexdigest(), got)
+            for f in variants
+        ):
+            return None, "bad_hash"
+        try:
+            auth_date = int(p.get("auth_date") or 0)
+        except (TypeError, ValueError):
+            return None, "bad_date"
+        if time.time() - auth_date > MAX_AGE:
+            return None, "expired"
+        usr = json.loads(p.get("user") or "{}")
+        if not usr.get("id"):
+            return None, "no_user"
+        return usr, "ok"
     except Exception:  # noqa: BLE001
-        return None
+        return None, "bad_data"
+
+
+def verify(init_data: str):
+    """Telegram initData ni tekshiradi. Foydalanuvchi dict yoki None."""
+    return verify_ex(init_data)[0]
 
 
 def _me(u, usr):
@@ -356,7 +388,13 @@ class handler(BaseHTTPRequestHandler):
         self._json(204, {})
 
     def do_GET(self) -> None:
-        self._json(200, {"ok": True, "service": "yarashamiz app api"})
+        try:
+            bot = bot_username() or ""
+        except Exception:  # noqa: BLE001
+            bot = ""
+        self._json(200, {"ok": True, "service": "yarashamiz app api",
+                         "bot": bot,
+                         "webapp": os.environ.get("WEBAPP_URL") or ""})
 
     def do_POST(self) -> None:
         try:
@@ -365,9 +403,12 @@ class handler(BaseHTTPRequestHandler):
         except Exception:  # noqa: BLE001
             return self._json(400, {"ok": False, "err": "bad_json"})
 
-        usr = verify(d.get("init") or "")
+        usr, why = verify_ex(d.get("init") or "")
         if not usr or not usr.get("id"):
-            return self._json(401, {"ok": False, "err": "auth"})
+            # sabab ilovaga qaytariladi (maxfiy ma'lumot yo'q) - foydalanuvchi
+            # va admin nima bo'lganini darhol ko'radi
+            return self._json(401, {"ok": False, "err": "auth", "why": why,
+                                    "bot": bot_username() or ""})
 
         fn = ACTIONS.get(d.get("action") or "")
         if not fn:

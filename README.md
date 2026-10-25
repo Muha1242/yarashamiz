@@ -148,6 +148,37 @@ avtomatik o'rnatiladi.
 
 ---
 
+## 🆘 «Ilovani botdan oching» / «Xatolik: auth» bo‘lsa
+
+Mini App ochiladi, lekin har bo‘limda `auth` xatosi chiqsa — `/api/app` 401
+qaytaryapti. Endi ilovaning o‘zi **sababni** ko‘rsatadi (`sabab: bad_hash`,
+`no_token`, `expired`, `no_init`...). Tekshirish tartibi:
+
+1. **Deploy qaysi branch'dan?** PR #34 merge qilinmagan bo‘lsa, production eski
+   kod bilan ishlaydi. `main` ga merge → Vercel **Redeploy**.
+2. `https://<domen>/api/check` → `ok: true`, `BOT_TOKEN: true`,
+   `REDIS_URL_scheme: "rediss://"`, `WEBAPP_URL` shu domenga teng.
+3. `https://<domen>/api/check?bot=1` → eng muhim diagnostika:
+   - `getMe.ok: true` va `getMe.username` — token **haqiqiy**;
+   - `webhook.url` = `https://<domen>/api/webhook`;
+   - `webhook.last_error_message` bo‘sh bo‘lishi kerak;
+   - `token_bot_id` — token qaysi botga tegishli ekani (Mini App shu botdan
+     ochilishi shart).
+4. `https://<domen>/api/setup?s=<SETUP_KEY>` — bir marta (webhook + menyu).
+5. Ilovani **botdagi** «📱 Ilovani ochish» tugmasidan oching — havoladan yoki
+   brauzerdan ochilsa `initData` bo‘lmaydi (`no_init`).
+
+| Sabab | Ma’nosi / yechim |
+|---|---|
+| `no_init` | Mini App botdan tashqarida ochilgan. Bot tugmasidan oching |
+| `no_token` | Vercel'da `BOT_TOKEN` yo‘q yoki bo‘sh |
+| `bad_hash` | `BOT_TOKEN` boshqa botga tegishli / oxirida bo‘sh joy / revoke qilingan |
+| `no_hash` | So‘rov to‘liq kelmagan (proksi/CDN) — qayta urinib ko‘ring |
+| `expired` | `initData` 3 kundan eski — botdan qayta oching |
+| `no_user` | `user` maydoni yo‘q — Telegram mijozini yangilang |
+
+---
+
 ## 🧪 Sinov (offline)
 
 Tashqi xizmatlarsiz — `fakeredis` bilan:

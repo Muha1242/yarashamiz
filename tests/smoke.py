@@ -282,11 +282,16 @@ import hmac  # noqa: E402
 import urllib.parse  # noqa: E402
 
 
-def make_init(uid=555, ts=None):
+def make_init(uid=555, ts=None, sig=None, include_sig=False):
     p = {"auth_date": str(ts or int(time.time())),
          "query_id": "AAE-test",
          "user": json.dumps({"id": uid, "first_name": "Test"}, separators=(",", ":"))}
-    check = "\n".join(f"{k}={v}" for k, v in sorted(p.items()))
+    if sig:
+        p["signature"] = sig
+    fields = dict(p)
+    if sig and not include_sig:
+        fields.pop("signature")       # Bot API 8+: signature dcs ga kirmaydi
+    check = "\n".join(f"{k}={v}" for k, v in sorted(fields.items()))
     secret = hmac.new(b"WebAppData", core.TOKEN.encode(), hashlib.sha256).digest()
     p["hash"] = hmac.new(secret, check.encode(), hashlib.sha256).hexdigest()
     return urllib.parse.urlencode(p)
@@ -297,6 +302,14 @@ check("to'g'ri initData qabul qilinadi",
       (api_app.verify(init) or {}).get("id") == 555)
 check("buzilgan initData rad etiladi", api_app.verify(init[:-4] + "0000") is None)
 check("hash'siz initData rad etiladi", api_app.verify("user=%7B%7D") is None)
+check("signature (yangi Bot API) qabul qilinadi",
+      (api_app.verify(make_init(sig="AbC123")) or {}).get("id") == 555)
+check("signature dcs ichida bo'lgan eski variant ham qabul qilinadi",
+      (api_app.verify(make_init(sig="AbC123", include_sig=True)) or {}).get("id") == 555)
+check("sabab: bo'sh init -> no_init", api_app.verify_ex("")[1] == "no_init")
+check("sabab: buzuq hash", api_app.verify_ex("auth_date=1&hash=deadbeef")[1] == "bad_hash")
+check("sabab: eskagan", api_app.verify_ex(
+    make_init(ts=int(time.time()) - 10 * 86400))[1] == "expired")
 check("eskirgan initData rad etiladi",
       api_app.verify(make_init(ts=int(time.time()) - 10 * 86400)) is None)
 
@@ -535,6 +548,16 @@ check("CSS: reduced-motion qo'llab-quvvatlanadi",
 # CSS qavslari muvozanati (sintaksis tekshiruvi)
 check("CSS qavslari muvozanatli",
       css.count("{") == css.count("}") and css.count("(") == css.count(")"))
+
+# auth xatosi uchun foydalanuvchiga tushunarli karta
+check("JS: auth kartasi va 'Botni ochish'",
+      "authCard" in js and "Botni ochish" in js and "no_init" in js)
+check("JS: har bo'limda auth tekshiruvi",
+      js.count("r.err === 'auth'") >= 4 and "f.err === 'auth'" in js)
+check("api: GET config bot nomini beradi",
+      "def do_GET" in open(os.path.join(ROOT, "api/app.py"), encoding="utf-8").read())
+check("check endpoint: bot diagnostikasi (?bot=1)",
+      "bot=1" in open(os.path.join(ROOT, "api/check.py"), encoding="utf-8").read())
 
 
 print()

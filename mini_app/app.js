@@ -31,6 +31,57 @@ async function api(action, extra) {
 const h = (tag, cls, txt) => { const e = document.createElement(tag); if (cls) e.className = cls; if (txt != null) e.textContent = txt; return e; };
 const haptic = (s) => { try { tg.HapticFeedback.impactOccurred(s || 'light'); } catch (e) {} };
 
+/* ================= AUTH / SOZLAMA ================= */
+let BOT_NAME = null;
+async function loadBot() {
+  if (BOT_NAME !== null) return BOT_NAME;
+  try {
+    const r = await fetch(API_BASE + '/api/app');
+    const j = await r.json();
+    BOT_NAME = j.bot || '';
+  } catch (e) { BOT_NAME = ''; }
+  return BOT_NAME;
+}
+
+function authWhy(why) {
+  switch (why) {
+    case 'no_init': return 'Ilova Telegram’dan tashqarida ochilgan ko‘rinadi. Uni bot orqali qayta oching.';
+    case 'no_token': return 'Serverda BOT_TOKEN sozlanmagan. Admin bilan bog‘laning.';
+    case 'expired': return 'Sessiya eskirgan. Ilovani botdan qayta oching.';
+    case 'bad_hash': return 'Telegram ma’lumotini tasdiqlab bo‘lmadi (token mos emas yoki eskirgan). Ilovani botdan qayta oching.';
+    case 'no_hash': return 'Telegram ma’lumoti to‘liq kelmadi. Ilovani botdan qayta oching.';
+    default: return 'Ma’lumotni tekshirib bo‘lmadi. Ilovani botdan qayta oching.';
+  }
+}
+
+async function authCard(v, why) {
+  v.innerHTML = '';
+  const c = h('div', 'card');
+  c.appendChild(h('h2', '', '🔐 Ilovani botdan oching'));
+  c.appendChild(h('p', '', authWhy(why)));
+  const name = await loadBot();
+  if (name) c.appendChild(h('p', 'hint', 'Bu ilova @' + name + ' uchun sozlangan'));
+  const b = h('button', 'btn btn-main', '🤖 Botni ochish');
+  b.style.marginTop = '12px';
+  b.onclick = () => {
+    haptic();
+    const u = name ? 'https://t.me/' + name : 'https://t.me';
+    if (tg && tg.openTelegramLink) tg.openTelegramLink(u); else window.open(u);
+  };
+  c.appendChild(b);
+  const r2 = h('button', 'btn btn-ghost', '🔄 Qayta urinish');
+  r2.style.marginTop = '8px';
+  r2.onclick = () => { haptic(); location.reload(); };
+  c.appendChild(r2);
+  v.appendChild(c);
+  if (why) {
+    const s = h('p', 'hint', 'sabab: ' + why);
+    s.style.opacity = '.4';
+    s.style.fontSize = '11px';
+    v.appendChild(s);
+  }
+}
+
 /* ================= TABLAR ================= */
 function setTab(name) {
   document.querySelectorAll('.tabs button').forEach((b) => b.classList.toggle('on', b.dataset.tab === name));
@@ -94,6 +145,7 @@ function viewWrite(v) {
   api('form').then((f) => {
     v.innerHTML = '';
     if (!f.ok) {
+      if (f.err === 'auth') { authCard(v, f.why); return; }
       const c = h('div', 'card');
       c.appendChild(h('h2', '', '✍️ Xat yozish'));
       c.appendChild(h('p', '', 'Ilovani botdan oching'));
@@ -435,7 +487,10 @@ async function viewGames(v) {
   v.appendChild(h('div', 'splash', 'Yuklanmoqda…'));
   const r = await api('games');
   v.innerHTML = '';
-  if (!r.ok) { v.appendChild(h('p', 'hint', "Xatolik: " + (r.err || '?') + "\nIlovani botdan oching")); return; }
+  if (!r.ok) {
+    if (r.err === 'auth') { authCard(v, r.why); return; }
+    v.appendChild(h('p', 'hint', "Xatolik: " + (r.err || '?') + "\nIlovani botdan oching")); return;
+  }
   if (!r.pair) {
     const c = h('div', 'card');
     c.appendChild(h('h2', '', '🎮 O\'yinlar'));
@@ -530,6 +585,7 @@ async function submit(g, data) {
   v.innerHTML = '';
   const c = h('div', 'card');
   if (!r.ok) {
+    if (r.err === 'auth') { authCard(v, r.why); return; }
     c.appendChild(h('h2', '', 'Xatolik'));
     c.appendChild(h('p', '', r.err === 'already' ? "Bugun o'ynadingiz ✅"
       : r.err === 'premium' ? 'Bu o\'yin Premium uchun 💎' : 'Qayta urinib ko\'ring'));
@@ -554,7 +610,16 @@ async function submit(g, data) {
 
 /* ================= 3. HISOBIM ================= */
 async function viewMe(v) {
-  if (!ME) { v.appendChild(h('div', 'splash', 'Yuklanmoqda…')); const r = await api('me'); if (!r.ok) { v.innerHTML = ''; v.appendChild(h('p', 'hint', 'Ilovani botdan oching')); return; } ME = r; }
+  if (!ME) {
+    v.appendChild(h('div', 'splash', 'Yuklanmoqda…'));
+    const r = await api('me');
+    if (!r.ok) {
+      v.innerHTML = '';
+      if (r.err === 'auth') { authCard(v, r.why); return; }
+      v.appendChild(h('p', 'hint', 'Ilovani botdan oching')); return;
+    }
+    ME = r;
+  }
   v.innerHTML = '';
   if (ME.pts != null) $('pill').textContent = ME.pts + ' ball';
 
@@ -649,7 +714,10 @@ async function viewMemory(v) {
   v.appendChild(h('div', 'splash', 'Yuklanmoqda…'));
   const r = await api('library');
   v.innerHTML = '';
-  if (!r.ok) { v.appendChild(h('p', 'hint', 'Ilovani botdan oching')); return; }
+  if (!r.ok) {
+    if (r.err === 'auth') { authCard(v, r.why); return; }
+    v.appendChild(h('p', 'hint', 'Ilovani botdan oching')); return;
+  }
   if (!r.letters.length) {
     const c = h('div', 'card');
     c.appendChild(h('h2', '', '📖 Xotiralar'));
@@ -672,7 +740,11 @@ const STAGES = [
   { min: 200, icon: '🍎', name: 'Mevali daraxt' }, { min: 350, icon: '✨', name: "Afsonaviy bog'" },
 ];
 async function viewGarden(v) {
-  if (!ME) { const r = await api('me'); if (r.ok) ME = r; }
+  if (!ME) {
+    const r = await api('me');
+    if (r.err === 'auth') { authCard(v, r.why); return; }
+    if (r.ok) ME = r;
+  }
   v.innerHTML = '';
   const pts = (ME && ME.pts) || 0;
   let i = 0; STAGES.forEach((s, k) => { if (pts >= s.min) i = k; });
@@ -743,7 +815,19 @@ function confetti() {
     letterOpen($('view'));
     return;
   }
+  if (!tg.initData) {
+    const nav = document.querySelector('.tabs');
+    if (nav) nav.style.display = 'none';
+    authCard($('view'), 'no_init');
+    return;
+  }
   const r = await api('me');
+  if (!r.ok && r.err === 'auth') {
+    const nav = document.querySelector('.tabs');
+    if (nav) nav.style.display = 'none';
+    authCard($('view'), r.why);
+    return;
+  }
   if (r.ok) { ME = r; $('pill').textContent = (r.pts || 0) + ' ball'; }
   setTab('write');
 })();
