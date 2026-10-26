@@ -59,11 +59,25 @@ function mountScene(v, L, opts) {
 
   const env = h('div', 'envelope');
   env.appendChild(h('div', 'env-back'));
+  
   const el = h('div', 'env-letter');
   const paper = h('div', 'pl-inner theme-' + (L.theme || 'classic'));
-  paper.appendChild(h('p', 'pl-text', L.t || L.text || "(bo'sh xat)"));
+  
+  const paperContent = h('div', 'pl-content');
+  paperContent.style.cssText = 'display:flex;flex-direction:column;align-items:center;justify-content:center;width:100%;height:100%;padding:10px;overflow-y:auto';
+  
+  paperContent.appendChild(h('p', 'pl-text', L.t || L.text || "(bo'sh xat)"));
+  
+  const offersList = L.offers || L.o;
+  if (offersList && offersList.length) {
+    const off = h('div', 'offers');
+    off.style.cssText = 'margin-top:6px;transform:scale(0.85);transform-origin:center';
+    offersList.forEach((o) => off.appendChild(h('span', '', '💝 ' + o)));
+    paperContent.appendChild(off);
+  }
+  
+  paper.appendChild(paperContent);
   el.appendChild(paper);
-  env.appendChild(el);
   env.appendChild(h('div', 'env-front'));
   env.appendChild(h('div', 'env-flap'));
   scene.appendChild(env);
@@ -215,8 +229,12 @@ function buildForm(v, f) {
     out.style.flexDirection = 'column';
     out.style.gap = '10px';
     out.innerHTML = '';
-    const card = letterCard(r.id, text, S.offers.length ? S.offers : [], S.theme);
-    out.appendChild(card);
+
+    mountScene(out, { text, offers: S.offers.length ? S.offers : [], theme: S.theme }, {
+      hint: '✨ Ochish uchun bosing',
+      after: 'Sizning xatingiz 💌'
+    });
+
     const linkBox = h('div', 'card');
     linkBox.appendChild(h('h2', '', '🔗 Havola tayyor'));
     const lk = h('p', '', r.link);
@@ -235,18 +253,6 @@ function buildForm(v, f) {
     out.appendChild(linkBox);
     out.scrollIntoView({ behavior: 'smooth' });
   };
-}
-
-function letterCard(id, text, offers, theme) {
-  const c = h('div', 'card theme-' + (theme || 'classic'));
-  c.appendChild(h('h2', '', '👁 Sizning xatingiz'));
-  c.appendChild(h('p', 'letter-text', text));
-  if (offers && offers.length) {
-    const off = h('div', 'offers');
-    offers.forEach((o) => off.appendChild(h('span', '', '💝 ' + o)));
-    c.appendChild(off);
-  }
-  return c;
 }
 
 /* --- havola orqali kelgan xat (oluvchi) --- */
@@ -301,7 +307,7 @@ function letterOpen(v) {
   };
   menu.appendChild(replyBtn);
 
-  mountScene(v, { t: LETTER.t, theme: LETTER.theme }, {
+  mountScene(v, { t: LETTER.t, theme: LETTER.theme, o: LETTER.o }, {
     after: 'Sizni o\'ylayotgan odam bor ❤️',
     onOpen: () => { menu.hidden = false; },
   });
