@@ -21,6 +21,8 @@ Sevishganlarni yarashtirish uchun Telegram boti — **Vercel'da bepul** ishlaydi
 | 💌 **Xotiralar** | Yozgan/olgan xatlar tarixi |
 | 🖼 **Rasm kartochka** | Xatni PNG rasm qilib saqlash (Mini App) |
 | 🎁 **Referral** | Do'st taklif qilish: +10 ball, 3 ta — 7 kun, 10 ta — 30 kun premium |
+| ⏳ **Vaqt kapsulasi** 💎 | Kelajakdagi sanaga (1 oy–1 yil) xat qulflash; vaqti kelganda cron xabar yuboradi |
+| 🎟️ **Sevgi biletlari** | Juftingizga vaucher («Kino», «Massaj»...), bir marta ishlatiladi (bepul: 1/kun) |
 | 🔔 **Eslatma sozlamalari** | `/reminders` — yoqish/o'chirish (Ilovada ham) |
 | ⚠️ **Shikoyat** | Xatni shikoyat qilish: yuboruvchi bloklanadi, admin xabardor |
 | 🏆 **Yutuqlar** | Badge tizimi |
@@ -112,7 +114,10 @@ https://<loyiha>.vercel.app/api/setup?s=<SETUP_KEY>
 | Yillik | **500 ⭐** | 425 kun (1 yil + 2 oy) |
 | Juftlikka sovg'a | **80 ⭐** | 30 kun |
 
-**Premium beradi:** cheksiz xat · AI yordamchi · 10 premium shablon · Sevgi kvizi · cheksiz xotiralar.
+**Premium beradi:** cheksiz xat · AI yordamchi · 10 premium shablon · Sevgi kvizi ·
+⏳ vaqt kapsulasi · cheksiz sevgi biletlari · cheksiz xotiralar.
+
+**Bepul:** kuniga 3 xat, 5 shablon, o'yinlar, kuniga 1 sevgi bileti.
 
 **Sozlash:** @BotFather → `/mybots` → botni tanlang → **Payments** → **Telegram Stars** yoqilgan bo'lsin.
 

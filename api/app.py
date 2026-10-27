@@ -8,6 +8,7 @@ initData HMAC-SHA256 bilan tekshiriladi (BOT_TOKEN).
 import asyncio
 import hashlib
 import hmac
+import html
 import json
 import os
 import sys
@@ -361,6 +362,160 @@ def _remind(u, d):
     return {"ok": True, "remind": on}
 
 
+def _notify(chat_id, text):
+    """Bot orqali best-effort xabar (Mini App API ichidan)."""
+    if not chat_id:
+        return
+    try:
+        import bot as core
+        from aiogram.client.session.aiohttp import AiohttpSession
+        core.bot.session = AiohttpSession()
+
+        async def go():
+            try:
+                await core.bot.send_message(chat_id, text)
+            finally:
+                try:
+                    await core.bot.session.close()
+                except Exception:  # noqa: BLE001
+                    pass
+
+        asyncio.run(go())
+    except Exception:  # noqa: BLE001
+        pass
+
+
+def _capsules(u):
+    """O'z kapsulalari (premium)."""
+    import bot as core
+    import store as st
+    prem = st.is_prem(u)
+    now = time.time()
+    uname = bot_username() or ""
+    rows = []
+    for c in st.capsules_of(u)[:30]:
+        due = now >= c["open_at"]
+        rows.append({
+            "id": c["id"], "openAt": c["open_at"], "theme": c["theme"],
+            "opened": bool(c["opened"]), "due": bool(due),
+            "sent": bool(c["receiver"]),
+            "preview": c["text"][:80] if due else "",
+            "link": (f"https://t.me/{uname}?start=c_{c['token']}"
+                     if uname else ""),
+        })
+    left = max(0, core.CAPSULE_LIMIT - st.capsules_today(u)) if prem else None
+    return {"ok": True, "prem": prem, "capsules": rows,
+            "days": [{"label": n, "days": d} for n, d in core.CAPSULE_DAYS],
+            "limit": core.CAPSULE_LIMIT, "left": left,
+            "maxText": st.CAPSULE_MAX_TEXT,
+            "themes": [{"id": t, "name": n, "prem": t in core.PREMIUM_THEMES,
+                        "ok": t not in core.PREMIUM_THEMES or prem}
+                       for t, n in core.THEMES]}
+
+
+def _capsule_new(u, d):
+    """Vaqt kapsulasi yaratish (faqat premium)."""
+    import bot as core
+    import store as st
+    if not st.is_prem(u):
+        return {"ok": False, "err": "premium"}
+    text = str(d.get("text") or "").strip()[:st.CAPSULE_MAX_TEXT]
+    if not text:
+        return {"ok": False, "err": "text"}
+    try:
+        days = int(d.get("days") or 0)
+    except (TypeError, ValueError):
+        days = 0
+    if days not in {v for _, v in core.CAPSULE_DAYS}:
+        return {"ok": False, "err": "days"}
+    theme = str(d.get("theme") or "classic")
+    if theme not in dict(core.THEMES):
+        theme = "classic"
+    if theme in core.PREMIUM_THEMES and not st.is_prem(u):
+        return {"ok": False, "err": "premium_theme"}
+    if st.capsules_today(u) >= core.CAPSULE_LIMIT:
+        return {"ok": False, "err": "limit", "limit": core.CAPSULE_LIMIT}
+    cid, token, open_at = st.add_capsule(u, text, days, theme)
+    uname = bot_username() or ""
+    return {"ok": True, "id": cid, "openAt": open_at, "token": token,
+            "link": (f"https://t.me/{uname}?start=c_{token}" if uname else ""),
+            "left": max(0, core.CAPSULE_LIMIT - st.capsules_today(u))}
+
+
+def _capsule_open(u, d):
+    """Kapsulani ochish (vaqt kelgandagina matn qaytadi)."""
+    import store as st
+    cid, C = st.capsule_by_token(str(d.get("t") or ""))
+    if not C:
+        return {"ok": False, "err": "none"}
+    c, why = st.open_capsule(cid, u)
+    if why == "early":
+        return {"ok": True, "locked": True, "openAt": C["open_at"],
+                "theme": C["theme"]}
+    if why == "not_yours":
+        return {"ok": False, "err": "not_yours"}
+    if why == "none" or c is None:
+        return {"ok": False, "err": "none"}
+    return {"ok": True, "locked": False, "text": c["text"], "theme": c["theme"],
+            "openAt": c["open_at"], "from": c["sender"],
+            "mine": c["sender"] == u}
+
+
+def _coupons(u):
+    import bot as core
+    import store as st
+    prem = st.is_prem(u)
+    rows = [{
+        "id": x["id"], "title": x["title"], "status": x["status"],
+        "mine": x["from"] == u, "ts": x["ts"], "usedTs": x["used_ts"],
+    } for x in st.coupons_of(u)[:40]]
+    left = None if prem else max(
+        0, core.COUPON_FREE_PER_DAY - st.coupons_sent_today(u))
+    return {"ok": True, "coupons": rows, "prem": prem,
+            "pair": bool(st.pair_of(u)), "titles": core.COUPON_TITLES,
+            "left": left, "freePerDay": core.COUPON_FREE_PER_DAY}
+
+
+def _coupon_new(u, d):
+    import bot as core
+    import store as st
+    p = st.pair_of(u)
+    if not p:
+        return {"ok": False, "err": "no_pair"}
+    title = str(d.get("title") or "").strip()[:60]
+    if not title:
+        return {"ok": False, "err": "title"}
+    prem = st.is_prem(u)
+    if not prem and st.coupons_sent_today(u) >= core.COUPON_FREE_PER_DAY:
+        return {"ok": False, "err": "limit", "limit": core.COUPON_FREE_PER_DAY}
+    to = st.other(p, u)
+    cid = st.add_coupon(u, to, title)
+    st.touch(u)
+    _notify(to, "🎟️ Sizga sevgi bileti keldi: <b>" + html.escape(title) +
+            "</b>\nMini App → «Hisobim» bo'limida ko'ring.")
+    left = None if prem else max(
+        0, core.COUPON_FREE_PER_DAY - st.coupons_sent_today(u))
+    return {"ok": True, "id": cid, "left": left}
+
+
+def _coupon_use(u, d):
+    import store as st
+    try:
+        cid = int(d.get("id"))
+    except (TypeError, ValueError):
+        return {"ok": False, "err": "bad_id"}
+    c, why = st.use_coupon(cid, u)
+    if why == "not_yours":
+        return {"ok": False, "err": "not_yours"}
+    if why == "already":
+        return {"ok": False, "err": "already"}
+    if why in ("none", "busy") or c is None:
+        return {"ok": False, "err": why or "none"}
+    _notify(c["from"], "🎟️ Biletingiz ishlatildi: <b>" +
+            html.escape(c["title"]) + "</b>")
+    return {"ok": True, "status": "used"}
+
+
 ACTIONS = {"me": lambda u, usr, d: _me(u, usr),
            "library": lambda u, usr, d: _library(u),
            "games": lambda u, usr, d: _games(u),
@@ -369,6 +524,12 @@ ACTIONS = {"me": lambda u, usr, d: _me(u, usr),
            "retheme": lambda u, usr, d: _retheme(u, d),
            "form": lambda u, usr, d: _form(u, d),
            "remind": lambda u, usr, d: _remind(u, d),
+           "capsules": lambda u, usr, d: _capsules(u),
+           "capsule_new": lambda u, usr, d: _capsule_new(u, d),
+           "capsule_open": lambda u, usr, d: _capsule_open(u, d),
+           "coupons": lambda u, usr, d: _coupons(u),
+           "coupon_new": lambda u, usr, d: _coupon_new(u, d),
+           "coupon_use": lambda u, usr, d: _coupon_use(u, d),
            "newletter": lambda u, usr, d: _newletter(u, d)}
 
 

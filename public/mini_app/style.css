@@ -377,6 +377,25 @@ body::after{ /* yumshoq vinyetka */
 .gday{border-radius:9px;font-size:12px}
 .gday.on{box-shadow:0 6px 14px rgba(255,77,141,.35)}
 
+/* ===== kapsula / biletlar ===== */
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.chip{min-height:42px;padding:0 15px;border-radius:12px;border:1px solid var(--line);
+  background:var(--glass);color:var(--ink);font:700 13px Nunito;transition:.2s}
+.chip:active{transform:scale(.96)}
+.chip.on{background:linear-gradient(135deg,var(--pink),var(--purple));
+  border-color:transparent;color:#fff;box-shadow:0 8px 18px rgba(160,80,220,.35)}
+.sel{width:100%;min-height:46px;margin-top:10px;border-radius:12px;border:1px solid var(--line);
+  background:rgba(255,255,255,.06);color:var(--ink);padding:0 12px;font:600 14px Nunito}
+.coupon{display:flex;justify-content:space-between;align-items:center;gap:10px;
+  padding:12px 14px;border-radius:14px;border:1px solid var(--line);
+  border-left:3px solid var(--gold);background:rgba(255,255,255,.05);margin-top:8px}
+.coupon b{display:block;font:800 13.5px Nunito}
+.coupon small{display:block;opacity:.6;font-size:11px;margin-top:2px}
+.coupon .btn{min-height:38px;font-size:12.5px;padding:0 14px;width:auto}
+.linkbox{word-break:break-all;font-size:12px;opacity:.85;margin-top:8px;
+  padding:10px;border-radius:12px;background:rgba(255,255,255,.05);border:1px solid var(--line)}
+
+
 
 /* ===== konvert: yangi chuqurlik va mum muhr ===== */
 .env-back{

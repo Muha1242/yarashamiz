@@ -7,6 +7,21 @@ const $ = (id) => document.getElementById(id);
 const P = new URLSearchParams(location.search);
 const API_BASE = P.get('api') || location.origin;
 const LETTER_ID = P.get('l') || '';
+const CAPSULE_TOKEN = P.get('c') || '';
+const fmtDate = (ts) => new Date(ts * 1000).toLocaleDateString(
+  'uz', { day: '2-digit', month: '2-digit', year: 'numeric' });
+const daysLeft = (ts) => Math.max(1, Math.ceil((ts * 1000 - Date.now()) / 86400000));
+function mapErr(e) {
+  return e === 'limit' ? 'Limit tugadi — premium oling 💎'
+    : e === 'premium' ? 'Bu funksiya Premium uchun 💎'
+      : e === 'no_pair' ? 'Avval juftingiz bilan yarashing ❤️'
+        : e === 'already' ? 'Allaqachon ishlatilgan'
+          : e === 'not_yours' ? 'Bu sizga tegishli emas'
+            : e === 'text' ? 'Xat matnini yozing'
+              : e === 'days' ? 'Sanani tanlang'
+                : e === 'busy' ? 'Bir oz kutib, qayta urinib ko‘ring'
+                  : 'Xatolik yuz berdi';
+}
 
 /* --- xat yuklamasi (havoladan) --- */
 function decodePayload(d) {
@@ -481,6 +496,51 @@ function sendReply(txt) {
   tg.close();
 }
 
+/* ================= VAQT KAPSULASI (ochish) ================= */
+async function viewCapsuleOpen(v, token) {
+  v.innerHTML = '';
+  v.appendChild(h('div', 'splash', 'Yuklanmoqda…'));
+  const r = await api('capsule_open', { t: token });
+  v.innerHTML = '';
+  if (!r.ok) {
+    if (r.err === 'auth') { authCard(v, r.why); return; }
+    const c = h('div', 'card');
+    c.appendChild(h('h2', '', '⏳ Vaqt kapsulasi'));
+    c.appendChild(h('p', '', r.err === 'not_yours'
+      ? 'Bu kapsula boshqa odamga tegishli.'
+      : 'Kapsula topilmadi yoki havola eskirgan.'));
+    v.appendChild(c);
+    return;
+  }
+  if (r.locked) {
+    const c = h('div', 'card');
+    c.appendChild(h('h2', '', '🔒 Hali vaqti kelmagan'));
+    c.appendChild(h('p', '', 'Bu xat ' + fmtDate(r.openAt) + ' da ochiladi.'));
+    const g = h('div', 'stat-grid');
+    g.style.marginTop = '12px';
+    const s = h('div', 'stat');
+    s.appendChild(h('b', '', daysLeft(r.openAt)));
+    s.appendChild(h('small', '', 'kun qoldi'));
+    g.appendChild(s);
+    const s2 = h('div', 'stat');
+    s2.appendChild(h('b', '', fmtDate(r.openAt)));
+    s2.appendChild(h('small', '', 'ochilish sanasi'));
+    g.appendChild(s2);
+    c.appendChild(g);
+    c.appendChild(h('p', 'hint', 'Sabr qiling — bu xat ataylab qulflangan ❤️'));
+    v.appendChild(c);
+    return;
+  }
+  mountScene(v, { t: r.text, theme: r.theme }, {
+    hint: '✨ Konvertni bosing',
+    after: 'Sizga yozilgan xat ❤️',
+  });
+  const c = h('div', 'card');
+  c.appendChild(h('h2', '', '⏳ Vaqt kapsulasi ochildi'));
+  c.appendChild(h('p', 'hint', 'Yozilgan sana: ' + fmtDate(r.openAt)));
+  v.appendChild(c);
+}
+
 /* ================= 2. O'YINLAR ================= */
 let GAMES_CACHE = null;
 async function viewGames(v) {
@@ -609,6 +669,84 @@ async function submit(g, data) {
 }
 
 /* ================= 3. HISOBIM ================= */
+async function couponsSection(v) {
+  const r = await api('coupons');
+  if (!r.ok) {
+    if (r.err === 'auth') { await authCard(v, r.why); }
+    return;
+  }
+  const c = h('div', 'card');
+  c.appendChild(h('h2', '', '🎟️ Sevgi biletlari'));
+  if (!r.pair) {
+    c.appendChild(h('p', '', 'Bilet yuborish uchun avval juftingiz bilan yarashing ❤️'));
+    v.appendChild(c);
+    return;
+  }
+  const active = r.coupons.filter((x) => !x.mine && x.status === 'active');
+  if (active.length) {
+    active.forEach((x) => {
+      const row = h('div', 'coupon');
+      const left = h('div');
+      left.appendChild(h('b', '', x.title));
+      left.appendChild(h('small', '', fmtDate(x.ts)));
+      row.appendChild(left);
+      const b = h('button', 'btn btn-main', 'Ishlatish');
+      b.onclick = async () => {
+        if (!confirm('«' + x.title + '» ishlatilsinmi?')) return;
+        b.disabled = true;
+        const rr = await api('coupon_use', { id: x.id });
+        if (!rr.ok) { b.disabled = false; return alert(mapErr(rr.err)); }
+        haptic('heavy');
+        confetti();
+        setTab('me');
+      };
+      row.appendChild(b);
+      c.appendChild(row);
+    });
+  } else {
+    c.appendChild(h('p', 'hint', 'Hozircha faol bilet yo‘q.'));
+  }
+  c.appendChild(h('p', 'hint', r.prem
+    ? 'Premium: cheksiz bilet yuborish'
+    : 'Bepul: kuniga ' + r.freePerDay + ' ta · qoldi ' + (r.left == null ? 0 : r.left)));
+  const sel = document.createElement('select');
+  sel.className = 'sel';
+  r.titles.forEach((t) => {
+    const o = document.createElement('option');
+    o.value = t;
+    o.textContent = t;
+    sel.appendChild(o);
+  });
+  c.appendChild(sel);
+  const sb = h('button', 'btn btn-ghost', '🎁 Bilet yuborish');
+  sb.style.marginTop = '8px';
+  sb.onclick = async () => {
+    sb.disabled = true;
+    const rr = await api('coupon_new', { title: sel.value });
+    sb.disabled = false;
+    if (!rr.ok) return alert(mapErr(rr.err));
+    haptic();
+    alert('Bilet yuborildi 🎟️');
+    setTab('me');
+  };
+  c.appendChild(sb);
+
+  const used = r.coupons.filter((x) => x.status === 'used').slice(0, 4);
+  if (used.length) {
+    c.appendChild(h('p', 'hint', 'Oxirgi ishlatilganlar:'));
+    used.forEach((x) => {
+      const row = h('div', 'coupon');
+      const left = h('div');
+      left.appendChild(h('b', '', x.title));
+      left.appendChild(h('small', '', (x.mine ? 'siz yubordingiz' : 'siz ishlatdingiz')
+        + ' · ' + fmtDate(x.usedTs || x.ts)));
+      row.appendChild(left);
+      c.appendChild(row);
+    });
+  }
+  v.appendChild(c);
+}
+
 async function viewMe(v) {
   if (!ME) {
     v.appendChild(h('div', 'splash', 'Yuklanmoqda…'));
@@ -690,6 +828,8 @@ async function viewMe(v) {
   rf.appendChild(rm);
   v.appendChild(rf);
 
+  await couponsSection(v);
+
   const tip = h('div', 'card');
   tip.appendChild(h('h2', '', '💡 Bugungi savol'));
   tip.appendChild(h('p', '', ME.mission || '—'));
@@ -710,6 +850,120 @@ async function viewMe(v) {
 }
 
 /* ================= 4. XOTIRALAR ================= */
+async function capsulesSection(v) {
+  const r = await api('capsules');
+  if (!r.ok) {
+    if (r.err === 'auth') { await authCard(v, r.why); }
+    return;
+  }
+  const c = h('div', 'card');
+  c.appendChild(h('h2', '', '⏳ Vaqt kapsulasi'));
+  if (!r.prem) {
+    c.appendChild(h('p', '', 'Kelajakdagi sanaga xat qulflang — vaqti kelganda '
+      + 'o‘zi ochiladi va xabarnoma keladi.'));
+    c.appendChild(h('p', 'hint', 'Premium funksiya 💎 — botdagi «💎 Premium» '
+      + 'tugmasidan oling.'));
+    v.appendChild(c);
+    return;
+  }
+  c.appendChild(h('p', 'hint', 'Kuniga ' + r.limit + ' ta · qoldi: '
+    + (r.left == null ? '—' : r.left)));
+  const ta = document.createElement('textarea');
+  ta.maxLength = r.maxText;
+  ta.placeholder = 'Kelajakdagi xat (' + r.maxText + ' belgi)...';
+  ta.style.cssText = 'width:100%;min-height:110px;margin-top:10px;border-radius:14px;'
+    + 'border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.08);'
+    + 'color:#fff3f7;padding:12px;font:400 15px Nunito;resize:none';
+  c.appendChild(ta);
+
+  const chips = h('div', 'chips');
+  let selDays = r.days[0].days;
+  r.days.forEach((d) => {
+    const b = h('button', 'chip' + (d.days === selDays ? ' on' : ''), d.label);
+    b.onclick = () => {
+      haptic();
+      selDays = d.days;
+      chips.querySelectorAll('.chip').forEach((x) => x.classList.remove('on'));
+      b.classList.add('on');
+    };
+    chips.appendChild(b);
+  });
+  c.appendChild(chips);
+
+  const sel = document.createElement('select');
+  sel.className = 'sel';
+  r.themes.filter((t) => t.ok || r.prem).forEach((t) => {
+    const o = document.createElement('option');
+    o.value = t.id;
+    o.textContent = t.name + (t.prem ? ' 💎' : '');
+    sel.appendChild(o);
+  });
+  c.appendChild(sel);
+
+  const btn = h('button', 'btn btn-main', '🔒 Qulflash');
+  btn.style.marginTop = '10px';
+  const out = h('div');
+  out.style.display = 'none';
+  btn.onclick = async () => {
+    const text = ta.value.trim();
+    if (!text) return alert('Xat matnini yozing');
+    btn.disabled = true;
+    btn.textContent = 'Qulflanmoqda…';
+    const rr = await api('capsule_new', { text, days: selDays, theme: sel.value });
+    btn.disabled = false;
+    btn.textContent = '🔒 Qulflash';
+    if (!rr.ok) return alert(mapErr(rr.err));
+    confetti();
+    out.style.display = 'block';
+    out.innerHTML = '';
+    out.appendChild(h('h2', '', '✅ Kapsula qulflandi'));
+    out.appendChild(h('p', 'hint', 'Ochilish sanasi: ' + fmtDate(rr.openAt)));
+    if (rr.link) {
+      out.appendChild(h('div', 'linkbox', rr.link));
+      const cp = h('button', 'btn btn-ghost', '📋 Nusxalash');
+      cp.style.marginTop = '8px';
+      cp.onclick = () => { navigator.clipboard.writeText(rr.link); alert('Nusxalandi ✅'); };
+      out.appendChild(cp);
+      const sh = h('button', 'btn btn-main', '📤 Yuborish');
+      sh.style.marginTop = '8px';
+      sh.onclick = () => {
+        const u = 'https://t.me/share/url?url=' + encodeURIComponent(rr.link)
+          + '&text=' + encodeURIComponent('Senga vaqt kapsulasi ⏳');
+        if (tg && tg.openTelegramLink) tg.openTelegramLink(u); else window.open(u);
+      };
+      out.appendChild(sh);
+    } else {
+      out.appendChild(h('p', 'hint', 'Havola uchun BOT_USERNAME sozlanmagan.'));
+    }
+    ta.value = '';
+    v.appendChild(out);
+    out.scrollIntoView({ behavior: 'smooth' });
+  };
+  c.appendChild(btn);
+  v.appendChild(c);
+
+  if (r.capsules.length) {
+    const l = h('div', 'card');
+    l.appendChild(h('h2', '', '📜 Mening kapsulalarim'));
+    r.capsules.forEach((x) => {
+      const row = h('div', 'coupon');
+      const left = h('div');
+      left.appendChild(h('b', '', x.opened ? '✅ Ochildi'
+        : (x.due ? '⏰ Vaqti keldi' : '🔒 Qulflangan')));
+      left.appendChild(h('small', '', fmtDate(x.openAt)
+        + (x.preview ? ' · «' + x.preview.slice(0, 26) + '…»' : '')));
+      row.appendChild(left);
+      if (x.link) {
+        const b = h('button', 'btn btn-ghost', '📋');
+        b.onclick = () => { navigator.clipboard.writeText(x.link); alert('Nusxalandi ✅'); };
+        row.appendChild(b);
+      }
+      l.appendChild(row);
+    });
+    v.appendChild(l);
+  }
+}
+
 async function viewMemory(v) {
   v.appendChild(h('div', 'splash', 'Yuklanmoqda…'));
   const r = await api('library');
@@ -718,6 +972,7 @@ async function viewMemory(v) {
     if (r.err === 'auth') { authCard(v, r.why); return; }
     v.appendChild(h('p', 'hint', 'Ilovani botdan oching')); return;
   }
+  await capsulesSection(v);
   if (!r.letters.length) {
     const c = h('div', 'card');
     c.appendChild(h('h2', '', '📖 Xotiralar'));
@@ -809,6 +1064,12 @@ function confetti() {
 
 /* ================= START ================= */
 (async function start() {
+  if (CAPSULE_TOKEN) {
+    const nav = document.querySelector('.tabs');
+    if (nav) nav.style.display = 'none';
+    viewCapsuleOpen($('view'), CAPSULE_TOKEN);
+    return;
+  }
   if (LETTER) {
     const nav = document.querySelector('.tabs');
     if (nav) nav.style.display = 'none';

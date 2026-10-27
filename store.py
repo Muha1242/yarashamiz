@@ -441,6 +441,151 @@ def count_reports():
     return r.llen("reports")
 
 
+# --------------------------- VAQT KAPSULASI -----------------------------
+CAPSULE_MAX_TEXT = 500
+CAPSULE_EXPIRE = 3 * 365 * 86400       # havola 3 yil amal qiladi
+
+
+def add_capsule(sender, text, days, theme="classic"):
+    """Kelajakdagi sanaga qulflangan xat. (cid, token, open_at)."""
+    cid = r.incr("seq:capsules")
+    token = secrets.token_urlsafe(9)
+    open_at = int(time.time()) + max(1, int(days)) * 86400
+    r.hset(f"capsule:{cid}", mapping={
+        "sender": sender, "text": str(text)[:CAPSULE_MAX_TEXT], "theme": theme,
+        "open_at": open_at, "ts": int(time.time()), "receiver": "",
+        "opened": 0, "notified": 0, "token": token})
+    r.set(f"capsule:t:{token}", cid, ex=CAPSULE_EXPIRE)
+    r.sadd(f"caps:{sender}", cid)
+    r.zadd("caps:due", {str(cid): open_at})
+    r.incr(f"cnt:capsules:{today()}")
+    return cid, token, open_at
+
+
+def capsule(cid):
+    d = r.hgetall(f"capsule:{cid}")
+    if not d or "sender" not in d:
+        return None
+    return {"id": int(cid), "sender": int(d["sender"]),
+            "text": d.get("text", ""), "theme": d.get("theme") or "classic",
+            "open_at": int(d.get("open_at") or 0), "ts": int(d.get("ts") or 0),
+            "receiver": int(d.get("receiver") or 0),
+            "opened": int(d.get("opened") or 0),
+            "notified": int(d.get("notified") or 0),
+            "token": d.get("token") or ""}
+
+
+def capsule_by_token(token):
+    if not token:
+        return None, None
+    cid = r.get(f"capsule:t:{token}")
+    if not cid:
+        return None, None
+    return int(cid), capsule(int(cid))
+
+
+def capsules_of(u):
+    rows = []
+    for x in r.smembers(f"caps:{u}"):
+        c = capsule(int(x))
+        if c:
+            rows.append(c)
+    rows.sort(key=lambda c: c["open_at"])
+    return rows
+
+
+def capsules_today(u):
+    start = day_start_ts()
+    return sum(1 for c in capsules_of(u) if c["ts"] >= start)
+
+
+def due_capsules(now_ts=None, limit=200):
+    """Vaqti kelgan, hali xabar qilinmagan kapsulalar."""
+    now_ts = int(now_ts or time.time())
+    out = []
+    for cid in r.zrangebyscore("caps:due", "-inf", now_ts, start=0, num=limit):
+        c = capsule(int(cid))
+        if c:
+            out.append(c)
+    return out
+
+
+def open_capsule(cid, u):
+    """Kapsulani ochish. Qaytaradi: (capsule | None, sabab).
+
+    sabab: ok / early / none / not_yours
+    """
+    c = capsule(cid)
+    if not c:
+        return None, "none"
+    if int(time.time()) < c["open_at"]:
+        return c, "early"
+    if c["receiver"] and u not in (c["receiver"], c["sender"]):
+        return None, "not_yours"
+    r.hset(f"capsule:{cid}", mapping={"receiver": u, "opened": 1})
+    r.zrem("caps:due", str(cid))
+    c["receiver"], c["opened"] = u, 1
+    return c, "ok"
+
+
+def capsule_notified(cid):
+    r.hset(f"capsule:{cid}", "notified", 1)
+    r.zrem("caps:due", str(cid))
+
+
+# ---------------------------- SEVGI BILETLARI ---------------------------
+def add_coupon(sender, receiver, title, note=""):
+    cid = r.incr("seq:coupons")
+    r.hset(f"coupon:{cid}", mapping={
+        "from": sender, "to": receiver, "title": str(title)[:60],
+        "note": str(note)[:120], "status": "active",
+        "ts": int(time.time()), "used_ts": 0})
+    r.sadd(f"coupon:from:{sender}", cid)
+    r.sadd(f"coupon:to:{receiver}", cid)
+    r.incr(f"cnt:coupons:{today()}")
+    return cid
+
+
+def coupon(cid):
+    d = r.hgetall(f"coupon:{cid}")
+    if not d or "from" not in d:
+        return None
+    return {"id": int(cid), "from": int(d["from"]), "to": int(d["to"]),
+            "title": d.get("title", ""), "note": d.get("note", ""),
+            "status": d.get("status") or "active", "ts": int(d.get("ts") or 0),
+            "used_ts": int(d.get("used_ts") or 0)}
+
+
+def coupons_of(u):
+    ids = {int(x) for x in r.sunion(f"coupon:from:{u}", f"coupon:to:{u}")}
+    rows = [x for x in (coupon(i) for i in ids) if x]
+    rows.sort(key=lambda x: x["ts"], reverse=True)
+    return rows
+
+
+def coupons_sent_today(u):
+    return sum(1 for x in coupons_of(u)
+               if x["from"] == u and x["ts"] >= day_start_ts())
+
+
+def use_coupon(cid, u):
+    """Biletni ishlatish (faqat qabul qiluvchi, bir marta)."""
+    with lock(f"coupon:{cid}") as ok:
+        if not ok:
+            return None, "busy"
+        c = coupon(cid)
+        if not c:
+            return None, "none"
+        if c["to"] != u:
+            return None, "not_yours"
+        if c["status"] != "active":
+            return c, "already"
+        r.hset(f"coupon:{cid}", mapping={"status": "used",
+                                         "used_ts": int(time.time())})
+        c["status"], c["used_ts"] = "used", int(time.time())
+        return c, "ok"
+
+
 # ------------------------------- ADMIN ----------------------------------
 def admin_stats():
     t = today()
@@ -472,5 +617,7 @@ def admin_stats():
             "letters_today": int(r.get(f"cnt:letters:{t}") or 0),
             "pairs_today": int(r.get(f"cnt:pairs:{t}") or 0),
             "refs": int(r.get("cnt:refs") or 0),
+            "capsules": int(r.get("seq:capsules") or 0),
+            "coupons": int(r.get("seq:coupons") or 0),
             "reports": r.llen("reports"),
             "feedback": r.llen("feedback")}

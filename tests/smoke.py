@@ -56,6 +56,15 @@ async def fake_send(chat_id, text, **kw):
 core.bot.send_message = fake_send
 
 
+async def _fake_get_me():
+    return types.SimpleNamespace(username="testbot")
+
+
+core.bot.get_me = _fake_get_me      # tarmoqqa chiqmaslik uchun erta patch
+api_app._notify = lambda *a, **k: None      # testda tarmoqqa chiqmaymiz
+api_app._BOTNAME = "testbot"                # bot_username() kesh
+
+
 class FakeMsg:
     def __init__(self, uid, data=None, text=None):
         self.from_user = types.SimpleNamespace(id=uid)
@@ -558,6 +567,90 @@ check("api: GET config bot nomini beradi",
       "def do_GET" in open(os.path.join(ROOT, "api/app.py"), encoding="utf-8").read())
 check("check endpoint: bot diagnostikasi (?bot=1)",
       "bot=1" in open(os.path.join(ROOT, "api/check.py"), encoding="utf-8").read())
+
+# ------------------------- 22. VAQT KAPSULASI ----------------------------
+check("kapsula premium (bepul uchun yopiq)",
+      api_app._capsule_new(99999, {"text": "x", "days": 30})["err"] == "premium")
+
+st.add_prem(7001, 30)
+res = api_app._capsule_new(7001, {"text": "Kelajakdagi xat", "days": 30,
+                                  "theme": "classic"})
+check("kapsula yaratildi", res["ok"] and "start=c_" in res["link"], res)
+cid, token = res["id"], res["token"]
+check("matn URL'da yo'q", "Kelajakdagi" not in res["link"])
+
+early = api_app._capsule_open(7002, {"t": token})
+check("erta ochib bo'lmaydi", early["ok"] and early["locked"] is True
+      and "text" not in early, early)
+
+st.r.hset(f"capsule:{cid}", "open_at", int(time.time()) - 5)
+opened = api_app._capsule_open(7002, {"t": token})
+check("vaqti kelganda ochiladi",
+      opened["ok"] and opened.get("text") == "Kelajakdagi xat", opened)
+check("qabul qiluvchi yozildi", st.capsule(cid)["receiver"] == 7002)
+check("boshqa odam ocholmaydi",
+      api_app._capsule_open(7003, {"t": token})["err"] == "not_yours")
+check("yuboruvchi o'z kapsulasini ochadi",
+      api_app._capsule_open(7001, {"t": token})["ok"] is True)
+check("noto'g'ri token", api_app._capsule_open(7001, {"t": "yoq"})["err"] == "none")
+
+# kunlik limit (3 ta)
+for i in range(2):
+    api_app._capsule_new(7001, {"text": f"x{i}", "days": 30})
+check("kapsula kunlik limiti",
+      api_app._capsule_new(7001, {"text": "x", "days": 30})["err"] == "limit")
+
+# cron: vaqti kelgan kapsula xabarnomasi (bir marta)
+c2 = st.add_capsule(7101, "cron xat", 30)
+st.r.hset(f"capsule:{c2[0]}", "open_at", int(time.time()) - 5)
+st.r.zadd("caps:due", {str(c2[0]): int(time.time()) - 5})
+st.r.hset(f"capsule:{c2[0]}", "receiver", 7102)
+msgs_caps = asyncio.run(core.run_reminders())
+check("kapsula xabarnomasi yuborildi",
+      any(u in (7101, 7102) and "kapsula" in t.lower() for u, t in msgs_caps),
+      [(u, t[:24]) for u, t in msgs_caps])
+msgs_caps2 = asyncio.run(core.run_reminders())
+check("kapsula xabarnomasi takrorlanmaydi",
+      all(u not in (7101, 7102) for u, t in msgs_caps2))
+
+# -------------------------- 23. SEVGI BILETLARI --------------------------
+st.add_pair(7201, 7202)
+check("juftliksiz bilet yuborilmaydi",
+      api_app._coupon_new(7203, {"title": "💆 Massaj"})["err"] == "no_pair")
+c_res = api_app._coupon_new(7201, {"title": "🎬 Kino tanlash huquqi"})
+check("bilet yuborildi", c_res["ok"], c_res)
+coupon_id = c_res["id"]
+check("bepul kunlik limit (1 ta)",
+      api_app._coupon_new(7201, {"title": "💆 Massaj"})["err"] == "limit")
+st.add_prem(7201, 30)
+check("premium cheksiz bilet",
+      api_app._coupon_new(7201, {"title": "💆 Massaj"})["ok"] is True)
+check("yuboruvchi ishlata olmaydi",
+      api_app._coupon_use(7201, {"id": coupon_id})["err"] == "not_yours")
+check("qabul qiluvchi ishlatadi",
+      api_app._coupon_use(7202, {"id": coupon_id})["ok"] is True)
+check("bilet ikki marta ishlatilmaydi",
+      api_app._coupon_use(7202, {"id": coupon_id})["err"] == "already")
+check("bilet holati used", st.coupon(coupon_id)["status"] == "used")
+mine = api_app._coupons(7201)
+check("biletlar ro'yxati", mine["ok"] and len(mine["coupons"]) >= 2
+      and mine["titles"], len(mine["coupons"]))
+check("admin: kapsula va biletlar",
+      st.admin_stats()["capsules"] >= 3 and st.admin_stats()["coupons"] >= 2)
+
+# ------------------- 24. UI / BOT INTEGRATSIYASI ------------------------
+bot_src = open(os.path.join(ROOT, "bot.py"), encoding="utf-8").read()
+check("JS: vaqt kapsulasi UI",
+      "viewCapsuleOpen" in js and "capsulesSection" in js
+      and "capsule_new" in js and "capsule_open" in js)
+check("JS: sevgi biletlari UI",
+      "couponsSection" in js and "coupon_use" in js and "coupon_new" in js)
+check("CSS: kapsula/bilet uslublari",
+      ".chip" in css and ".coupon" in css and ".linkbox" in css)
+check("bot: kapsula havolasi va cron",
+      "start=c_" in bot_src and "due_capsules" in bot_src)
+check("bot: biletlar (premium limit)", "COUPON_FREE_PER_DAY" in bot_src)
+
 
 
 print()

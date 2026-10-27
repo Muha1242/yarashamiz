@@ -54,6 +54,17 @@ PRICES = {
 PREMIUM_DAYS = {"month": 30, "year": 425}
 GIFT_DAYS = int(os.environ.get("GIFT_DAYS", "30"))
 
+# Vaqt kapsulasi (premium) va sevgi biletlari (bepul limit bilan)
+CAPSULE_DAYS = [("1 oy", 30), ("3 oy", 90), ("6 oy", 180), ("1 yil", 365)]
+CAPSULE_LIMIT = 3        # kuniga yaratish mumkin (premium)
+COUPON_TITLES = [
+    "🎬 Kino tanlash huquqi", "🍽 Mazali kechki ovqat", "💆 Massaj",
+    "🚶 Birga sayr", "☕️ Kofe tayyorlash", "🎁 Kutilmagan syurpriz",
+    "📞 30 daqiqa suhbat", "🍿 Uyda kino kechasi", "🌙 Rejasiz kechqurun",
+    "🤗 Erkin quchoq",
+]
+COUPON_FREE_PER_DAY = 1  # bepul foydalanuvchi uchun
+
 # ------------------------------ KONTENT ---------------------------------
 OFFERS = ["Birga ovqatlanamiz", "Sayr qilamiz", "Kofe ichamiz", "Kino ko'ramiz",
           "Sovg'a olaman", "Birga ovqat pishiramiz", "Telefonda gaplashamiz",
@@ -330,6 +341,14 @@ def open_letter_kb(lid, link):
     return ReplyKeyboardMarkup(resize_keyboard=True, keyboard=[[btn]])
 
 
+def capsule_open_kb(token):
+    if not URL:
+        return None
+    btn = KeyboardButton(text="⏳ Kapsulani ochish",
+                         web_app=WebAppInfo(url=f"{URL}/?c={token}"))
+    return ReplyKeyboardMarkup(resize_keyboard=True, keyboard=[[btn]])
+
+
 def theme_ok(theme, u):
     return theme not in PREMIUM_THEMES or st.is_prem(u)
 
@@ -516,6 +535,24 @@ async def start(m: Message, command: CommandObject, state: FSMContext):
             except Exception:  # noqa: BLE001
                 pass
 
+    if arg.startswith("c_"):
+        token = arg[2:]
+        cid, C = st.capsule_by_token(token)
+        if not C:
+            return await m.answer("Kapsula topilmadi yoki havola eskirgan.")
+        when = dt.datetime.fromtimestamp(
+            C["open_at"] + st.TZ_OFFSET * 3600).strftime("%d.%m.%Y")
+        if not URL:
+            return await m.answer(f"⏳ Vaqt kapsulasi. Ochilish sanasi: <b>{when}</b>.")
+        if time.time() < C["open_at"]:
+            return await m.answer(
+                "⏳ <b>Vaqt kapsulasi</b>\n\n"
+                f"Bu xat <b>{when}</b> da ochiladi.\nSabr qiling 🙂",
+                reply_markup=capsule_open_kb(token))
+        return await m.answer(
+            "⏳ <b>Kapsula ochildi!</b>\n\nXatni Ilovada o'qing 👇",
+            reply_markup=capsule_open_kb(token))
+
     st.touch(m.from_user.id)
     await m.answer(WELCOME if URL else WELCOME_NO_APP,
                    reply_markup=main_kb() or menu_kb(m.from_user.id))
@@ -696,6 +733,8 @@ async def admin(m: Message):
                    f"❤️ Juftliklar: <b>{s['pairs']}</b> (bugun +{s['pairs_today']})\n"
                    f"💌 Xatlar: <b>{s['letters']}</b> (bugun {s['letters_today']})\n"
                    f"🎁 Referral: <b>{s['refs']}</b>\n"
+                   f"⏳ Kapsulalar: <b>{s['capsules']}</b> · "
+                   f"🎟 Biletlar: <b>{s['coupons']}</b>\n"
                    f"📩 Feedback: <b>{s['feedback']}</b> · "
                    f"⚠️ Shikoyat: <b>{s['reports']}</b>\n"
                    f"💎 Premium: <b>{s['prem_active']}</b> faol / {s['prem']} jami")
@@ -1268,6 +1307,20 @@ async def run_reminders():
             out.append((u, f"🔥 Seriyani buzma! {row['n']} kunlik seriyangiz bor. "
                            "Bugun bir o'yin o'ynang."))
             st.mark(u, "st")
+    # vaqti kelgan vaqt kapsulalari — xabarnoma
+    uname = await me_username()
+    for c in st.due_capsules():
+        if c.get("notified") or c.get("opened"):
+            continue
+        when = dt.datetime.fromtimestamp(
+            c["open_at"] + st.TZ_OFFSET * 3600).strftime("%d.%m.%Y")
+        link = f"https://t.me/{uname}?start=c_{c['token']}" if uname else ""
+        tail = f"\n\n{link}" if link else ""
+        out.append((c["sender"], f"⏳ Sizning vaqt kapsulangiz ochildi ({when}).{tail}"))
+        if c["receiver"] and c["receiver"] != c["sender"]:
+            out.append((c["receiver"],
+                        f"⏳ Sizga vaqt kapsulasi ochildi ({when}).{tail}"))
+        st.capsule_notified(c["id"])
     return out
 
 
