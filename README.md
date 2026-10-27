@@ -177,6 +177,22 @@ qaytaryapti. Endi ilovaning o‘zi **sababni** ko‘rsatadi (`sabab: bad_hash`,
 | `expired` | `initData` 3 kundan eski — botdan qayta oching |
 | `no_user` | `user` maydoni yo‘q — Telegram mijozini yangilang |
 
+### 🧊 Bot umuman javob bermayapti (qotib qolgan) bo‘lsa
+
+1. `https://<domen>/api/check?bot=1` → `hint` maydoni sababni aytadi.
+2. `getMe.ok: false` → token revoke qilingan yoki boshqa botga tegishli.
+3. `webhook.last_error_message` da **Conflict** → boshqa joyda polling
+   ishlayapti (lokal `python bot.py`, eski server) — uni to‘xtating, keyin
+   `/api/setup?s=SETUP_KEY`.
+4. `webhook.url` bo‘sh → `/api/setup?s=SETUP_KEY` bir marta.
+5. `pending_update_count` o‘syapti → webhook 500 qaytaryapti: Vercel →
+   Functions → Logs ni ko‘ring (`ybot:lasterror` Redis'da ham bor).
+6. Upstash bepul limiti (10k buyruq/kun) tugagan bo‘lsa — handlerlar xato
+   beradi; limitni oshiring.
+
+Endi Redis (5s), `get_me` (6s) va AI (20s) uchun timeoutlar bor — bitta sekin
+tashqi xizmat butun webhook'ni osiltirib qo‘ymaydi.
+
 ---
 
 ## 🧪 Sinov (offline)

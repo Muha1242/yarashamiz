@@ -14,7 +14,10 @@ from contextlib import contextmanager
 
 import redis
 
-r = redis.from_url(os.environ["REDIS_URL"], decode_responses=True)
+r = redis.from_url(
+    os.environ["REDIS_URL"], decode_responses=True,
+    socket_timeout=5, socket_connect_timeout=5,
+    retry_on_timeout=True, health_check_interval=30)
 
 # Server (Vercel) UTC'da ishlaydi, foydalanuvchilar esa O'zbekistonda (UTC+5).
 # Kunlik savol / seriya / eslatmalar mahalliy vaqt bo'yicha hisoblanishi kerak.

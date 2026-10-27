@@ -80,7 +80,21 @@ class handler(BaseHTTPRequestHandler):
                 info["webhook"] = {k: wh.get(k) for k in (
                     "url", "pending_update_count", "last_error_message",
                     "last_error_date", "max_connections")}
-                info["webhook_ok"] = bool(wh.get("url")) and not wh.get("last_error_message")
+                err = wh.get("last_error_message") or ""
+                hint = None
+                if not wh.get("url"):
+                    hint = ("Webhook o'rnatilmagan — /api/setup?s=SETUP_KEY ni "
+                            "bir marta oching")
+                elif "Conflict" in err or "terminated by other getUpdates" in err:
+                    hint = ("Boshqa joyda polling ishlayapti (lokal `python bot.py` "
+                            "yoki eski server) — uni to'xtatib, /api/setup ni qayta "
+                            "chaqiring")
+                elif "401" in err or "Unauthorized" in err:
+                    hint = "BOT_TOKEN noto'g'ri yoki revoke qilingan — yangilang"
+                elif int(wh.get("pending_update_count") or 0) > 50:
+                    hint = "Update'lar yig'ilib qolgan — webhook ishlamayapti, loglarni ko'ring"
+                info["hint"] = hint
+                info["webhook_ok"] = bool(wh.get("url")) and not err
             except Exception as e:  # noqa: BLE001
                 info["getMe"] = {"ok": False, "error": repr(e)}
                 info["webhook_ok"] = False

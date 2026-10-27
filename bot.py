@@ -42,6 +42,7 @@ def app_url():
 
 URL = app_url()
 ADMIN_ID = os.environ.get("ADMIN_ID", "")
+_ME = {"username": ""}          # bot username kesh
 DAILY_LIMIT = 3
 # Telegram Stars narxlari (muhit orqali sozlanadi)
 PRICES = {
@@ -213,8 +214,15 @@ from aiogram.types import (CallbackQuery, InlineKeyboardButton as IB,  # noqa: E
 import store as st  # noqa: E402
 from store import GAMES  # noqa: E402
 
+def _aredis():
+    """Redis asyncio klienti — timeout'lar bilan (osilib qolmasligi uchun)."""
+    return ARedis.from_url(
+        os.environ["REDIS_URL"], socket_timeout=5, socket_connect_timeout=5,
+        retry_on_timeout=True, health_check_interval=30)
+
+
 bot = Bot(TOKEN, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
-dp = Dispatcher(storage=RedisStorage(redis=ARedis.from_url(os.environ["REDIS_URL"])))
+dp = Dispatcher(storage=RedisStorage(redis=_aredis()))
 
 
 def reset_storage():
@@ -226,9 +234,22 @@ def reset_storage():
     """
     try:
         # Dispatcher.storage read-only, lekin RedisStorage.redis oddiy atribut
-        dp.storage.redis = ARedis.from_url(os.environ["REDIS_URL"])
+        dp.storage.redis = _aredis()
     except Exception as e:  # noqa: BLE001
         print("[reset_storage]", e, flush=True)
+
+
+async def me_username():
+    """Bot username (kesh bilan, osilib qolmaslik uchun timeout)."""
+    if _ME["username"]:
+        return _ME["username"]
+    try:
+        me = await asyncio.wait_for(bot.get_me(), timeout=6)
+        _ME["username"] = me.username or ""
+    except Exception as e:  # noqa: BLE001
+        print("[get_me]", repr(e), flush=True)
+        return ""
+    return _ME["username"]
 
 
 # ============================ XATO HANDLERI =============================
@@ -640,8 +661,7 @@ async def feedback_cmd(m: Message):
 
 @dp.message(Command("invite"))
 async def invite_cmd(m: Message):
-    me = await bot.get_me()
-    await m.answer(invite_text(m.from_user.id, me.username))
+    await m.answer(invite_text(m.from_user.id, await me_username()))
 
 
 @dp.message(Command("reminders"))
@@ -812,11 +832,13 @@ async def theme(c: CallbackQuery, state: FSMContext):
                               show_alert=True)
     lid = st.add_letter(c.from_user.id, d["text"], d["offers"], t)
     await state.clear()
-    me = await bot.get_me()
+    uname = await me_username()
     st.touch(c.from_user.id)
     await reward_ref(c.from_user.id)
+    link = (f"https://t.me/{uname}?start=l_{lid}" if uname
+            else "havola yaratilmadi (BOT_USERNAME sozlanmagan)")
     await c.message.answer("Xat tayyor. Havolani juftingizga o'zingiz yuboring:\n"
-                           f"https://t.me/{me.username}?start=l_{lid}")
+                           + link)
     await c.answer()
 
 
@@ -848,7 +870,11 @@ async def ai_words(m: Message, state: FSMContext):
     sit = d["sit"]
     await m.answer("✨ Yozyapman...", reply_markup=None)
     # avval haqiqiy AI (Gemini); u holda shablon bilan davom etamiz
-    real = await asyncio.to_thread(ai_helper.compose, sit, m.text)
+    try:
+        real = await asyncio.wait_for(
+            asyncio.to_thread(ai_helper.compose, sit, m.text), timeout=20)
+    except Exception:  # noqa: BLE001
+        real = None
     vs = ([real] if real else []) + variants(sit, m.text)
     await state.update_data(variants=vs, vi=0)
     await state.set_state(W.text)
@@ -972,9 +998,10 @@ async def paid(m: Message):
                        "imtiyozlar sizniki.")
     elif parts[0] == "gift":
         token = st.make_gift(GIFT_DAYS)
-        me = await bot.get_me()
+        uname = await me_username()
         await m.answer("🎁 Sovg'a tayyor! Havolani juftingizga yuboring:\n"
-                       f"https://t.me/{me.username}?start=gift_{token}")
+                       + (f"https://t.me/{uname}?start=gift_{token}" if uname
+                          else "havola yaratilmadi (BOT_USERNAME sozlanmagan)"))
 
 
 # --------------------------- PASTKI TUGMALAR ----------------------------
