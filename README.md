@@ -80,8 +80,9 @@ Vercel → **Settings → Environment Variables**:
 | `BOT_USERNAME` | ixtiyoriy | Ilovada referral havolasi uchun (masalan `yarashamiz_bot`) |
 | `WEBHOOK_SECRET` | ixtiyoriy | Webhook'ni himoyalash |
 | `CRON_SECRET` | ixtiyoriy | `/api/cron` ni qulflash (`Authorization: Bearer ...`) |
-| `CRON_MAX_MSGS` | ixtiyoriy | Bir cron'da yuboriladigan maksimal xabar (standart `1200`) |
-| `CRON_CONCURRENCY` | ixtiyoriy | Parallel yuborish (standart `12`, ~30 xabar/s) |
+| `CRON_MAX_MSGS` | ixtiyoriy | Bir cron'da yuboriladigan maksimal xabar (standart `600`) |
+| `CRON_CONCURRENCY` | ixtiyoriy | Parallel yuborish (standart `12`) |
+| `CRON_RATE` | ixtiyoriy | Global tezlik, xabar/soni (standart `28`, Telegram ~30/s) |
 
 **Premium narxlari** (ixtiyoriy):
 

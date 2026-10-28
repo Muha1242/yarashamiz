@@ -615,12 +615,31 @@ msgs_caps = asyncio.run(core.run_reminders())
 check("kapsula xabarnomasi yuborildi",
       any(u in (7101, 7102) and "kapsula" in t.lower() for u, t, _k in msgs_caps),
       [(u, t[:24]) for u, t, _k in msgs_caps])
-for _u, _t, k in msgs_caps:          # cron kabi: faqat yuborilgach belgilanadi
+for _u, _t, k in msgs_caps:          # cron kabi: har foydalanuvchi uchun alohida
     if k.startswith("cap:"):
-        st.capsule_notified(int(k[4:]))
+        st.capsule_notified(int(k[4:]), _u)
 msgs_caps2 = asyncio.run(core.run_reminders())
 check("kapsula xabarnomasi takrorlanmaydi",
       all(u not in (7101, 7102) for u, _t, _k in msgs_caps2))
+
+# qisman yetkazish: sender ketdi, receiver ketmadi -> faqat receiver qayta oladi
+c3 = st.add_capsule(7401, "qisman kapsula", 30)
+st.r.hset(f"capsule:{c3[0]}", "open_at", int(time.time()) - 5)
+st.r.zadd("caps:due", {str(c3[0]): int(time.time()) - 5})
+st.r.hset(f"capsule:{c3[0]}", "receiver", 7402)
+st.capsule_notified(c3[0], 7401)
+check("qisman: sender belgilandi, receiver yo'q",
+      st.capsule_is_notified(c3[0], 7401)
+      and not st.capsule_is_notified(c3[0], 7402))
+kind_c3 = f"cap:{c3[0]}"
+msgs_part = asyncio.run(core.run_reminders())
+check("qisman: faqat receiver xabari qoldi",
+      any(u == 7402 and k == kind_c3 for u, _t, k in msgs_part)
+      and not any(u == 7401 and k == kind_c3 for u, _t, k in msgs_part),
+      [(u, k) for u, _t, k in msgs_part if k == kind_c3])
+st.capsule_notified(c3[0], 7402)
+check("ikkalasi belgilangach navbatdan chiqadi",
+      st.r.zscore("caps:due", str(c3[0])) is None)
 
 # -------------------------- 23. SEVGI BILETLARI --------------------------
 st.add_pair(7201, 7202)
@@ -667,10 +686,25 @@ check("WEBAPP_URL domen -> /mini_app", core.app_url().endswith("/mini_app"),
       core.app_url())
 os.environ["WEBAPP_URL"] = "https://example.vercel.app/mini_app"
 check("WEBAPP_URL to'liq yo'l saqlanadi", core.app_url().endswith("/mini_app"))
+os.environ["WEBAPP_URL"] = "example.vercel.app"
+check("WEBAPP_URL sxemasiz -> https + /mini_app",
+      core.app_url().startswith("https://") and core.app_url().endswith("/mini_app"),
+      core.app_url())
+os.environ["WEBAPP_URL"] = "https://example.vercel.app/?a=1"
+check("WEBAPP_URL query saqlanadi",
+      core.app_url() == "https://example.vercel.app/?a=1", core.app_url())
 if saved_url is None:
     os.environ.pop("WEBAPP_URL", None)
 else:
     os.environ["WEBAPP_URL"] = saved_url
+
+# cron: global rate limiter va cap
+import api.cron as api_cron  # noqa: E402
+check("cron: global rate limiter (<=30/s)",
+      hasattr(api_cron, "_Rate") and 1 <= api_cron.RATE <= 30, api_cron.RATE)
+check("cron: MAX_MSGS cap va capped flag",
+      api_cron.MAX_MSGS > 0 and "capped" in open(
+          os.path.join(ROOT, "api/cron.py"), encoding="utf-8").read())
 
 check("kelajakdagi auth_date rad etiladi",
       api_app.verify_ex(make_init(ts=int(time.time()) + 3600))[1] == "bad_date")

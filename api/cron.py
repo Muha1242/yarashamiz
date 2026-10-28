@@ -17,40 +17,65 @@ if ROOT not in sys.path:
     sys.path.insert(0, ROOT)
 
 CRON_SECRET = os.environ.get("CRON_SECRET", "")
-MAX_MSGS = int(os.environ.get("CRON_MAX_MSGS", "1200"))
+MAX_MSGS = int(os.environ.get("CRON_MAX_MSGS", "600"))
 CONCURRENCY = int(os.environ.get("CRON_CONCURRENCY", "12"))
+RATE = float(os.environ.get("CRON_RATE", "28"))      # xabar/soni (Telegram ~30/s)
+
+
+class _Rate:
+    """Global token-bucket: barcha parallel yuborishlar jami RATE/s dan oshmaydi."""
+
+    def __init__(self, rate: float):
+        self.rate = max(1.0, rate)
+        self.next_at = 0.0
+        self.lock = asyncio.Lock()
+
+    async def wait(self):
+        async with self.lock:
+            loop = asyncio.get_running_loop()
+            now = loop.time()
+            if now < self.next_at:
+                await asyncio.sleep(self.next_at - now)
+                now = self.next_at
+            self.next_at = now + 1.0 / self.rate
 
 
 def _run() -> dict:
-    """Eslatmalarni yig'ib, parallel (lekin rate-limit bilan) yuboradi."""
+    """Eslatmalarni yig'ib, rate-limit bilan parallel yuboradi."""
     import bot as core
+    from aiogram.exceptions import TelegramRetryAfter
 
     async def go():
         pairs = await core.run_reminders(limit=MAX_MSGS)
+        capped = len(pairs) >= MAX_MSGS
         sem = asyncio.Semaphore(CONCURRENCY)
+        rate = _Rate(RATE)
         sent, failed = 0, 0
-        cap_done = set()
 
         async def one(u, text, kind):
             nonlocal sent, failed
             async with sem:
+                await rate.wait()
                 try:
-                    await core.bot.send_message(u, text)
+                    for attempt in (1, 2):
+                        try:
+                            await core.bot.send_message(u, text)
+                            break
+                        except TelegramRetryAfter as e:
+                            if attempt == 2:
+                                raise
+                            await asyncio.sleep(min(int(e.retry_after or 1), 30))
                 except Exception:  # noqa: BLE001
                     failed += 1
                     return
                 sent += 1
                 try:
                     if kind.startswith("cap:"):
-                        cid = int(kind[4:])
-                        if cid not in cap_done:      # bir kapsula bir marta
-                            cap_done.add(cid)
-                            core.st.capsule_notified(cid)
+                        core.st.capsule_notified(int(kind[4:]), u)
                     elif kind:
                         core.st.mark(u, kind)        # faqat muvaffaqiyatdan keyin
                 except Exception:  # noqa: BLE001
                     pass
-                await asyncio.sleep(0.03)            # ~30 xabar/s limit
 
         try:
             await asyncio.gather(*[one(*p) for p in pairs])
@@ -59,11 +84,11 @@ def _run() -> dict:
                 await core.bot.session.close()
             except Exception:
                 pass
-        return sent, failed, len(pairs)
+        return sent, failed, len(pairs), capped
 
-    sent, failed, total = asyncio.run(go())
+    sent, failed, total, capped = asyncio.run(go())
     return {"ok": True, "job": "reminders", "sent": sent, "failed": failed,
-            "total": total}
+            "total": total, "capped": capped}
 
 
 class handler(BaseHTTPRequestHandler):
@@ -78,16 +103,16 @@ class handler(BaseHTTPRequestHandler):
     def _handle(self) -> None:
         if CRON_SECRET and self.headers.get("authorization") != "Bearer " + CRON_SECRET:
             return self._json(401, {"err": "unauthorized"})
-        if not CRON_SECRET:
-            # secret yo'q bo'lsa — spam bo'lmasligi uchun 10 daqiqada bir marta
-            try:
-                import redis as _r
-                rc = _r.from_url(os.environ.get("REDIS_URL") or "",
-                                 socket_timeout=3, decode_responses=True)
-                if not rc.set("cron:lock", 1, nx=True, ex=600):
-                    return self._json(429, {"ok": False, "err": "too_often"})
-            except Exception:  # noqa: BLE001
-                pass
+        # dublikat xabar bo'lmasligi uchun har doim 5 daqiqalik qulf
+        try:
+            import redis as _r
+            rc = _r.from_url(os.environ.get("REDIS_URL") or "",
+                             socket_timeout=3, decode_responses=True)
+            if not rc.set("cron:lock", 1, nx=True, ex=300):
+                return self._json(429, {"ok": False, "err": "too_often",
+                                        "hint": "5 daqiqadan keyin qayta urinib ko'ring"})
+        except Exception:  # noqa: BLE001
+            pass
         try:
             self._json(200, _run())
         except Exception as e:  # noqa: BLE001

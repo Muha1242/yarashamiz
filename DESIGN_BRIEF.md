@@ -86,7 +86,7 @@ Yangi mavzu g'oyalari: «Binafsha tun», «Qog'oz» (texture), «Yulduzli osmon�
 ```bash
 node --check mini_app/app.js && node --check public/mini_app/app.js
 diff -r mini_app public/mini_app        # farq bo'lmasin
-python3 tests/smoke.py                  # 102/102
+python3 tests/smoke.py                  # 154/154
 ```
 Qo'lda: 360×640 va 390×844 da yozish/ochish/o'yin ekranlari; yorqin mavzuda
 matn o'qilishi; iOS safe-area; konvert animatsiyasi; PNG karta.

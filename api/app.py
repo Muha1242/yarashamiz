@@ -88,7 +88,7 @@ def _me(u, usr):
     partner = None
     if p:
         o = st.other(p, u)
-        partner = st.r.get(f"name:{o}") or st.r.get(f"ini:{o}")
+        partner = st.r.get(f"name:{o}")
     prem = ps["prem"]
     return {
         "ok": True,

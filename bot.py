@@ -30,9 +30,12 @@ def app_url():
     """Mini App manzili. WEBAPP_URL bo'lmasa Vercel domenidan aniqlanadi."""
     a = (os.environ.get("WEBAPP_URL") or "").strip().rstrip("/")
     if a:
-        # faqat domen berilgan bo'lsa (/ yo'q) — /mini_app qo'shamiz
+        if not a.lower().startswith("http"):      # sxema yo'q bo'lsa
+            a = "https://" + a
         try:
-            if urllib.parse.urlsplit(a).path in ("", "/"):
+            p = urllib.parse.urlsplit(a)
+            # faqat domen berilgan bo'lsa — /mini_app qo'shamiz
+            if not p.query and p.path in ("", "/"):
                 a += "/mini_app"
         except ValueError:
             pass
@@ -1374,9 +1377,11 @@ async def run_reminders(limit=1200):
         link = f"https://t.me/{uname}?start=c_{c['token']}" if uname else ""
         tail = f"\n\n{link}" if link else ""
         kind = f"cap:{c['id']}"
-        out.append((c["sender"],
-                    f"⏳ Sizning vaqt kapsulangiz ochildi ({when}).{tail}", kind))
-        if c["receiver"] and c["receiver"] != c["sender"]:
+        if not st.capsule_is_notified(c["id"], c["sender"]):
+            out.append((c["sender"],
+                        f"⏳ Sizning vaqt kapsulangiz ochildi ({when}).{tail}", kind))
+        if c["receiver"] and c["receiver"] != c["sender"] \
+                and not st.capsule_is_notified(c["id"], c["receiver"]):
             out.append((c["receiver"],
                         f"⏳ Sizga vaqt kapsulasi ochildi ({when}).{tail}", kind))
     return out

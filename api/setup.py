@@ -8,6 +8,7 @@ import asyncio
 import hmac
 import os
 import sys
+import urllib.parse
 from http.server import BaseHTTPRequestHandler
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -25,17 +26,22 @@ async def _set():
     core.bot.session = AiohttpSession()
 
     a = (os.environ.get("WEBAPP_URL") or "").strip().rstrip("/")
-    if not a:
+    if a:
+        if not a.lower().startswith("http"):
+            a = "https://" + a
+        sp = urllib.parse.urlsplit(a)
+        root = f"{sp.scheme}://{sp.netloc}" if sp.netloc else a
+    else:
         base = (os.environ.get("VERCEL_PROJECT_PRODUCTION_URL")
                 or os.environ.get("APP_URL")
                 or os.environ.get("VERCEL_URL") or "").strip().rstrip("/")
         if base and not base.lower().startswith("http"):
             base = "https://" + base
-        a = base
-    if not a:
+        root = base
+    if not root:
         raise RuntimeError("WEBAPP_URL (yoki VERCEL_PROJECT_PRODUCTION_URL) "
                            "aniqlanmadi — webhook manzilini bilmayapman")
-    url = a + "/api/webhook"
+    url = root.rstrip("/") + "/api/webhook"
     await core.bot.set_webhook(url, drop_pending_updates=True)
     # menyu va tavsif - bot ommaga chiroyli ko'rinadi
     try:

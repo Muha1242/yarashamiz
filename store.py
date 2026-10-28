@@ -541,9 +541,35 @@ def open_capsule(cid, u):
     return c, "ok"
 
 
-def capsule_notified(cid):
-    r.hset(f"capsule:{cid}", "notified", 1)
-    r.zrem("caps:due", str(cid))
+def capsule_notified(cid, u=None):
+    """Kapsula xabarnomasini belgilash.
+
+    u berilsa — faqat shu foydalanuvchi uchun (qisman yetkazish uchun);
+    sender va receiver ikkalasi ham belgilangach `caps:due` dan olinadi.
+    """
+    if u is None:
+        r.hset(f"capsule:{cid}", "notified", 1)
+        r.zrem("caps:due", str(cid))
+        return
+    key = f"cap:notified:{cid}"
+    r.sadd(key, u)
+    r.expire(key, 400 * 86400)
+    c = capsule(cid)
+    if not c:
+        return
+    need = {c["sender"]} | ({c["receiver"]} if c["receiver"] else set())
+    have = set()
+    for x in r.smembers(key):
+        try:
+            have.add(int(x))
+        except (TypeError, ValueError):
+            continue
+    if need <= have:
+        r.zrem("caps:due", str(cid))
+
+
+def capsule_is_notified(cid, u):
+    return bool(r.sismember(f"cap:notified:{cid}", u))
 
 
 # ---------------------------- SEVGI BILETLARI ---------------------------
