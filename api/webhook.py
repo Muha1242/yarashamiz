@@ -4,7 +4,6 @@ Webhook manzili:  https://<loyiha>.vercel.app/api/webhook
 (uni /api/setup?s=SETUP_KEY orqali ro'yxatdan o'tkazasiz)
 """
 import asyncio
-import json
 import os
 import sys
 import traceback

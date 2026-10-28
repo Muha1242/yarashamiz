@@ -12,6 +12,7 @@ Muhit o'zgaruvchilari:
 """
 import asyncio
 import os
+import urllib.parse
 
 from aiogram import Bot, Dispatcher, F
 from aiogram.fsm.storage.redis import RedisStorage
@@ -29,6 +30,15 @@ def app_url():
     """Mini App manzili. WEBAPP_URL bo'lmasa Vercel domenidan aniqlanadi."""
     a = (os.environ.get("WEBAPP_URL") or "").strip().rstrip("/")
     if a:
+        if not a.lower().startswith("http"):      # sxema yo'q bo'lsa
+            a = "https://" + a
+        try:
+            p = urllib.parse.urlsplit(a)
+            # faqat domen berilgan bo'lsa — /mini_app qo'shamiz
+            if not p.query and p.path in ("", "/"):
+                a += "/mini_app"
+        except ValueError:
+            pass
         return a
     base = (os.environ.get("VERCEL_PROJECT_PRODUCTION_URL")
             or os.environ.get("APP_URL")
@@ -42,6 +52,7 @@ def app_url():
 
 URL = app_url()
 ADMIN_ID = os.environ.get("ADMIN_ID", "")
+_ME = {"username": ""}          # bot username kesh
 DAILY_LIMIT = 3
 # Telegram Stars narxlari (muhit orqali sozlanadi)
 PRICES = {
@@ -52,6 +63,17 @@ PRICES = {
 # "1 yil + 2 oy" = 425 kun (matndagi va'da bilan mos)
 PREMIUM_DAYS = {"month": 30, "year": 425}
 GIFT_DAYS = int(os.environ.get("GIFT_DAYS", "30"))
+
+# Vaqt kapsulasi (premium) va sevgi biletlari (bepul limit bilan)
+CAPSULE_DAYS = [("1 oy", 30), ("3 oy", 90), ("6 oy", 180), ("1 yil", 365)]
+CAPSULE_LIMIT = 3        # kuniga yaratish mumkin (premium)
+COUPON_TITLES = [
+    "🎬 Kino tanlash huquqi", "🍽 Mazali kechki ovqat", "💆 Massaj",
+    "🚶 Birga sayr", "☕️ Kofe tayyorlash", "🎁 Kutilmagan syurpriz",
+    "📞 30 daqiqa suhbat", "🍿 Uyda kino kechasi", "🌙 Rejasiz kechqurun",
+    "🤗 Erkin quchoq",
+]
+COUPON_FREE_PER_DAY = 1  # bepul foydalanuvchi uchun
 
 # ------------------------------ KONTENT ---------------------------------
 OFFERS = ["Birga ovqatlanamiz", "Sayr qilamiz", "Kofe ichamiz", "Kino ko'ramiz",
@@ -111,13 +133,16 @@ THEMES = [
     # --- bepul ---
     ("classic", "Klassik"), ("love", "Sevgi \u2764\ufe0f"),
     ("sunset", "Quyosh \U0001F305"), ("mint", "Yalpiz \U0001F343"),
+    ("marmar", "Marmar \U0001F90D"),
     # --- premium \U0001F48E ---
     ("night", "Tun \U0001F319"), ("gold", "Oltin \u2b50"),
     ("ocean", "Okean \U0001F30A"), ("royal", "Shohona \U0001F451"),
     ("aurora", "Shimol yog\'dusi \U0001F30C"), ("blossom", "Gulzor \U0001F338"),
     ("velvet", "Baxmal \U0001F377"), ("sky", "Osmon \u2601\ufe0f"),
+    ("neon", "Neon \u2728"), ("paper", "Qog'oz \U0001F4DC"),
 ]
-PREMIUM_THEMES = {"night", "gold", "ocean", "royal", "aurora", "blossom", "velvet", "sky"}
+PREMIUM_THEMES = {"night", "gold", "ocean", "royal", "aurora", "blossom", "velvet",
+                  "sky", "neon", "paper"}
 
 AI_SIT = {"sorry": "Kechirim so'ramoqchiman", "miss": "Sog'indim", "love": "Sevgi izhori",
           "thank": "Minnatdorchilik", "date": "Uchrashuvga taklif"}
@@ -163,18 +188,41 @@ WELCOME = (
     "⚠️ Muammo bo'lsa: " + SUPPORT
 )
 
+# WEBAPP_URL (yoki Vercel domeni) aniqlanmasa — Ilova tugmasisiz rejim
+WELCOME_NO_APP = (
+    "💌 <b>Yarashamiz</b>\n\n"
+    "Arazni chiroyli tugating.\n\n"
+    "✍️ «Xat yozish» — uzr yoki sevgi xatingizni yozing.\n"
+    "Havolani juftingizga yuboring, u javob beradi.\n\n"
+    "⚠️ Muammo bo'lsa: " + SUPPORT
+)
+
+PRIVACY = (
+    "🔒 <b>Maxfiylik</b>\n\n"
+    "• Xatlaringiz va o'yin javoblaringiz faqat siz va juftingiz uchun.\n"
+    "• Ma'lumotlar uchinchi shaxslarga sotilmaydi va berilmaydi.\n"
+    "• Xat havolasi — maxfiy: uni faqat o'zingiz ishonadigan odamga yuboring.\n"
+    "• Ma'lumotlaringizni o'chirishni xohlasangiz, " + SUPPORT + " ga yozing.\n\n"
+    "Botdan foydalanishda rozilik bildirasiz."
+)
+
 HELP = ("<b>Qanday ishlaydi?</b>\n\n"
         "1. «✍️ Xat yozish» — uzr yoki sevgi xatingizni yozing.\n"
         "2. Uchrashuv taklifini tanlang va havolani juftingizga yuboring.\n"
         "3. U xatni ochadi va javob beradi.\n"
         "4. Yarashgach, «🎮 O'yinlar» bo'limida birga o'ynab ball to'playsiz.\n\n"
-        "/menu — bosh menyu\n/cancel — bekor qilish\n/help — yordam")
+        "/menu — bosh menyu\n/cancel — bekor qilish\n/help — yordam\n"
+        "/invite — do'stlarni taklif qilish (sovg'alar bor)\n"
+        "/reminders — eslatmalarni yoqish/o'chirish\n"
+        "/privacy — maxfiylik\n/feedback — fikr va taklif\n\n"
+        "⚠️ Muammo bo'lsa: " + SUPPORT)
 
 import base64  # noqa: E402
 import datetime as dt  # noqa: E402
 import html  # noqa: E402
 import json  # noqa: E402
 import time  # noqa: E402
+import traceback  # noqa: E402
 
 from aiogram.filters import Command, CommandObject, CommandStart, StateFilter  # noqa: E402
 from aiogram.fsm.context import FSMContext  # noqa: E402
@@ -187,8 +235,15 @@ from aiogram.types import (CallbackQuery, InlineKeyboardButton as IB,  # noqa: E
 import store as st  # noqa: E402
 from store import GAMES  # noqa: E402
 
+def _aredis():
+    """Redis asyncio klienti — timeout'lar bilan (osilib qolmasligi uchun)."""
+    return ARedis.from_url(
+        os.environ["REDIS_URL"], socket_timeout=5, socket_connect_timeout=5,
+        retry_on_timeout=True, health_check_interval=30)
+
+
 bot = Bot(TOKEN, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
-dp = Dispatcher(storage=RedisStorage(redis=ARedis.from_url(os.environ["REDIS_URL"])))
+dp = Dispatcher(storage=RedisStorage(redis=_aredis()))
 
 
 def reset_storage():
@@ -200,37 +255,63 @@ def reset_storage():
     """
     try:
         # Dispatcher.storage read-only, lekin RedisStorage.redis oddiy atribut
-        dp.storage.redis = ARedis.from_url(os.environ["REDIS_URL"])
+        dp.storage.redis = _aredis()
     except Exception as e:  # noqa: BLE001
         print("[reset_storage]", e, flush=True)
+
+
+async def me_username():
+    """Bot username (kesh bilan, osilib qolmaslik uchun timeout)."""
+    if _ME["username"]:
+        return _ME["username"]
+    try:
+        me = await asyncio.wait_for(bot.get_me(), timeout=6)
+        _ME["username"] = me.username or ""
+    except Exception as e:  # noqa: BLE001
+        print("[get_me]", repr(e), flush=True)
+        return ""
+    return _ME["username"]
 
 
 # ============================ XATO HANDLERI =============================
 @dp.errors()
 async def on_error(event):
-    """Kutilmagan xatoni foydalanuvchiga ko'rsatadi (diagnostika)."""
+    """Xatoni foydalanuvchiga ko'rsatmaymiz — Redis'ga yozamiz (diagnostika)."""
+    exc = event.exception
+    tb = "".join(traceback.format_exception(type(exc), exc, exc.__traceback__))
+    print("[error]", tb[-1500:], flush=True)
     try:
-        tb = f"{type(event.exception).__name__}: {event.exception}"[:280]
-        print("[error]", tb, flush=True)
+        st.r.set("ybot:lasterror", tb[-1200:])
+    except Exception:  # noqa: BLE001
+        pass
+    try:
         u = None
         if event.update.message:
             u = event.update.message.from_user.id
         elif event.update.callback_query:
             u = event.update.callback_query.from_user.id
+            try:
+                await event.update.callback_query.answer()   # spinner osilib qolmasin
+            except Exception:  # noqa: BLE001
+                pass
         if u:
-            await bot.send_message(u, "⚠️ Xatolik: " + html.escape(tb))
-    except Exception:
+            # faqat tushunarli xabar - ichki xato matni foydalanuvchiga chiqmaydi
+            await bot.send_message(u, "⚠️ Kutilmagan xatolik yuz berdi. "
+                                      "Qayta urinib ko'ring yoki " + SUPPORT + " ga yozing.")
+    except Exception:  # noqa: BLE001
         pass
     return True
 
-today = lambda: dt.date.today().isoformat()
-mission_of_day = lambda: MISSIONS[dt.date.today().toordinal() % len(MISSIONS)]
-dq_of_day = lambda: DAILY_Q[dt.date.today().toordinal() % len(DAILY_Q)]
+today = lambda: st.today()  # noqa: E731  (mahalliy sana, UTC emas)
+mission_of_day = lambda: MISSIONS[st.now().date().toordinal() % len(MISSIONS)]  # noqa: E731
+dq_of_day = lambda: DAILY_Q[st.now().date().toordinal() % len(DAILY_Q)]  # noqa: E731
 
 
 # ============================= KO'RINISHLAR =============================
 def main_kb():
     """Bot chatida faqat Ilova tugmasi - qolgan hammasi ilova ichida."""
+    if not URL:            # WEBAPP_URL aniqlanmasa Telegram xato beradi
+        return None
     return ReplyKeyboardMarkup(resize_keyboard=True, keyboard=[
         [KeyboardButton(text="📱 Ilovani ochish",
                         web_app=WebAppInfo(url=f"{URL}/"))],
@@ -270,6 +351,14 @@ def open_letter_kb(lid, link):
     return ReplyKeyboardMarkup(resize_keyboard=True, keyboard=[[btn]])
 
 
+def capsule_open_kb(token):
+    if not URL:
+        return None
+    btn = KeyboardButton(text="⏳ Kapsulani ochish",
+                         web_app=WebAppInfo(url=f"{URL}/?c={token}"))
+    return ReplyKeyboardMarkup(resize_keyboard=True, keyboard=[[btn]])
+
+
 def theme_ok(theme, u):
     return theme not in PREMIUM_THEMES or st.is_prem(u)
 
@@ -297,9 +386,9 @@ def profile_view(u):
     p = ps["pair"]
     pts, days = ps["pts"], "—"
     if p and ps["since"]:
-        days = (dt.date.today() - dt.date.fromtimestamp(ps["since"])).days
+        days = max(0, (int(st.now().timestamp()) - ps["since"]) // 86400)
     st_, prem = ps["streak"], ps["prem"]
-    tip = TIPS[dt.date.today().toordinal() % len(TIPS)]
+    tip = TIPS[st.now().date().toordinal() % len(TIPS)]
     return (f"📊 <b>Hisobingiz</b>\n\n"
             f"🔥 Ketma-kunlik seriya: <b>{st_}</b> kun\n"
             f"⭐ Juftlik bali: <b>{pts}</b>\n"
@@ -329,7 +418,7 @@ def library_view(u):
         return "💌 Xotiralar bo'sh. Birinchi xatingizni yozing!"
     out = ["💌 <b>Xotiralar</b>\n"]
     for i, x in enumerate(rows):
-        d = dt.datetime.fromtimestamp(x["ts"]).strftime("%d.%m")
+        d = dt.datetime.fromtimestamp(x["ts"] + st.TZ_OFFSET * 3600).strftime("%d.%m")
         who = "siz →" if x["sender"] == u else "→ siz"
         out.append(f"{i+1}. {d} {who} «{html.escape(x['text'][:40])}…»")
     return "\n".join(out) + "\n\n<b>Premium</b> bilan xotiralar cheksiz saqlanadi 💎"
@@ -357,9 +446,41 @@ def prem_kb():
         [IB(text=f"🎁 {PRICES['gift']} ⭐ — {GIFT_DAYS} kunlik sovg'a", callback_data="buy:gift")]])
 
 
+def rem_kb(on):
+    return IM(inline_keyboard=[[
+        IB(text=("✅ 🔔 Yoqilgan" if on else "🔔 Yoqish"), callback_data="rem:1"),
+        IB(text=("✅ 🔕 O'chirilgan" if not on else "🔕 O'chirish"), callback_data="rem:0")]])
+
+
+def rem_text(on):
+    return ("🔔 <b>Eslatmalar</b>\n\n"
+            + ("Yoqilgan: har kuni kunlik savol, missiya va seriya eslatmasi keladi."
+               if on else
+               "O'chirilgan: kundalik eslatmalar kelmaydi. Botga o'zingiz kirib "
+               "o'ynashingiz mumkin."))
+
+
+def invite_text(u, username):
+    n, ok = st.refs(u), st.refs_ok(u)
+    nxt = next((k for k in sorted(st.REF_PREM) if k > ok), None)
+    tip = (f"Keyingi sovg'a: <b>{nxt} ta tasdiqlangan taklif</b> → "
+           f"{st.REF_PREM[nxt]} kun premium" if nxt else "Barcha sovg'alarni oldingiz 🎉")
+    link = f"https://t.me/{username}?start=ref_{u}" if username else \
+        "Havola mavjud emas — BOT_USERNAME sozlanmagan"
+    return ("🎁 <b>Do'stlaringizni taklif qiling</b>\n\n"
+            f"Har bir taklif uchun: <b>+{st.REF_BALL} ball</b> "
+            "(juftligingizga qo'shiladi)\n"
+            "3 ta taklif — <b>7 kun premium</b>\n"
+            "10 ta taklif — <b>30 kun premium</b>\n"
+            "(sovg'a taklif qilgan odam birinchi xat yozganda beriladi)\n\n"
+            f"🔗 Sizning havolangiz:\n{link}\n\n"
+            f"👥 Havolani bosganlar: <b>{n}</b> · "
+            f"birinchi xat yozganlar: <b>{ok}</b>\n{tip}")
+
+
 def qidx(g, step):
     qs = {"ab": AB, "wh": WHO, "qz": QZ}[g]
-    return (dt.date.today().toordinal() + step) % len(qs)
+    return (st.now().date().toordinal() + step) % len(qs)
 
 
 # ============================= FSM HOLATLAR =============================
@@ -377,6 +498,7 @@ class W(StatesGroup):
 @dp.message(CommandStart())
 async def start(m: Message, command: CommandObject, state: FSMContext):
     await state.clear()
+    st.set_name(m.from_user.id, getattr(m.from_user, "first_name", "") or "")
     arg = command.args or ""
 
     if arg.startswith("l_"):
@@ -388,11 +510,17 @@ async def start(m: Message, command: CommandObject, state: FSMContext):
             return await m.answer(
                 "Bu sizning xatingiz 💌\n\nUni Ilovada ko'rishingiz va dizaynini\n"
                 "o'zgartirishingiz mumkin.",
-                reply_markup=ReplyKeyboardMarkup(resize_keyboard=True, keyboard=[
-                    [KeyboardButton(text="📱 Ilova",
-                                    web_app=WebAppInfo(url=f"{URL}/"))]]))
+                reply_markup=main_kb())
         if st.is_blocked(m.from_user.id, L["sender"]):
             return await m.answer("Bu yuboruvchidan xat olmaslikni tanlagansiz.")
+        if L["receiver"] and L["receiver"] != m.from_user.id:
+            return await m.answer("Bu xat allaqachon boshqa odamga tegishli 🙂")
+        if not URL:
+            # Ilova sozlanmagan bo'lsa ham xat matni ko'rinsin
+            return await m.answer("Sizga xat bor 💌\n\n«" + html.escape(L["text"]) +
+                                  "»\n\nTaklif: " +
+                                  html.escape(", ".join(L["offers"])))
+        st.seen(lid, m.from_user.id)     # shikoyat qilish huquqi uchun
         payload = base64.urlsafe_b64encode(json.dumps(
             {"t": L["text"], "o": L["offers"], "theme": L["theme"]}).encode()).decode()
         return await m.answer("Sizga xat bor 💌",
@@ -407,21 +535,61 @@ async def start(m: Message, command: CommandObject, state: FSMContext):
                                   reply_markup=menu_kb(m.from_user.id))
         return await m.answer("Bu sovg'a allaqachon ishlatilgan yoki yaroqsiz.")
 
+    if arg.startswith("ref_"):
+        ref = arg[4:]
+        if ref.isdigit() and st.set_ref(m.from_user.id, int(ref)):
+            try:
+                await bot.send_message(
+                    int(ref),
+                    "🎉 Sizning havolangiz orqali yangi odam keldi!\n"
+                    f"U birinchi xatini yozganda <b>+{st.REF_BALL} ball</b> olasiz.")
+            except Exception:  # noqa: BLE001
+                pass
+
+    if arg.startswith("c_"):
+        token = arg[2:]
+        cid, C = st.capsule_by_token(token)
+        if not C:
+            return await m.answer("Kapsula topilmadi yoki havola eskirgan.")
+        when = dt.datetime.fromtimestamp(
+            C["open_at"] + st.TZ_OFFSET * 3600).strftime("%d.%m.%Y")
+        if not URL:
+            return await m.answer(f"⏳ Vaqt kapsulasi. Ochilish sanasi: <b>{when}</b>.")
+        if time.time() < C["open_at"]:
+            return await m.answer(
+                "⏳ <b>Vaqt kapsulasi</b>\n\n"
+                f"Bu xat <b>{when}</b> da ochiladi.\nSabr qiling 🙂",
+                reply_markup=capsule_open_kb(token))
+        return await m.answer(
+            "⏳ <b>Kapsula ochildi!</b>\n\nXatni Ilovada o'qing 👇",
+            reply_markup=capsule_open_kb(token))
+
     st.touch(m.from_user.id)
-    await m.answer(WELCOME, reply_markup=main_kb())
+    await m.answer(WELCOME if URL else WELCOME_NO_APP,
+                   reply_markup=main_kb() or menu_kb(m.from_user.id))
 
 
 @dp.message(F.web_app_data)
 async def reply(m: Message):
-    r = json.loads(m.web_app_data.data)
-    u = m.from_user.id
+    try:
+        r = json.loads(m.web_app_data.data or "{}")
+    except Exception:  # noqa: BLE001
+        return await m.answer("Ma'lumot noto'g'ri. Ilovani qayta oching.")
+    u, a = m.from_user.id, str(r.get("a") or "")
+    st.set_name(u, getattr(m.from_user, "first_name", "") or "")
     L = st.letter(r.get("l"))
     if not L:
         return await m.answer("Xat topilmadi.")
     sender = L["sender"]
     if sender == u:
         return await m.answer("Bu o'z xatingiz 🙂")
-    if r.get("a") == "reply":
+    # bloklangan yuboruvchidan kelgan xatga javob berilmaydi
+    if a != "report" and st.is_blocked(u, sender):
+        return await m.answer("Siz bu yuboruvchidan xat olmaslikni tanlagansiz.")
+    # xat allaqachon boshqa odam tomonidan qabul qilingan bo'lsa
+    if L["receiver"] and L["receiver"] != u:
+        return await m.answer("Bu xat allaqachon boshqa odamga tegishli 🙂")
+    if a == "reply":
         txt = str(r.get("t") or "").strip()[:300]
         if not txt:
             return await m.answer("Bo'sh javob yuborilmadi.")
@@ -432,26 +600,74 @@ async def reply(m: Message):
             + "\n\nDavom ettirish uchun javob yozing.",
             reply_markup=menu_kb(sender))
         return await m.answer("✅ Javobingiz yuborildi.")
-    if r["a"] == "stop":
+    if a == "stop":
         st.block(u, sender)
         return await m.answer("Tushunarli. Bu yuboruvchidan boshqa xat kelmaydi.")
-    if r["a"] == "heart":
+    if a == "heart":
         st.touch(u)
         await bot.send_message(sender, "💝 Sizga yurak yuborildi! Javobingizni kutmoqda.")
         return await m.answer("💝 Yurak yuborildi.")
-    if r["a"] == "yes":
-        if not st.pair_of(u):
-            st.add_pair(sender, u)
-        st.set_receiver(int(r["l"]), u)
-        st.touch(u)
-        st.touch(sender)
+    if a == "yes":
+        refused = None
+        with st.lock(f"yes:{L['id']}") as ok:
+            if not ok:
+                return await m.answer("⏳ Bir oz kuting, qayta urinib ko'ring.")
+            fresh = st.letter(L["id"]) or L
+            if fresh["receiver"] == u:
+                # takroriy bosish: holat o'zgarmaydi, xabar ikki marta ketmaydi
+                return await m.answer("Allaqachon qabul qilingan ✅")
+            p_u, p_s = st.pair_of(u), st.pair_of(sender)
+            # juftlik faqat bitta bo'ladi: ikkinchi "yarashamiz" ma'lumotni buzmasin
+            if p_u and st.other(p_u, u) != sender:
+                refused = "Siz allaqachon boshqa juftlik bilan ulangansiz ❤️"
+            elif p_s and st.other(p_s, sender) != u:
+                refused = "Bu odam allaqachon juftlikda 🙂"
+                try:
+                    await bot.send_message(sender, "Javob: bu odam allaqachon juftlikda 🙂")
+                except Exception:  # noqa: BLE001
+                    pass
+            else:
+                if not p_u:
+                    st.add_pair(sender, u)
+                st.set_receiver(L["id"], u)
+                st.touch(u)
+                st.touch(sender)
+        if refused:
+            return await m.answer(refused)
         await bot.send_message(sender, "Javob: <b>yarashamiz</b> 🎉 "
-                               f"Taklif: {r.get('o')}\nEndi birga o'ynashingiz mumkin.",
+                               f"Taklif: {html.escape(str(r.get('o') or ''))}\n"
+                               "Endi birga o'ynashingiz mumkin.",
                                reply_markup=menu_kb(sender))
         return await m.answer("Yarashdingiz 🎉 Endi birga o'ynang.",
                               reply_markup=menu_kb(u))
-    if r["a"] == "later":
+    if a == "report":
+        if not st.has_seen(L["id"], u):
+            return await m.answer("Xat topilmadi. Uni havola orqali qayta oching.")
+        if not st.add_report(L["id"], u, sender, L.get("text", "")):
+            return await m.answer("Siz bu xatni allaqachon shikoyat qilgansiz.")
+        # faqat haqiqiy qabul qiluvchi uchun blok; begona (forward) shikoyat
+        # yuboruvchini bloklamaydi — faqat admin tekshiradi
+        accepted = L["receiver"] == u
+        if accepted:
+            st.block(u, sender)
+        if ADMIN_ID:
+            try:
+                await bot.send_message(
+                    int(ADMIN_ID),
+                    "⚠️ <b>Shikoyat</b>\n"
+                    f"Kimdan: <code>{sender}</code>\nKimga: <code>{u}</code>\n"
+                    f"Qabul qilingan: {'yo‘q' if L['receiver'] != u else 'ha'}\n"
+                    f"Xat #{L['id']}: {html.escape(str(L.get('text') or '')[:200])}")
+            except Exception:  # noqa: BLE001
+                pass
+        return await m.answer(
+            "⚠️ Shikoyat qabul qilindi. Bu yuboruvchidan boshqa xat kelmaydi va "
+            "admin xabardor qilindi." if accepted else
+            "⚠️ Shikoyat qabul qilindi. Admin tekshiradi; bu yuboruvchidan xat "
+            "qabul qilmasangiz bo'ladi.")
+    if a == "later":
         await bot.send_message(sender, "Javob: hali tayyor emas, keyinroq ⏳")
+        return await m.answer("Xabar yuborildi ⏳")
     await m.answer("Javobingiz yuborildi.")
 
 
@@ -463,6 +679,89 @@ async def menu_cmd(m: Message):
 @dp.message(Command("help"))
 async def help_cmd(m: Message):
     await m.answer(HELP)
+
+
+@dp.message(Command("privacy"))
+async def privacy_cmd(m: Message):
+    await m.answer(PRIVACY)
+
+
+@dp.message(Command("feedback"))
+async def feedback_cmd(m: Message):
+    """Foydalanuvchi fikri — adminga yuboriladi va Redis'da saqlanadi."""
+    txt = (m.text or "").partition(" ")[2].strip()[:500]
+    if not txt:
+        return await m.answer("Fikringizni yozing: <code>/feedback xabar matni</code>")
+    try:
+        st.r.rpush("feedback", json.dumps(
+            {"u": m.from_user.id, "t": txt, "ts": int(time.time())}))
+        st.r.ltrim("feedback", -500, -1)
+    except Exception:  # noqa: BLE001
+        pass
+    if ADMIN_ID:
+        try:
+            await bot.send_message(int(ADMIN_ID),
+                                   f"📩 Feedback <code>{m.from_user.id}</code>:\n"
+                                   + html.escape(txt))
+        except Exception:  # noqa: BLE001
+            pass
+    await m.answer("Rahmat! Fikringiz adminga yuborildi 🙏")
+
+
+@dp.message(Command("invite"))
+async def invite_cmd(m: Message):
+    await m.answer(invite_text(m.from_user.id, await me_username()))
+
+
+@dp.message(Command("reminders"))
+async def reminders_cmd(m: Message):
+    on = st.reminders_on(m.from_user.id)
+    await m.answer(rem_text(on), reply_markup=rem_kb(on))
+
+
+@dp.callback_query(F.data.startswith("rem:"))
+async def rem_cb(c: CallbackQuery):
+    on = c.data[4:] == "1"
+    st.set_reminders(c.from_user.id, on)
+    await c.message.edit_text(rem_text(on), reply_markup=rem_kb(on))
+    await c.answer("Yoqildi ✅" if on else "O'chirildi 🔕")
+
+
+@dp.message(Command("diag"))
+async def diag_cmd(m: Message):
+    """Admin uchun tezkor diagnostika (bot chatida)."""
+    if not ADMIN_ID or str(m.from_user.id) != ADMIN_ID:
+        return
+    lines = []
+    try:
+        st.r.ping()
+        lines.append("Redis: ✅")
+    except Exception as e:  # noqa: BLE001
+        lines.append("Redis: ❌ " + type(e).__name__)
+    try:
+        me = await asyncio.wait_for(bot.get_me(), timeout=6)
+        lines.append(f"Bot: @{me.username}")
+    except Exception as e:  # noqa: BLE001
+        lines.append("Bot: ❌ " + type(e).__name__)
+    try:
+        wh = await asyncio.wait_for(bot.get_webhook_info(), timeout=6)
+        lines.append(f"Webhook: {wh.url or '— (o‘rnatilmagan)'}")
+        if wh.last_error_message:
+            lines.append("Xato: " + wh.last_error_message[:140])
+        lines.append(f"Kutayotgan update: {wh.pending_update_count}")
+    except Exception as e:  # noqa: BLE001
+        lines.append("Webhook: ❌ " + type(e).__name__)
+    lines.append("WebApp URL: " + (URL or "—"))
+    lines.append("Env: " + ", ".join(k for k, v in {
+        "BOT_TOKEN": TOKEN, "REDIS_URL": os.environ.get("REDIS_URL"),
+        "WEBAPP_URL": URL, "ADMIN_ID": ADMIN_ID}.items() if v))
+    try:
+        err = st.r.get("ybot:lasterror")
+        if err:
+            lines.append("\n<b>Oxirgi xato:</b>\n" + html.escape(err[-600:]))
+    except Exception:  # noqa: BLE001
+        pass
+    await m.answer("🩺 <b>Diagnostika</b>\n\n" + "\n".join(lines))
 
 
 @dp.message(Command("cancel"))
@@ -477,10 +776,17 @@ async def admin(m: Message):
         return
     s = st.admin_stats()
     await m.answer(f"📊 <b>Admin hisobot</b>\n\n"
-                   f"👥 Foydalanuvchilar: <b>{s['users']}</b>\n"
-                   f"❤️ Juftliklar: <b>{s['pairs']}</b>\n"
-                   f"💌 Yozilgan xatlar: <b>{s['letters']}</b>\n"
-                   f"💎 Premium a'zolar: <b>{s['prem']}</b>")
+                   f"👥 Foydalanuvchilar: <b>{s['users']}</b> "
+                   f"(bugun +{s['new_today']})\n"
+                   f"⚡️ Bugun faol: <b>{s['active_today']}</b>\n"
+                   f"❤️ Juftliklar: <b>{s['pairs']}</b> (bugun +{s['pairs_today']})\n"
+                   f"💌 Xatlar: <b>{s['letters']}</b> (bugun {s['letters_today']})\n"
+                   f"🎁 Referral: <b>{s['refs']}</b>\n"
+                   f"⏳ Kapsulalar: <b>{s['capsules']}</b> · "
+                   f"🎟 Biletlar: <b>{s['coupons']}</b>\n"
+                   f"📩 Feedback: <b>{s['feedback']}</b> · "
+                   f"⚠️ Shikoyat: <b>{s['reports']}</b>\n"
+                   f"💎 Premium: <b>{s['prem_active']}</b> faol / {s['prem']} jami")
 
 
 # ------------------------------ XAT OQIMI -------------------------------
@@ -488,9 +794,28 @@ def variants(sit, words):
     return [t.replace("{w}", (words or "").strip() or FALLBACK) for t in AI_TPL[sit]]
 
 
+async def reward_ref(u):
+    """Foydalanuvchi birinchi xatini yozganda referrerni mukofotlaydi."""
+    got = st.claim_reward(u)
+    if not got:
+        return
+    ref, n = got
+    p = st.pair_of(ref)
+    txt = "🎉 Taklifingizdan yangi odam birinchi xatini yozdi!"
+    txt += (f"\n⭐ Juftlikka +{st.REF_BALL} ball qo'shildi." if p else
+            "\n⭐ Juftlik topilgach ball qo'shiladi.")
+    if n in st.REF_PREM:
+        txt += (f"\n💎 {n} ta tasdiqlangan taklif — "
+                f"{st.REF_PREM[n]} kunlik premium sovg'a!")
+    try:
+        await bot.send_message(ref, txt)
+    except Exception:  # noqa: BLE001
+        pass
+
+
 async def do_new(m: Message, state: FSMContext):
     u = m.from_user.id
-    if st.count_today_letters(u, time.time() - 86400) >= DAILY_LIMIT and not st.is_prem(u):
+    if st.count_today_letters(u, st.day_start_ts()) >= DAILY_LIMIT and not st.is_prem(u):
         return await m.answer("Bugungi bepul limit (3 xat) tugadi. Ertaga yozing yoki "
                               "💎 Premium oling — cheksiz xat yoziladi.")
     await state.set_state(W.text)
@@ -507,7 +832,7 @@ async def new(c: CallbackQuery, state: FSMContext):
 
 @dp.message(W.text, F.text)
 async def got_text(m: Message, state: FSMContext):
-    await state.update_data(text=m.text[:300], offers=[])
+    await state.update_data(text=m.text[:300], offers=[], own_count=0)
     await state.set_state(W.offers)
     await m.answer("Qanday uchrashuv taklif qilasiz? (bir nechtasini tanlang)",
                    reply_markup=offer_kb([]))
@@ -515,8 +840,11 @@ async def got_text(m: Message, state: FSMContext):
 
 @dp.callback_query(W.offers, F.data.startswith("o:"))
 async def toggle(c: CallbackQuery, state: FSMContext):
-    o = OFFERS[int(c.data[2:])]
-    sel = (await state.get_data())["offers"]
+    try:
+        o = OFFERS[int(c.data[2:])]
+    except (ValueError, IndexError):
+        return await c.answer()
+    sel = list((await state.get_data()).get("offers") or [])
     sel = [x for x in sel if x != o] if o in sel else sel + [o]
     await state.update_data(offers=sel)
     await c.message.edit_reply_markup(reply_markup=offer_kb(sel))
@@ -572,7 +900,7 @@ async def own_offer_del(c: CallbackQuery, state: FSMContext):
 @dp.callback_query(W.offers, F.data == "done")
 async def finish(c: CallbackQuery, state: FSMContext):
     d = await state.get_data()
-    if not d["offers"]:
+    if not d.get("offers"):
         return await c.answer("Kamida bitta taklif tanlang", show_alert=True)
     await state.set_state(W.theme)
     await c.message.answer("Xat qanday ko'rinishda bo'lsin?",
@@ -586,12 +914,19 @@ async def theme(c: CallbackQuery, state: FSMContext):
     if not theme_ok(t, c.from_user.id):
         return await c.answer("Bu shablon premium uchun 💎", show_alert=True)
     d = await state.get_data()
+    if not d.get("text") or not d.get("offers"):
+        await state.clear()
+        return await c.answer("Xat matni topilmadi. Qaytadan boshlang: /menu",
+                              show_alert=True)
     lid = st.add_letter(c.from_user.id, d["text"], d["offers"], t)
     await state.clear()
-    me = await bot.get_me()
+    uname = await me_username()
     st.touch(c.from_user.id)
+    await reward_ref(c.from_user.id)
+    link = (f"https://t.me/{uname}?start=l_{lid}" if uname
+            else "havola yaratilmadi (BOT_USERNAME sozlanmagan)")
     await c.message.answer("Xat tayyor. Havolani juftingizga o'zingiz yuboring:\n"
-                           f"https://t.me/{me.username}?start=l_{lid}")
+                           + link)
     await c.answer()
 
 
@@ -623,7 +958,11 @@ async def ai_words(m: Message, state: FSMContext):
     sit = d["sit"]
     await m.answer("✨ Yozyapman...", reply_markup=None)
     # avval haqiqiy AI (Gemini); u holda shablon bilan davom etamiz
-    real = await asyncio.to_thread(ai_helper.compose, sit, m.text)
+    try:
+        real = await asyncio.wait_for(
+            asyncio.to_thread(ai_helper.compose, sit, m.text), timeout=20)
+    except Exception:  # noqa: BLE001
+        real = None
     vs = ([real] if real else []) + variants(sit, m.text)
     await state.update_data(variants=vs, vi=0)
     await state.set_state(W.text)
@@ -652,8 +991,11 @@ async def ai_variant(c: CallbackQuery, state: FSMContext):
 @dp.callback_query(F.data == "aiu")
 async def ai_use(c: CallbackQuery, state: FSMContext):
     d = await state.get_data()
-    vs, i = d.get("variants") or [""], d.get("vi", 0)
-    await state.update_data(text=vs[i][:300], offers=[])
+    vs = d.get("variants") or []
+    if not vs:
+        return await c.answer("Variant topilmadi, qaytadan boshlang", show_alert=True)
+    i = int(d.get("vi", 0)) % len(vs)
+    await state.update_data(text=vs[i][:300], offers=[], own_count=0)
     await state.set_state(W.offers)
     await c.message.answer("Zo'r! Endi uchrashuv taklifini tanlang:",
                            reply_markup=offer_kb([]))
@@ -711,7 +1053,10 @@ async def m_answer_menu(c: CallbackQuery):
 @dp.callback_query(F.data.startswith("buy:"))
 async def buy(c: CallbackQuery):
     kind = c.data[4:]
-    payload = ("gift" if kind == "gift" else f"prem:{kind}") + f":{c.from_user.id}"
+    if kind not in ("month", "year", "gift"):
+        return await c.answer()
+    payload = (f"gift:{c.from_user.id}" if kind == "gift"
+               else f"prem:{kind}:{c.from_user.id}")
     await bot.send_invoice(
         chat_id=c.from_user.id, title="Yarashamiz Premium 💎",
         description={"month": "1 oylik premium: cheksiz xat, AI yordamchi.",
@@ -729,16 +1074,22 @@ async def pre(q: PreCheckoutQuery):
 
 @dp.message(F.successful_payment)
 async def paid(m: Message):
-    parts = m.successful_payment.invoice_payload.split(":")
-    if parts[0] == "prem":
-        st.add_prem(int(parts[2]), PREMIUM_DAYS[parts[1]])
-        await m.answer(f"💎 Premium faollashdi! {PREMIUM_DAYS[parts[1]]} kunlik "
+    parts = (m.successful_payment.invoice_payload or "").split(":")
+    if parts[0] == "prem" and len(parts) >= 3 and parts[1] in PREMIUM_DAYS:
+        try:
+            uid = int(parts[2])
+        except ValueError:
+            return
+        days = PREMIUM_DAYS[parts[1]]
+        st.add_prem(uid, days)
+        await m.answer(f"💎 Premium faollashdi! {days} kunlik "
                        "imtiyozlar sizniki.")
-    else:
+    elif parts[0] == "gift":
         token = st.make_gift(GIFT_DAYS)
-        me = await bot.get_me()
+        uname = await me_username()
         await m.answer("🎁 Sovg'a tayyor! Havolani juftingizga yuboring:\n"
-                       f"https://t.me/{me.username}?start=gift_{token}")
+                       + (f"https://t.me/{uname}?start=gift_{token}" if uname
+                          else "havola yaratilmadi (BOT_USERNAME sozlanmagan)"))
 
 
 # --------------------------- PASTKI TUGMALAR ----------------------------
@@ -802,31 +1153,45 @@ async def after(u, p, g):
         return await bot.send_message(
             o, hint,
             reply_markup=IM(inline_keyboard=[[IB(text="🎮 O'yinlar", callback_data="games")]]))
-    d1, d2, gg = st.get(p[0], g, u), st.get(p[0], g, o), GAMES[g]
-    if gg["mode"] == "talk":
-        pts = 5
-    elif gg["mode"] == "match":
-        pts = 2 * sum(d1[i] == d2[i] for i in range(gg["n"]))
-        if d1 == d2:
-            pts += 5
-    elif g == "ab":
-        pts = sum(2 * (d1[i][1] == d2[i][0]) + 2 * (d2[i][1] == d1[i][0])
-                  + (d1[i][0] == d2[i][0]) for i in range(5))
-    else:
-        pts = 10
-    st.add_pts(p[0], pts)
-    st.touch(u)
-    if g == "kq":
-        # ikkalasi ham javob bergan — bir-birining javobini ko'rsatamiz
-        await bot.send_message(u, f"💬 Juftingizning bugungi javobi:\n\n«{d2[0]}»\n\n"
-                               f"+{pts} ball 🎯")
-        await bot.send_message(o, f"💬 Juftingizning bugungi javobi:\n\n«{d1[0]}»\n\n"
-                               f"+{pts} ball 🎯")
-        return
-    await asyncio.gather(*[
-        bot.send_message(x, f"«{gg['name']}» natijasi: {pts} ball 🎯 "
-                            "Ikkalangiz ham qatnashdingiz.")
-        for x in (u, o)], return_exceptions=True)
+    # ikki marta (masalan, ilova + bot) yuborilsa ball ikki marta qo'shilmasin
+    with st.lock(f"after:{p[0]}:{g}:{st.today()}") as ok:
+        if not ok:
+            return
+        scored = f"scored:{p[0]}:{g}:{st.today()}"
+        if st.r.get(scored):
+            return
+        d1, d2, gg = st.get(p[0], g, u), st.get(p[0], g, o), GAMES[g]
+        if d1 is None or d2 is None:
+            return
+        if gg["mode"] == "talk":
+            pts = 5
+        elif gg["mode"] == "match":
+            pts = 2 * sum(d1[i] == d2[i] for i in range(gg["n"]))
+            if d1 == d2:
+                pts += 5
+        elif g == "ab":
+            pts = sum(2 * (d1[i][1] == d2[i][0]) + 2 * (d2[i][1] == d1[i][0])
+                      + (d1[i][0] == d2[i][0]) for i in range(gg["n"]))
+        else:
+            pts = 10
+        st.add_pts(p[0], pts)
+        st.r.set(scored, 1, ex=2 * 86400)   # faqat ball muvaffaqiyatli qo'shilgach
+        st.touch(u)
+        if g == "kq":
+            # ikkalasi ham javob bergan — bir-birining javobini ko'rsatamiz.
+            # Yuborish xatosi javobni yo'qotmasligi uchun try/except.
+            try:
+                await bot.send_message(u, "💬 Juftingizning bugungi javobi:\n\n"
+                                       f"«{html.escape(str(d2[0]))}»\n\n+{pts} ball 🎯")
+                await bot.send_message(o, "💬 Juftingizning bugungi javobi:\n\n"
+                                       f"«{html.escape(str(d1[0]))}»\n\n+{pts} ball 🎯")
+            except Exception as e:  # noqa: BLE001
+                print("[after/kq]", repr(e), flush=True)
+            return
+        await asyncio.gather(*[
+            bot.send_message(x, f"«{gg['name']}» natijasi: {pts} ball 🎯 "
+                                "Ikkalangiz ham qatnashdingiz.")
+            for x in (u, o)], return_exceptions=True)
 
 
 @dp.callback_query(F.data.startswith("go:"))
@@ -835,7 +1200,9 @@ async def go(c: CallbackQuery, state: FSMContext):
     u, p = c.from_user.id, st.pair_of(c.from_user.id)
     if not p:
         return await c.answer("Avval xat orqali yarashing ❤️", show_alert=True)
-    gg = GAMES[g]
+    gg = GAMES.get(g)
+    if not gg:
+        return await c.answer()
     if gg.get("prem") and not st.is_prem(u):
         return await c.answer("Bu o'yin premium uchun 💎", show_alert=True)
     if st.done(p[0], g, u):
@@ -863,6 +1230,9 @@ async def dq_answer(m: Message, state: FSMContext):
     if not p:
         await state.clear()
         return await m.answer("Juftingiz topilmadi.")
+    if st.done(p[0], "kq", u):
+        await state.clear()
+        return await m.answer("Bugun allaqachon javob bergansiz ✅")
     st.put(p[0], "kq", u, [m.text[:300]])
     await state.clear()
     await m.answer("Javobingiz qabul qilindi! Juftingizning javobini u ham javob "
@@ -877,8 +1247,11 @@ async def ab_own(c: CallbackQuery):
     if not p:
         return await c.answer("Avval yarashing ❤️", show_alert=True)
     d = st.get(p[0], "ab", u) or []
-    if int(i) != qidx("ab", len(d)):
-        return await c.answer()
+    if int(i) != qidx("ab", len(d)) or int(o) not in (0, 1):
+        if int(i) == qidx("ab", len(d) - 1) and len(d) > 0:
+            return await c.answer()          # allaqachon javob berilgan
+        return await c.answer("Savol yangilandi. /menu → 🎮 O'yinlar",
+                              show_alert=True)
     q, a, b = AB[int(i)]
     await c.message.edit_text(f"{q}\nSiz: {(a, b)[int(o)]}. Juftingiz nimani tanlaydi?",
                               reply_markup=IM(inline_keyboard=[
@@ -894,8 +1267,11 @@ async def ab_guess(c: CallbackQuery):
     if not p:
         return await c.answer("Avval yarashing ❤️", show_alert=True)
     d = st.get(p[0], "ab", u) or []
-    if int(i) != qidx("ab", len(d)):
-        return await c.answer()
+    if int(i) != qidx("ab", len(d)) or int(o) not in (0, 1) or int(g) not in (0, 1):
+        if int(i) == qidx("ab", len(d) - 1) and len(d) > 0:
+            return await c.answer()          # allaqachon javob berilgan
+        return await c.answer("Savol yangilandi. /menu → 🎮 O'yinlar",
+                              show_alert=True)
     d.append([int(o), int(g)])
     st.put(p[0], "ab", u, d)
     if len(d) < GAMES["ab"]["n"]:
@@ -913,13 +1289,24 @@ async def mg(c: CallbackQuery):
     u, p = c.from_user.id, st.pair_of(c.from_user.id)
     if not p:
         return await c.answer("Avval yarashing ❤️", show_alert=True)
-    gg = GAMES[g]
+    gg = GAMES.get(g)
+    if not gg or gg.get("mode") not in ("match",):
+        return await c.answer()
     if gg.get("prem") and not st.is_prem(u):
         return await c.answer("Bu o'yin premium uchun 💎", show_alert=True)
-    d = st.get(p[0], g, u) or []
-    if len(d) != int(step):
+    try:
+        step, x = int(step), int(x)
+    except ValueError:
         return await c.answer()
-    d.append(int(x))
+    if x not in (0, 1):
+        return await c.answer()
+    d = st.get(p[0], g, u) or []
+    if len(d) != step:
+        if step == len(d) - 1:
+            return await c.answer()          # takroriy bosish
+        return await c.answer("Savol yangilandi. /menu → 🎮 O'yinlar",
+                              show_alert=True)
+    d.append(x)
     st.put(p[0], g, u, d)
     if len(d) < gg["n"]:
         q = {"wh": WHO, "qz": QZ}[g][qidx(g, len(d))]
@@ -935,35 +1322,87 @@ async def mg(c: CallbackQuery):
 
 
 @dp.callback_query(F.data == "msd")
-async def ms_done(c: CallbackQuery):
+async def ms_done(c: CallbackQuery, state: FSMContext):
     u, p = c.from_user.id, st.pair_of(c.from_user.id)
+    if not p:
+        return await c.answer("Avval yarashing ❤️", show_alert=True)
+    if st.done(p[0], "ms", u):
+        return await c.answer("Bugun allaqachon bajarilgan ✅", show_alert=True)
     st.put(p[0], "ms", u, {"ok": 1})
+    await state.clear()
     await c.message.edit_text("Missiya bajarildi ✅")
     await after(u, p, "ms")
     await c.answer()
 
 
 # ============================== ESLATMALAR ==============================
-async def run_reminders():
-    """Cron tomonidan chaqiriladi. (u, xabar) juftliklar ro'yxatini qaytaradi."""
+async def run_reminders(limit=1200):
+    """Cron uchun eslatmalar ro'yxati.
+
+    Qaytaradi: [(user_id, matn, kind), ...] — kind: "ms" / "kq" / "st" /
+    "cap:<id>" yoki "" (belgilanmaydi). Yuborish va `mark` — cron.py da,
+    xabar muvaffaqiyatli ketgandan keyin.
+    """
     out = []
-    now_h = dt.datetime.now().hour
+    now_h = st.now().hour          # mahalliy vaqt (UTC+5), UTC emas
     for u in st.users():
+        if len(out) >= limit:
+            break
+        if not st.reminders_on(u):      # foydalanuvchi o'chirib qo'ygan
+            continue
         p = st.pair_of(u)
         if not p:
             continue
         if now_h >= 19 and not st.sent(u, "ms") and not st.done(p[0], "ms", u):
             out.append((u, "🌙 Bugungi missiya bajarilmagan. "
-                           "Juftingizni bir gaplashib, birga qiling!"))
-            st.mark(u, "ms")
-        if now_h >= 12 and not st.sent(u, "kq") and not st.done(p[0], "kq", u):
+                           "Juftingizni bir gaplashib, birga qiling!", "ms"))
+        if len(out) < limit and now_h >= 12 and not st.sent(u, "kq") \
+                and not st.done(p[0], "kq", u):
             out.append((u, f"💬 Bugungi savol: {dq_of_day()}\n\nJavob yozing — "
-                           "juftingizning javobini ko'rasiz."))
-            st.mark(u, "kq")
+                           "juftingizning javobini ko'rasiz.", "kq"))
         row = st.streak_row(u)
-        if row and int(row.get("n", 0)) >= 3 and row.get("last") != today() \
-                and not st.sent(u, "st"):
+        if len(out) < limit and row and int(row.get("n", 0)) >= 3 \
+                and row.get("last") != today() and not st.sent(u, "st"):
             out.append((u, f"🔥 Seriyani buzma! {row['n']} kunlik seriyangiz bor. "
-                           "Bugun bir o'yin o'ynang."))
-            st.mark(u, "st")
+                           "Bugun bir o'yin o'ynang.", "st"))
+    # vaqti kelgan vaqt kapsulalari — xabarnoma
+    uname = await me_username()
+    for c in st.due_capsules():
+        if len(out) >= limit:
+            break
+        if c.get("notified") or c.get("opened"):
+            continue
+        when = dt.datetime.fromtimestamp(
+            c["open_at"] + st.TZ_OFFSET * 3600).strftime("%d.%m.%Y")
+        link = f"https://t.me/{uname}?start=c_{c['token']}" if uname else ""
+        tail = f"\n\n{link}" if link else ""
+        kind = f"cap:{c['id']}"
+        if not st.capsule_is_notified(c["id"], c["sender"]):
+            out.append((c["sender"],
+                        f"⏳ Sizning vaqt kapsulangiz ochildi ({when}).{tail}", kind))
+        if c["receiver"] and c["receiver"] != c["sender"] \
+                and not st.capsule_is_notified(c["id"], c["receiver"]):
+            out.append((c["receiver"],
+                        f"⏳ Sizga vaqt kapsulasi ochildi ({when}).{tail}", kind))
     return out
+
+
+# ============================== ZAXIRA ==================================
+@dp.message()
+async def fallback(m: Message, state: FSMContext):
+    """Mos handler topilmagan xabarlar (matn, sticker, rasm...).
+
+    Foydalanuvchi javobsiz qolmasin: yo'l ko'rsatamiz.
+    """
+    cur = await state.get_state()
+    if m.text and m.text.startswith("/"):
+        return await m.answer("Bunday komanda yo'q. /menu yoki /help dan foydalaning.",
+                              reply_markup=menu_kb(m.from_user.id))
+    if cur:
+        return await m.answer("Iltimos, matn ko'rinishida yozing yoki /cancel bilan "
+                              "bekor qiling.")
+    if URL:
+        return await m.answer("Barcha imkoniyatlar Ilovada 👇\n"
+                              "Pastdagi «📱 Ilovani ochish» tugmasini bosing.",
+                              reply_markup=main_kb())
+    await m.answer("Asosiy menyu 👇", reply_markup=menu_kb(m.from_user.id))

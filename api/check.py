@@ -5,11 +5,32 @@ Hech qanday maxfiy qiymat ko'rsatilmaydi - faqat bor/yo'q.
 """
 import json
 import os
+import urllib.parse
+import urllib.request
 from http.server import BaseHTTPRequestHandler
+
+
+def _key_ok(path: str) -> bool:
+    """SETUP_KEY o'rnatilgan bo'lsa, ?s=KEY talab qilinadi."""
+    expected = os.environ.get("SETUP_KEY", "")
+    if not expected:
+        return True
+    q = urllib.parse.parse_qs(urllib.parse.urlsplit(path or "").query)
+    return (q.get("s") or [""])[0] == expected
 
 
 class handler(BaseHTTPRequestHandler):
     def do_GET(self) -> None:
+        path = self.path or ""
+        if ("bot=1" in path or "ping=1" in path or "err" in path) and not _key_ok(path):
+            body = json.dumps({"ok": False, "err": "unauthorized",
+                               "hint": "?s=SETUP_KEY qo'shing"}).encode()
+            self.send_response(401)
+            self.send_header("Content-Type", "application/json; charset=utf-8")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+            return
         redis_url = os.environ.get("REDIS_URL") or ""
         scheme = redis_url.split("://")[0] + "://" if "://" in redis_url else None
 
@@ -27,7 +48,11 @@ class handler(BaseHTTPRequestHandler):
             "PRICE_MONTH": os.environ.get("PRICE_MONTH") or "50 (standart)",
             "PRICE_YEAR": os.environ.get("PRICE_YEAR") or "500 (standart)",
             "PRICE_GIFT": os.environ.get("PRICE_GIFT") or "80 (standart)",
+            "request_host": self.headers.get("host"),
         }
+        token = os.environ.get("BOT_TOKEN") or ""
+        info["token_bot_id"] = token.split(":", 1)[0] if ":" in token else None
+        info["token_len"] = len(token)
 
         # Muammolarni aniqlash
         warn = []
@@ -56,6 +81,43 @@ class handler(BaseHTTPRequestHandler):
                 info["last_update"] = rc2.get("ybot:lastupdate")
             except Exception as e:  # noqa: BLE001
                 info["last_error"] = repr(e)
+
+        # Bot va webhook tirikligini tekshirish (?bot=1)
+        # Bu Mini App "auth" xatosining sababini darhol ko'rsatadi:
+        # token haqiqiy emas / webhook boshqa domenga ketgan / xato bor.
+        if "bot=1" in (self.path or ""):
+            try:
+                base = "https://api.telegram.org/bot" + token
+                with urllib.request.urlopen(base + "/getMe", timeout=8) as r:
+                    me = json.loads(r.read())
+                res = me.get("result") or {}
+                info["getMe"] = {"ok": bool(me.get("ok")),
+                                 "id": res.get("id"),
+                                 "username": res.get("username"),
+                                 "error": None if me.get("ok") else me.get("description")}
+                with urllib.request.urlopen(base + "/getWebhookInfo", timeout=8) as r:
+                    wh = json.loads(r.read()).get("result") or {}
+                info["webhook"] = {k: wh.get(k) for k in (
+                    "url", "pending_update_count", "last_error_message",
+                    "last_error_date", "max_connections")}
+                err = wh.get("last_error_message") or ""
+                hint = None
+                if not wh.get("url"):
+                    hint = ("Webhook o'rnatilmagan — /api/setup?s=SETUP_KEY ni "
+                            "bir marta oching")
+                elif "Conflict" in err or "terminated by other getUpdates" in err:
+                    hint = ("Boshqa joyda polling ishlayapti (lokal `python bot.py` "
+                            "yoki eski server) — uni to'xtatib, /api/setup ni qayta "
+                            "chaqiring")
+                elif "401" in err or "Unauthorized" in err:
+                    hint = "BOT_TOKEN noto'g'ri yoki revoke qilingan — yangilang"
+                elif int(wh.get("pending_update_count") or 0) > 50:
+                    hint = "Update'lar yig'ilib qolgan — webhook ishlamayapti, loglarni ko'ring"
+                info["hint"] = hint
+                info["webhook_ok"] = bool(wh.get("url")) and not err
+            except Exception as e:  # noqa: BLE001
+                info["getMe"] = {"ok": False, "error": repr(e)}
+                info["webhook_ok"] = False
 
         # Redis kechikishini olchash (?ping=1)
         if "ping" in (self.path or ""):
