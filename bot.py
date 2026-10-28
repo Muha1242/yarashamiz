@@ -727,6 +727,12 @@ async def rem_cb(c: CallbackQuery):
     await c.answer("Yoqildi ✅" if on else "O'chirildi 🔕")
 
 
+@dp.message(Command("myid"))
+async def myid_cmd(m: Message):
+    """Foydalanuvchi o'z Telegram ID'sini bilishi uchun."""
+    await m.answer(f"Sizning Telegram ID: <code>{m.from_user.id}</code>")
+
+
 @dp.message(Command("diag"))
 async def diag_cmd(m: Message):
     """Admin uchun tezkor diagnostika (bot chatida)."""
