@@ -61,7 +61,10 @@ def verify_ex(init_data: str):
             auth_date = int(p.get("auth_date") or 0)
         except (TypeError, ValueError):
             return None, "bad_date"
-        if time.time() - auth_date > MAX_AGE:
+        now = time.time()
+        if auth_date > now + 300:        # kelajakdagi sana — qabul qilinmaydi
+            return None, "bad_date"
+        if now - auth_date > MAX_AGE:
             return None, "expired"
         usr = json.loads(p.get("user") or "{}")
         if not usr.get("id"):
@@ -79,27 +82,25 @@ def verify(init_data: str):
 def _me(u, usr):
     import bot as core
     import store as st
-    p = st.pair_of(u)
-    pts = st.get_pts(p[0]) if p else 0
-    days = 0
+    ps = st.profile_stats(u)          # 1 pipeline (streak/premium/ball/xat)
+    p = ps["pair"]
+    days = max(0, (int(time.time()) - ps["since"]) // 86400) if ps["since"] else 0
     partner = None
     if p:
         o = st.other(p, u)
-        ts = st.pair_ts(u, o) or 0
-        days = max(0, (int(time.time()) - ts) // 86400) if ts else 0
-        partner = st.r.get(f"ini:{o}") or st.r.get(f"name:{o}")
-    prem = st.is_prem(u)
+        partner = st.r.get(f"name:{o}") or st.r.get(f"ini:{o}")
+    prem = ps["prem"]
     return {
         "ok": True,
         "user": {"id": u, "name": usr.get("first_name") or "Do'st",
                  "username": usr.get("username")},
         "pair": bool(p),
         "partner": partner,
-        "pts": pts,
-        "streak": st.streak(u),
+        "pts": ps["pts"],
+        "streak": ps["streak"],
         "prem": prem,
-        "premDays": st.prem_days(u) if prem else 0,
-        "letters": st.count_letters(u),
+        "premDays": ps["prem_days"] if prem else 0,
+        "letters": ps["letters"] if p else st.count_letters(u),
         "days": days,
         "prices": core.PRICES,
         "mission": core.dq_of_day(),
@@ -256,8 +257,8 @@ _BOTNAME = None
 
 
 def invite_link(u):
-    """Referral havolasi (tarmoqqa chiqmasdan, env/keshdan)."""
-    name = _BOTNAME or os.environ.get("BOT_USERNAME") or ""
+    """Referral havolasi (env/Redis kesh — tarmoqqa chiqmaydi)."""
+    name = bot_username()
     if not name:
         return ""
     return f"https://t.me/{name}?start=ref_{u}"
@@ -531,15 +532,17 @@ ACTIONS = {"me": lambda u, usr, d: _me(u, usr),
 
 class handler(BaseHTTPRequestHandler):
     def _json(self, code: int, data: dict) -> None:
-        body = json.dumps(data, ensure_ascii=False).encode()
+        body = b"" if code == 204 else json.dumps(data, ensure_ascii=False).encode()
         self.send_response(code)
-        self.send_header("Content-Type", "application/json; charset=utf-8")
+        if code != 204:
+            self.send_header("Content-Type", "application/json; charset=utf-8")
         self.send_header("Content-Length", str(len(body)))
         self.send_header("Access-Control-Allow-Origin", "*")
         self.send_header("Access-Control-Allow-Headers", "Content-Type")
         self.send_header("Access-Control-Allow-Methods", "POST,OPTIONS")
         self.end_headers()
-        self.wfile.write(body)
+        if body:
+            self.wfile.write(body)
 
     def do_OPTIONS(self) -> None:
         self._json(204, {})

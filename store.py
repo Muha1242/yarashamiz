@@ -58,8 +58,18 @@ def pair_of(u):
     m = r.get(f"mate:{u}")
     if not m:
         return None
-    o = int(m)
+    try:
+        o = int(m)
+    except (TypeError, ValueError):
+        return None
     return (_pid(u, o), u, o)
+
+
+def set_name(u, name):
+    """Profil ismi (juftlikka ko'rsatish uchun)."""
+    name = (name or "").strip()[:40]
+    if name:
+        r.set(f"name:{u}", name)
 
 
 def other(p, u):
@@ -522,6 +532,9 @@ def open_capsule(cid, u):
         return c, "early"
     if c["receiver"] and u not in (c["receiver"], c["sender"]):
         return None, "not_yours"
+    # yuboruvchi o'z xatini ko'radi, lekin qabul qiluvchi o'rnini band qilmaydi
+    if u == c["sender"] and c["receiver"] != u:
+        return c, "ok"
     r.hset(f"capsule:{cid}", mapping={"receiver": u, "opened": 1})
     r.zrem("caps:due", str(cid))
     c["receiver"], c["opened"] = u, 1

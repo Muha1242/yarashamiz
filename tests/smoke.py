@@ -34,6 +34,7 @@ os.environ.setdefault("WEBAPP_URL", "https://example.com/mini_app")
 import store as st  # noqa: E402
 import bot as core  # noqa: E402
 from api import app as api_app  # noqa: E402
+from api import check as api_check  # noqa: E402
 
 FAILS = []
 
@@ -165,13 +166,17 @@ st.touch(502)
 st.now = lambda: dt.datetime(2026, 10, 23, 20, 0)      # 20:00 Toshkent
 msgs = asyncio.run(core.run_reminders())
 check("20:00 da missiya eslatmasi yuboriladi",
-      any(u == 501 and "missiya" in txt for u, txt in msgs),
-      [(u, t[:30]) for u, t in msgs])
+      any(u == 501 and "missiya" in txt for u, txt, _k in msgs),
+      [(u, t[:30]) for u, t, _k in msgs])
 check("20:00 da kunlik savol yuboriladi",
-      any(u == 501 and "savol" in txt for u, txt in msgs))
+      any(u == 501 and "savol" in txt for u, txt, _k in msgs))
+# cron kabi: yuborilgandan keyingina belgilaymiz
+for u, _txt, k in msgs:
+    if k:
+        st.mark(u, k)
 msgs2 = asyncio.run(core.run_reminders())
 check("eslatma ikki marta yuborilmaydi",
-      all(u != 501 or "missiya" not in txt for u, txt in msgs2))
+      all(u != 501 or "missiya" not in txt for u, txt, _k in msgs2))
 
 # --------------------------- 8. XATO HANDLERI ----------------------------
 SENT.clear()
@@ -435,7 +440,8 @@ st.now = lambda: dt.datetime(2026, 10, 23, 20, 0)
 st.set_reminders(1301, False)
 msgs_off = asyncio.run(core.run_reminders())
 check("eslatma o'chirilganda yuborilmaydi",
-      all(u != 1301 for u, _ in msgs_off), [(u, t[:20]) for u, t in msgs_off])
+      all(u != 1301 for u, _t, _k in msgs_off),
+      [(u, t[:20]) for u, t, _k in msgs_off])
 st.set_reminders(1301, True)
 check("eslatma qayta yoqiladi", st.reminders_on(1301) is True)
 st.set_reminders(1303, "0")
@@ -607,11 +613,14 @@ st.r.zadd("caps:due", {str(c2[0]): int(time.time()) - 5})
 st.r.hset(f"capsule:{c2[0]}", "receiver", 7102)
 msgs_caps = asyncio.run(core.run_reminders())
 check("kapsula xabarnomasi yuborildi",
-      any(u in (7101, 7102) and "kapsula" in t.lower() for u, t in msgs_caps),
-      [(u, t[:24]) for u, t in msgs_caps])
+      any(u in (7101, 7102) and "kapsula" in t.lower() for u, t, _k in msgs_caps),
+      [(u, t[:24]) for u, t, _k in msgs_caps])
+for _u, _t, k in msgs_caps:          # cron kabi: faqat yuborilgach belgilanadi
+    if k.startswith("cap:"):
+        st.capsule_notified(int(k[4:]))
 msgs_caps2 = asyncio.run(core.run_reminders())
 check("kapsula xabarnomasi takrorlanmaydi",
-      all(u not in (7101, 7102) for u, t in msgs_caps2))
+      all(u not in (7101, 7102) for u, _t, _k in msgs_caps2))
 
 # -------------------------- 23. SEVGI BILETLARI --------------------------
 st.add_pair(7201, 7202)
@@ -650,6 +659,51 @@ check("CSS: kapsula/bilet uslublari",
 check("bot: kapsula havolasi va cron",
       "start=c_" in bot_src and "due_capsules" in bot_src)
 check("bot: biletlar (premium limit)", "COUPON_FREE_PER_DAY" in bot_src)
+
+# ------------------- 25. PRODUCTION TUZATISHLARI -------------------------
+saved_url = os.environ.get("WEBAPP_URL")
+os.environ["WEBAPP_URL"] = "https://example.vercel.app"
+check("WEBAPP_URL domen -> /mini_app", core.app_url().endswith("/mini_app"),
+      core.app_url())
+os.environ["WEBAPP_URL"] = "https://example.vercel.app/mini_app"
+check("WEBAPP_URL to'liq yo'l saqlanadi", core.app_url().endswith("/mini_app"))
+if saved_url is None:
+    os.environ.pop("WEBAPP_URL", None)
+else:
+    os.environ["WEBAPP_URL"] = saved_url
+
+check("kelajakdagi auth_date rad etiladi",
+      api_app.verify_ex(make_init(ts=int(time.time()) + 3600))[1] == "bad_date")
+
+# sender avval ochsa ham partner ocholadi
+st.add_prem(7301, 30)
+r_s = api_app._capsule_new(7301, {"text": "sender first", "days": 30})
+c_s, t_s = r_s["id"], r_s["token"]
+st.r.hset(f"capsule:{c_s}", "open_at", int(time.time()) - 5)
+check("sender birinchi ochadi", api_app._capsule_open(7301, {"t": t_s})["ok"])
+check("sender ochgach partner ham ochadi",
+      api_app._capsule_open(7302, {"t": t_s})["ok"] is True
+      and st.capsule(c_s)["receiver"] == 7302)
+
+# invite username Redis keshidan (tarmoqsiz)
+saved_bu = os.environ.pop("BOT_USERNAME", None)
+st.r.set("ybot:username", "redbot")
+api_app._BOTNAME = None
+check("invite Redis keshidan", "redbot" in api_app.invite_link(101))
+api_app._BOTNAME = "testbot"
+if saved_bu:
+    os.environ["BOT_USERNAME"] = saved_bu
+
+# diagnostika endpointi himoyasi
+os.environ["SETUP_KEY"] = "secret123"
+check("check: kalitsiz rad etiladi",
+      api_check._key_ok("/api/check?bot=1") is False)
+check("check: kalit bilan ochiladi",
+      api_check._key_ok("/api/check?bot=1&s=secret123") is True)
+os.environ.pop("SETUP_KEY", None)
+check("check: SETUP_KEY yo'q -> ochiq",
+      api_check._key_ok("/api/check?bot=1") is True)
+
 
 
 

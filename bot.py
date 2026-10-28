@@ -12,6 +12,7 @@ Muhit o'zgaruvchilari:
 """
 import asyncio
 import os
+import urllib.parse
 
 from aiogram import Bot, Dispatcher, F
 from aiogram.fsm.storage.redis import RedisStorage
@@ -29,6 +30,12 @@ def app_url():
     """Mini App manzili. WEBAPP_URL bo'lmasa Vercel domenidan aniqlanadi."""
     a = (os.environ.get("WEBAPP_URL") or "").strip().rstrip("/")
     if a:
+        # faqat domen berilgan bo'lsa (/ yo'q) — /mini_app qo'shamiz
+        try:
+            if urllib.parse.urlsplit(a).path in ("", "/"):
+                a += "/mini_app"
+        except ValueError:
+            pass
         return a
     base = (os.environ.get("VERCEL_PROJECT_PRODUCTION_URL")
             or os.environ.get("APP_URL")
@@ -488,6 +495,7 @@ class W(StatesGroup):
 @dp.message(CommandStart())
 async def start(m: Message, command: CommandObject, state: FSMContext):
     await state.clear()
+    st.set_name(m.from_user.id, getattr(m.from_user, "first_name", "") or "")
     arg = command.args or ""
 
     if arg.startswith("l_"):
@@ -565,6 +573,7 @@ async def reply(m: Message):
     except Exception:  # noqa: BLE001
         return await m.answer("Ma'lumot noto'g'ri. Ilovani qayta oching.")
     u, a = m.from_user.id, str(r.get("a") or "")
+    st.set_name(u, getattr(m.from_user, "first_name", "") or "")
     L = st.letter(r.get("l"))
     if not L:
         return await m.answer("Xat topilmadi.")
@@ -1166,11 +1175,15 @@ async def after(u, p, g):
         st.r.set(scored, 1, ex=2 * 86400)   # faqat ball muvaffaqiyatli qo'shilgach
         st.touch(u)
         if g == "kq":
-            # ikkalasi ham javob bergan — bir-birining javobini ko'rsatamiz
-            await bot.send_message(u, "💬 Juftingizning bugungi javobi:\n\n"
-                                   f"«{html.escape(str(d2[0]))}»\n\n+{pts} ball 🎯")
-            await bot.send_message(o, "💬 Juftingizning bugungi javobi:\n\n"
-                                   f"«{html.escape(str(d1[0]))}»\n\n+{pts} ball 🎯")
+            # ikkalasi ham javob bergan — bir-birining javobini ko'rsatamiz.
+            # Yuborish xatosi javobni yo'qotmasligi uchun try/except.
+            try:
+                await bot.send_message(u, "💬 Juftingizning bugungi javobi:\n\n"
+                                       f"«{html.escape(str(d2[0]))}»\n\n+{pts} ball 🎯")
+                await bot.send_message(o, "💬 Juftingizning bugungi javobi:\n\n"
+                                       f"«{html.escape(str(d1[0]))}»\n\n+{pts} ball 🎯")
+            except Exception as e:  # noqa: BLE001
+                print("[after/kq]", repr(e), flush=True)
             return
         await asyncio.gather(*[
             bot.send_message(x, f"«{gg['name']}» natijasi: {pts} ball 🎯 "
@@ -1320,11 +1333,18 @@ async def ms_done(c: CallbackQuery, state: FSMContext):
 
 
 # ============================== ESLATMALAR ==============================
-async def run_reminders():
-    """Cron tomonidan chaqiriladi. (u, xabar) juftliklar ro'yxatini qaytaradi."""
+async def run_reminders(limit=1200):
+    """Cron uchun eslatmalar ro'yxati.
+
+    Qaytaradi: [(user_id, matn, kind), ...] — kind: "ms" / "kq" / "st" /
+    "cap:<id>" yoki "" (belgilanmaydi). Yuborish va `mark` — cron.py da,
+    xabar muvaffaqiyatli ketgandan keyin.
+    """
     out = []
     now_h = st.now().hour          # mahalliy vaqt (UTC+5), UTC emas
     for u in st.users():
+        if len(out) >= limit:
+            break
         if not st.reminders_on(u):      # foydalanuvchi o'chirib qo'ygan
             continue
         p = st.pair_of(u)
@@ -1332,32 +1352,33 @@ async def run_reminders():
             continue
         if now_h >= 19 and not st.sent(u, "ms") and not st.done(p[0], "ms", u):
             out.append((u, "🌙 Bugungi missiya bajarilmagan. "
-                           "Juftingizni bir gaplashib, birga qiling!"))
-            st.mark(u, "ms")
-        if now_h >= 12 and not st.sent(u, "kq") and not st.done(p[0], "kq", u):
+                           "Juftingizni bir gaplashib, birga qiling!", "ms"))
+        if len(out) < limit and now_h >= 12 and not st.sent(u, "kq") \
+                and not st.done(p[0], "kq", u):
             out.append((u, f"💬 Bugungi savol: {dq_of_day()}\n\nJavob yozing — "
-                           "juftingizning javobini ko'rasiz."))
-            st.mark(u, "kq")
+                           "juftingizning javobini ko'rasiz.", "kq"))
         row = st.streak_row(u)
-        if row and int(row.get("n", 0)) >= 3 and row.get("last") != today() \
-                and not st.sent(u, "st"):
+        if len(out) < limit and row and int(row.get("n", 0)) >= 3 \
+                and row.get("last") != today() and not st.sent(u, "st"):
             out.append((u, f"🔥 Seriyani buzma! {row['n']} kunlik seriyangiz bor. "
-                           "Bugun bir o'yin o'ynang."))
-            st.mark(u, "st")
+                           "Bugun bir o'yin o'ynang.", "st"))
     # vaqti kelgan vaqt kapsulalari — xabarnoma
     uname = await me_username()
     for c in st.due_capsules():
+        if len(out) >= limit:
+            break
         if c.get("notified") or c.get("opened"):
             continue
         when = dt.datetime.fromtimestamp(
             c["open_at"] + st.TZ_OFFSET * 3600).strftime("%d.%m.%Y")
         link = f"https://t.me/{uname}?start=c_{c['token']}" if uname else ""
         tail = f"\n\n{link}" if link else ""
-        out.append((c["sender"], f"⏳ Sizning vaqt kapsulangiz ochildi ({when}).{tail}"))
+        kind = f"cap:{c['id']}"
+        out.append((c["sender"],
+                    f"⏳ Sizning vaqt kapsulangiz ochildi ({when}).{tail}", kind))
         if c["receiver"] and c["receiver"] != c["sender"]:
             out.append((c["receiver"],
-                        f"⏳ Sizga vaqt kapsulasi ochildi ({when}).{tail}"))
-        st.capsule_notified(c["id"])
+                        f"⏳ Sizga vaqt kapsulasi ochildi ({when}).{tail}", kind))
     return out
 
 

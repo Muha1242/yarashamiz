@@ -79,7 +79,9 @@ Vercel → **Settings → Environment Variables**:
 | `ADMIN_ID` | ixtiyoriy | Sizning Telegram ID (admin panel + shikoyatlar uchun) |
 | `BOT_USERNAME` | ixtiyoriy | Ilovada referral havolasi uchun (masalan `yarashamiz_bot`) |
 | `WEBHOOK_SECRET` | ixtiyoriy | Webhook'ni himoyalash |
-| `CRON_SECRET` | ixtiyoriy | `/api/cron` ni qulflash |
+| `CRON_SECRET` | ixtiyoriy | `/api/cron` ni qulflash (`Authorization: Bearer ...`) |
+| `CRON_MAX_MSGS` | ixtiyoriy | Bir cron'da yuboriladigan maksimal xabar (standart `1200`) |
+| `CRON_CONCURRENCY` | ixtiyoriy | Parallel yuborish (standart `12`, ~30 xabar/s) |
 
 **Premium narxlari** (ixtiyoriy):
 
@@ -147,6 +149,7 @@ python bot.py
 | `/feedback` | Fikr/taklif (adminga boradi) |
 | `/cancel` | Joriy amalni bekor qilish |
 | `/admin` | Statistika (faqat `ADMIN_ID`) |
+| `/diag` | 🩺 Diagnostika: Redis, token, webhook, oxirgi xato (faqat `ADMIN_ID`) |
 
 `/api/setup` ni bir marta ochganda bot menyusi, qisqa tavsif va to'liq tavsif ham
 avtomatik o'rnatiladi.
@@ -163,7 +166,7 @@ qaytaryapti. Endi ilovaning o‘zi **sababni** ko‘rsatadi (`sabab: bad_hash`,
    kod bilan ishlaydi. `main` ga merge → Vercel **Redeploy**.
 2. `https://<domen>/api/check` → `ok: true`, `BOT_TOKEN: true`,
    `REDIS_URL_scheme: "rediss://"`, `WEBAPP_URL` shu domenga teng.
-3. `https://<domen>/api/check?bot=1` → eng muhim diagnostika:
+3. `https://<domen>/api/check?bot=1&s=<SETUP_KEY>` → eng muhim diagnostika:
    - `getMe.ok: true` va `getMe.username` — token **haqiqiy**;
    - `webhook.url` = `https://<domen>/api/webhook`;
    - `webhook.last_error_message` bo‘sh bo‘lishi kerak;

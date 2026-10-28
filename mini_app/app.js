@@ -1,6 +1,15 @@
 /* ===== Yarashamiz Mini App — to'liq ilova ===== */
-const tg = window.Telegram.WebApp;
-tg.ready(); tg.expand(); tg.BackButton.hide();
+/* ===== Telegram SDK (yuklanmasa ham ilova ishlaydi) ===== */
+const tg = (window.Telegram && window.Telegram.WebApp) || {
+  initData: '', initDataUnsafe: {}, colorScheme: 'dark',
+  ready() {}, expand() {}, close() {}, sendData() {},
+  setHeaderColor() {}, setBackgroundColor() {},
+  BackButton: { hide() {}, show() {} },
+  HapticFeedback: { impactOccurred() {}, notificationOccurred() {} },
+  openTelegramLink(u) { window.open(u, '_blank'); },
+  openLink(u) { window.open(u, '_blank'); },
+};
+try { tg.ready(); tg.expand(); tg.BackButton.hide(); } catch (e) {}
 try { tg.setHeaderColor('#2a0f3d'); tg.setBackgroundColor('#12061c'); } catch (e) {}
 
 const $ = (id) => document.getElementById(id);
@@ -98,10 +107,11 @@ async function authCard(v, why) {
   b.style.marginTop = '12px';
   b.onclick = () => {
     haptic();
-    const u = name ? 'https://t.me/' + name : 'https://t.me';
+    if (!name) { alert('Bot username sozlanmagan. Botga /start yozing.'); return; }
+    const u = 'https://t.me/' + name;
     if (tg && tg.openTelegramLink) tg.openTelegramLink(u); else window.open(u);
   };
-  c.appendChild(b);
+  if (name) c.appendChild(b);
   const r2 = h('button', 'btn btn-ghost', '🔄 Qayta urinish');
   r2.style.marginTop = '8px';
   r2.onclick = () => { haptic(); location.reload(); };

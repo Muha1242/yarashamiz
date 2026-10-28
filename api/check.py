@@ -5,12 +5,32 @@ Hech qanday maxfiy qiymat ko'rsatilmaydi - faqat bor/yo'q.
 """
 import json
 import os
+import urllib.parse
 import urllib.request
 from http.server import BaseHTTPRequestHandler
 
 
+def _key_ok(path: str) -> bool:
+    """SETUP_KEY o'rnatilgan bo'lsa, ?s=KEY talab qilinadi."""
+    expected = os.environ.get("SETUP_KEY", "")
+    if not expected:
+        return True
+    q = urllib.parse.parse_qs(urllib.parse.urlsplit(path or "").query)
+    return (q.get("s") or [""])[0] == expected
+
+
 class handler(BaseHTTPRequestHandler):
     def do_GET(self) -> None:
+        path = self.path or ""
+        if ("bot=1" in path or "ping=1" in path or "err" in path) and not _key_ok(path):
+            body = json.dumps({"ok": False, "err": "unauthorized",
+                               "hint": "?s=SETUP_KEY qo'shing"}).encode()
+            self.send_response(401)
+            self.send_header("Content-Type", "application/json; charset=utf-8")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+            return
         redis_url = os.environ.get("REDIS_URL") or ""
         scheme = redis_url.split("://")[0] + "://" if "://" in redis_url else None
 
