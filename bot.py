@@ -727,6 +727,14 @@ async def rem_cb(c: CallbackQuery):
     await c.answer("Yoqildi ✅" if on else "O'chirildi 🔕")
 
 
+@dp.message(Command("app"))
+async def app_cmd(m: Message):
+    """Eski klaviatura qolib ketgan bo'lsa — yangi Mini App tugmasini yuboradi."""
+    if not URL:
+        return await m.answer("Ilova manzili sozlanmagan (WEBAPP_URL).")
+    await m.answer("Ilovani ochish 👇", reply_markup=main_kb())
+
+
 @dp.message(Command("myid"))
 async def myid_cmd(m: Message):
     """Foydalanuvchi o'z Telegram ID'sini bilishi uchun."""

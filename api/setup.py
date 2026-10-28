@@ -22,7 +22,7 @@ async def _set():
     # Har chaqiruvda toza sessiya - aks holda ikkinchi chaqiruvda
     # "Timeout context manager should be used inside a task" xatosi chiqadi
     from aiogram.client.session.aiohttp import AiohttpSession
-    from aiogram.types import BotCommand
+    from aiogram.types import BotCommand, MenuButtonWebApp, WebAppInfo
     core.bot.session = AiohttpSession()
 
     a = (os.environ.get("WEBAPP_URL") or "").strip().rstrip("/")
@@ -63,6 +63,13 @@ async def _set():
             "❤️ U «Yarashamiz» desa — juftlik ochiladi.\n"
             "🎮 Birga o'yin o'ynang, kunlik seriya va ball to'plang.\n"
             "💎 Premium: cheksiz xat, AI yordamchi va maxsus shablonlar.")
+    except Exception:  # noqa: BLE001
+        pass
+    # menyu tugmasi ham Mini App bo'lishi shart (aks holda initData bo'lmaydi)
+    try:
+        await core.bot.set_chat_menu_button(
+            menu_button=MenuButtonWebApp(
+                text="💌 Ilova", web_app=WebAppInfo(url=f"{a}/")))
     except Exception:  # noqa: BLE001
         pass
     try:

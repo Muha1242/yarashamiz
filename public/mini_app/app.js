@@ -87,6 +87,7 @@ async function loadBot() {
 
 function authWhy(why) {
   switch (why) {
+    case 'no_sdk': return 'Telegram skripti yuklanmadi. Internetni tekshiring yoki Telegramni yangilang, keyin qayta urinib ko‘ring.';
     case 'no_init': return 'Ilova Telegram’dan tashqarida ochilgan ko‘rinadi. Uni bot orqali qayta oching.';
     case 'no_token': return 'Serverda BOT_TOKEN sozlanmagan. Admin bilan bog‘laning.';
     case 'expired': return 'Sessiya eskirgan. Ilovani botdan qayta oching.';
@@ -1112,7 +1113,8 @@ function confetti() {
   if (!tg.initData) {
     const nav = document.querySelector('.tabs');
     if (nav) nav.style.display = 'none';
-    authCard($('view'), 'no_init');
+    const hasSdk = !!(window.Telegram && window.Telegram.WebApp);
+    authCard($('view'), hasSdk ? 'no_init' : 'no_sdk');
     return;
   }
   const r = await api('me');
