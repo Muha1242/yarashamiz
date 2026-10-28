@@ -22,7 +22,8 @@ def _key_ok(path: str) -> bool:
 class handler(BaseHTTPRequestHandler):
     def do_GET(self) -> None:
         path = self.path or ""
-        if ("bot=1" in path or "ping=1" in path or "err" in path) and not _key_ok(path):
+        if ("bot=1" in path or "ping=1" in path or "err" in path
+                or "clear=1" in path) and not _key_ok(path):
             body = json.dumps({"ok": False, "err": "unauthorized",
                                "hint": "?s=SETUP_KEY qo'shing"}).encode()
             self.send_response(401)
@@ -118,6 +119,18 @@ class handler(BaseHTTPRequestHandler):
             except Exception as e:  # noqa: BLE001
                 info["getMe"] = {"ok": False, "error": repr(e)}
                 info["webhook_ok"] = False
+
+        # Oxirgi xatoni tozalash (?clear=1) — test qilish uchun
+        if "clear=1" in (self.path or ""):
+            try:
+                import redis as _r3
+                rc3 = _r3.from_url(os.environ.get("REDIS_URL") or "",
+                                   socket_timeout=5, decode_responses=True)
+                rc3.delete("ybot:lasterror")
+                info["cleared"] = True
+            except Exception as e:  # noqa: BLE001
+                info["cleared"] = False
+                info["clear_error"] = repr(e)
 
         # Redis kechikishini olchash (?ping=1)
         if "ping" in (self.path or ""):

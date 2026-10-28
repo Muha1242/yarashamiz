@@ -741,6 +741,33 @@ check("check: SETUP_KEY yo'q -> ochiq",
 
 
 
+# ------------------- 26. "MESSAGE NOT MODIFIED" HIMOYASI -----------------
+from aiogram.exceptions import TelegramBadRequest  # noqa: E402
+
+
+class _EditMsg:
+    def __init__(self, msg):
+        self.msg = msg
+
+    async def edit_text(self, *a, **k):
+        raise TelegramBadRequest(method=None, message=self.msg)
+
+    async def edit_reply_markup(self, *a, **k):
+        raise TelegramBadRequest(method=None, message=self.msg)
+
+
+asyncio.run(core.safe_edit(
+    _EditMsg("Bad Request: message is not modified: specified new message content"),
+    "x"))
+check("not modified xatosi yutiladi", True)
+raised = False
+try:
+    asyncio.run(core.safe_edit(_EditMsg("Bad Request: message can't be edited"), "x"))
+except TelegramBadRequest:
+    raised = True
+check("boshqa Telegram xatosi ko'tariladi", raised)
+
+
 print()
 if FAILS:
     print(f"❌ {len(FAILS)} ta tekshiruv yiqildi: {FAILS}")

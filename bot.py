@@ -224,6 +224,7 @@ import json  # noqa: E402
 import time  # noqa: E402
 import traceback  # noqa: E402
 
+from aiogram.exceptions import TelegramBadRequest  # noqa: E402
 from aiogram.filters import Command, CommandObject, CommandStart, StateFilter  # noqa: E402
 from aiogram.fsm.context import FSMContext  # noqa: E402
 from aiogram.fsm.state import State, StatesGroup  # noqa: E402
@@ -723,7 +724,7 @@ async def reminders_cmd(m: Message):
 async def rem_cb(c: CallbackQuery):
     on = c.data[4:] == "1"
     st.set_reminders(c.from_user.id, on)
-    await c.message.edit_text(rem_text(on), reply_markup=rem_kb(on))
+    await safe_edit(c.message, rem_text(on), reply_markup=rem_kb(on))
     await c.answer("Yoqildi ✅" if on else "O'chirildi 🔕")
 
 
@@ -804,6 +805,19 @@ async def admin(m: Message):
 
 
 # ------------------------------ XAT OQIMI -------------------------------
+async def safe_edit(message, text=None, **kwargs):
+    """edit_text/edit_reply_markup — "message is not modified" xatosini yutadi."""
+    try:
+        if text is None:
+            await message.edit_reply_markup(**kwargs)
+        else:
+            await message.edit_text(text, **kwargs)
+    except TelegramBadRequest as e:  # noqa: BLE001
+        if "not modified" in str(e).lower():
+            return
+        raise
+
+
 def variants(sit, words):
     return [t.replace("{w}", (words or "").strip() or FALLBACK) for t in AI_TPL[sit]]
 
@@ -861,7 +875,7 @@ async def toggle(c: CallbackQuery, state: FSMContext):
     sel = list((await state.get_data()).get("offers") or [])
     sel = [x for x in sel if x != o] if o in sel else sel + [o]
     await state.update_data(offers=sel)
-    await c.message.edit_reply_markup(reply_markup=offer_kb(sel))
+    await safe_edit(c.message, reply_markup=offer_kb(sel))
     await c.answer()
 
 
@@ -907,7 +921,7 @@ async def own_offer_del(c: CallbackQuery, state: FSMContext):
     if 0 <= i < len(customs):
         sel.remove(customs[i])
         await state.update_data(offers=sel)
-    await c.message.edit_reply_markup(reply_markup=offer_kb(sel))
+    await safe_edit(c.message, reply_markup=offer_kb(sel))
     await c.answer()
 
 
