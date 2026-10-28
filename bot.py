@@ -715,6 +715,43 @@ async def rem_cb(c: CallbackQuery):
     await c.answer("Yoqildi ✅" if on else "O'chirildi 🔕")
 
 
+@dp.message(Command("diag"))
+async def diag_cmd(m: Message):
+    """Admin uchun tezkor diagnostika (bot chatida)."""
+    if not ADMIN_ID or str(m.from_user.id) != ADMIN_ID:
+        return
+    lines = []
+    try:
+        st.r.ping()
+        lines.append("Redis: ✅")
+    except Exception as e:  # noqa: BLE001
+        lines.append("Redis: ❌ " + type(e).__name__)
+    try:
+        me = await asyncio.wait_for(bot.get_me(), timeout=6)
+        lines.append(f"Bot: @{me.username}")
+    except Exception as e:  # noqa: BLE001
+        lines.append("Bot: ❌ " + type(e).__name__)
+    try:
+        wh = await asyncio.wait_for(bot.get_webhook_info(), timeout=6)
+        lines.append(f"Webhook: {wh.url or '— (o‘rnatilmagan)'}")
+        if wh.last_error_message:
+            lines.append("Xato: " + wh.last_error_message[:140])
+        lines.append(f"Kutayotgan update: {wh.pending_update_count}")
+    except Exception as e:  # noqa: BLE001
+        lines.append("Webhook: ❌ " + type(e).__name__)
+    lines.append("WebApp URL: " + (URL or "—"))
+    lines.append("Env: " + ", ".join(k for k, v in {
+        "BOT_TOKEN": TOKEN, "REDIS_URL": os.environ.get("REDIS_URL"),
+        "WEBAPP_URL": URL, "ADMIN_ID": ADMIN_ID}.items() if v))
+    try:
+        err = st.r.get("ybot:lasterror")
+        if err:
+            lines.append("\n<b>Oxirgi xato:</b>\n" + html.escape(err[-600:]))
+    except Exception:  # noqa: BLE001
+        pass
+    await m.answer("🩺 <b>Diagnostika</b>\n\n" + "\n".join(lines))
+
+
 @dp.message(Command("cancel"))
 async def cancel(m: Message, state: FSMContext):
     await state.clear()

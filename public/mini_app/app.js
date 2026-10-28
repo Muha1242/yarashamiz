@@ -46,6 +46,24 @@ async function api(action, extra) {
 const h = (tag, cls, txt) => { const e = document.createElement(tag); if (cls) e.className = cls; if (txt != null) e.textContent = txt; return e; };
 const haptic = (s) => { try { tg.HapticFeedback.impactOccurred(s || 'light'); } catch (e) {} };
 
+/* ================= XATOLAR ================= */
+window.addEventListener('error', () => {
+  try {
+    const v = $('view');
+    if (v && !v.querySelector('.card')) {
+      v.innerHTML = '';
+      const c = h('div', 'card');
+      c.appendChild(h('h2', '', '⚠️ Xatolik'));
+      c.appendChild(h('p', '', 'Ilovani qayta oching. Muammo davom etsa botga '
+        + '/feedback yozing.'));
+      const b = h('button', 'btn btn-main', '🔄 Qayta yuklash');
+      b.onclick = () => location.reload();
+      c.appendChild(b);
+      v.appendChild(c);
+    }
+  } catch (e) { /* jim */ }
+});
+
 /* ================= AUTH / SOZLAMA ================= */
 let BOT_NAME = null;
 async function loadBot() {
@@ -118,7 +136,7 @@ const THEME_NAMES = {
 /* 3D konvert + ichidagi qog'oz (xat) */
 function mountScene(v, L, opts) {
   opts = opts || {};
-  const scene = h('div', 'scene');
+  const scene = h('div', 'scene theme-' + (L.theme || 'classic'));
   const heart = h('div', 'heart3d');
   heart.appendChild(h('div', 'h-half h-left'));
   heart.appendChild(h('div', 'h-half h-right'));
@@ -557,12 +575,12 @@ async function viewGames(v) {
     c.appendChild(h('p', '', "O'yinlar juftingiz bilan yarashgandan keyin ochiladi."));
     v.appendChild(c); return;
   }
-  GAMES_CACHE = r.games;
+  GAMES_CACHE = r.games || [];
   const head = h('div', 'card');
   head.appendChild(h('h2', '', '🎮 Bugungi o\'yinlar'));
   head.appendChild(h('p', '', 'Ball faqat ikkalangiz ham o\'ynasangiz beriladi.'));
   v.appendChild(head);
-  r.games.forEach((g) => {
+  (r.games || []).forEach((g) => {
     const el = h('div', 'game' + (g.locked ? ' locked' : ''));
     const left = h('div');
     left.appendChild(h('b', '', g.name + (g.prem ? ' 💎' : '')));
@@ -682,7 +700,7 @@ async function couponsSection(v) {
     v.appendChild(c);
     return;
   }
-  const active = r.coupons.filter((x) => !x.mine && x.status === 'active');
+  const active = (r.coupons || []).filter((x) => !x.mine && x.status === 'active');
   if (active.length) {
     active.forEach((x) => {
       const row = h('div', 'coupon');
@@ -711,6 +729,7 @@ async function couponsSection(v) {
     : 'Bepul: kuniga ' + r.freePerDay + ' ta · qoldi ' + (r.left == null ? 0 : r.left)));
   const sel = document.createElement('select');
   sel.className = 'sel';
+  r.titles = r.titles || [];
   r.titles.forEach((t) => {
     const o = document.createElement('option');
     o.value = t;
@@ -731,7 +750,7 @@ async function couponsSection(v) {
   };
   c.appendChild(sb);
 
-  const used = r.coupons.filter((x) => x.status === 'used').slice(0, 4);
+  const used = (r.coupons || []).filter((x) => x.status === 'used').slice(0, 4);
   if (used.length) {
     c.appendChild(h('p', 'hint', 'Oxirgi ishlatilganlar:'));
     used.forEach((x) => {
@@ -780,9 +799,10 @@ async function viewMe(v) {
   else {
     pr.appendChild(h('p', '', 'Cheksiz xat · AI yordamchi · 10 shablon · Sevgi kvizi'));
     const pz = h('div', 'price');
-    const pm = h('div'); pm.appendChild(h('b', '', ME.prices.month + ' ⭐')); pm.appendChild(h('small', '', '1 oy'));
-    const py = h('div'); py.appendChild(h('b', '', ME.prices.year + ' ⭐')); py.appendChild(h('small', '', '1 yil + 2 oy'));
-    const pg = h('div'); pg.appendChild(h('b', '', ME.prices.gift + ' ⭐')); pg.appendChild(h('small', '', 'sovg\'a'));
+    const PR = ME.prices || { month: 50, year: 500, gift: 80 };
+    const pm = h('div'); pm.appendChild(h('b', '', PR.month + ' ⭐')); pm.appendChild(h('small', '', '1 oy'));
+    const py = h('div'); py.appendChild(h('b', '', PR.year + ' ⭐')); py.appendChild(h('small', '', '1 yil + 2 oy'));
+    const pg = h('div'); pg.appendChild(h('b', '', PR.gift + ' ⭐')); pg.appendChild(h('small', '', 'sovg\'a'));
     pz.appendChild(pm); pz.appendChild(py); pz.appendChild(pg);
     pr.appendChild(pz);
     pr.appendChild(h('p', 'hint', 'Sotib olish uchun botdagi 💎 Premium tugmasini bosing'));
@@ -856,6 +876,9 @@ async function capsulesSection(v) {
     if (r.err === 'auth') { await authCard(v, r.why); }
     return;
   }
+  const days = r.days || [];
+  const themes = r.themes || [];
+  const caps = r.capsules || [];
   const c = h('div', 'card');
   c.appendChild(h('h2', '', '⏳ Vaqt kapsulasi'));
   if (!r.prem) {
@@ -877,8 +900,8 @@ async function capsulesSection(v) {
   c.appendChild(ta);
 
   const chips = h('div', 'chips');
-  let selDays = r.days[0].days;
-  r.days.forEach((d) => {
+  let selDays = (days[0] && days[0].days) || 30;
+  days.forEach((d) => {
     const b = h('button', 'chip' + (d.days === selDays ? ' on' : ''), d.label);
     b.onclick = () => {
       haptic();
@@ -892,7 +915,7 @@ async function capsulesSection(v) {
 
   const sel = document.createElement('select');
   sel.className = 'sel';
-  r.themes.filter((t) => t.ok || r.prem).forEach((t) => {
+  themes.filter((t) => t.ok || r.prem).forEach((t) => {
     const o = document.createElement('option');
     o.value = t.id;
     o.textContent = t.name + (t.prem ? ' 💎' : '');
@@ -942,10 +965,10 @@ async function capsulesSection(v) {
   c.appendChild(btn);
   v.appendChild(c);
 
-  if (r.capsules.length) {
+  if (caps.length) {
     const l = h('div', 'card');
     l.appendChild(h('h2', '', '📜 Mening kapsulalarim'));
-    r.capsules.forEach((x) => {
+    caps.forEach((x) => {
       const row = h('div', 'coupon');
       const left = h('div');
       left.appendChild(h('b', '', x.opened ? '✅ Ochildi'
@@ -973,13 +996,13 @@ async function viewMemory(v) {
     v.appendChild(h('p', 'hint', 'Ilovani botdan oching')); return;
   }
   await capsulesSection(v);
-  if (!r.letters.length) {
+  if (!(r.letters || []).length) {
     const c = h('div', 'card');
     c.appendChild(h('h2', '', '📖 Xotiralar'));
     c.appendChild(h('p', '', "Hali xat yo'q. Birinchi xatni yozing!"));
     v.appendChild(c); return;
   }
-  r.letters.forEach((x) => {
+  (r.letters || []).forEach((x) => {
     const d = h('div', 'mem');
     d.appendChild(h('div', 't', '«' + x.text.slice(0, 120) + (x.text.length > 120 ? '…' : '') + '»'));
     const dt = new Date(x.ts * 1000).toLocaleDateString('uz');

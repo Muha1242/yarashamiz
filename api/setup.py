@@ -63,6 +63,13 @@ async def _set():
         await core.bot.session.close()
     except Exception:
         pass
+    # username ni keshga yozamiz — Mini App tarmoqqa chiqmasin
+    try:
+        me = await core.bot.get_me()
+        if me and me.username:
+            core.st.r.set("ybot:username", me.username)
+    except Exception:  # noqa: BLE001
+        pass
     return url
 
 

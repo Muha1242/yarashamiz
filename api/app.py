@@ -264,33 +264,29 @@ def invite_link(u):
 
 
 def bot_username():
-    """Bot username (keshda saqlanadi)."""
+    """Bot username — faqat kesh/env/Redis (tarmoqqa chiqmaydi).
+
+    Tarmoq chaqiruvi Mini App'ni osiltirib qo'ymasligi uchun olib tashlandi;
+    username `/api/setup` paytida Redis'ga yoziladi.
+    """
     global _BOTNAME
     if _BOTNAME:
         return _BOTNAME
-    import urllib.request
+    env = os.environ.get("BOT_USERNAME") or ""
+    if env:
+        _BOTNAME = env.lstrip("@")
+        return _BOTNAME
     try:
         import redis as _r
-        rc = _r.from_url(os.environ.get("REDIS_URL") or "", socket_timeout=5,
+        rc = _r.from_url(os.environ.get("REDIS_URL") or "", socket_timeout=3,
                          decode_responses=True)
         v = rc.get("ybot:username")
         if v:
             _BOTNAME = v
             return v
-        url = "https://api.telegram.org/bot" + BOT_TOKEN + "/getMe"
-        with urllib.request.urlopen(url, timeout=8) as r:
-            u = json.loads(r.read().decode()).get("result", {}).get("username")
-        if u:
-            _BOTNAME = u
-            try:
-                rc.set("ybot:username", u)
-            except Exception:
-                pass
-        return u
-    except Exception:
+    except Exception:  # noqa: BLE001
         pass
-    # zaxira: muhit o'zgaruvchisi
-    return os.environ.get("BOT_USERNAME") or None
+    return ""
 
 
 def _form(u, d):
@@ -578,7 +574,15 @@ class handler(BaseHTTPRequestHandler):
         try:
             return self._json(200, fn(int(usr["id"]), usr, d))
         except Exception:  # noqa: BLE001
+            tb = traceback.format_exc()
             traceback.print_exc()
+            try:
+                import redis as _r
+                rc = _r.from_url(os.environ.get("REDIS_URL") or "",
+                                 socket_timeout=3, decode_responses=True)
+                rc.set("ybot:lasterror", (tb or "")[-1500:])
+            except Exception:  # noqa: BLE001
+                pass
             return self._json(200, {"ok": False, "err": "server"})
 
     def log_message(self, *args) -> None:
