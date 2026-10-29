@@ -619,7 +619,8 @@ async def start(m: Message, command: CommandObject, state: FSMContext):
                                   html.escape(", ".join(L["offers"])))
         st.seen(lid, m.from_user.id)     # shikoyat qilish huquqi uchun
         payload = base64.urlsafe_b64encode(json.dumps(
-            {"t": L["text"], "o": L["offers"], "theme": L["theme"]}).encode()).decode()
+            {"t": L["text"], "o": L["offers"], "theme": L["theme"],
+             "n": st.r.get(f"name:{L['sender']}") or ""}).encode()).decode()
         return await m.answer("Sizga xat bor 💌",
                               reply_markup=open_letter_kb(lid, payload))
 

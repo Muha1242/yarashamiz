@@ -197,9 +197,83 @@ function mountScene(v, L, opts) {
 }
 
 /* --- xat ochilganda: to'liq ekranli "wow" sahna --- */
-function buildStage(text, theme, actions) {
-  const stage = h('div', 'lstage');
+function playOpenSound() {
+  try {
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return;
+    if (!window.__ac) window.__ac = new AC();
+    const ctx = window.__ac;
+    if (ctx.state === 'suspended') ctx.resume();
+    const now = ctx.currentTime;
+    const master = ctx.createGain();
+    master.gain.setValueAtTime(0.0001, now);
+    master.gain.exponentialRampToValueAtTime(0.12, now + 0.06);
+    master.gain.exponentialRampToValueAtTime(0.0001, now + 1.5);
+    master.connect(ctx.destination);
+    [523.25, 659.25, 783.99, 1046.5].forEach((f, i) => {
+      const o = ctx.createOscillator();
+      const g = ctx.createGain();
+      o.type = 'sine';
+      o.frequency.value = f;
+      const t = now + i * 0.07;
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(0.5, t + 0.03);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + 0.75);
+      o.connect(g); g.connect(master);
+      o.start(t); o.stop(t + 0.8);
+    });
+  } catch (e) { /* jim */ }
+}
+
+function startTilt(stage) {
+  const apply = (x, y) => {
+    stage.style.setProperty('--px', (x * 7).toFixed(2) + 'px');
+    stage.style.setProperty('--py', (y * 7).toFixed(2) + 'px');
+  };
+  const onOrient = (e) => {
+    const y = Math.max(-1, Math.min(1, (e.gamma || 0) / 35));
+    const x = Math.max(-1, Math.min(1, ((e.beta || 45) - 45) / 45));
+    apply(-y, -x);
+  };
+  const attach = () => {
+    try { window.addEventListener('deviceorientation', onOrient, true); } catch (e) {}
+  };
+  try {
+    if (window.DeviceOrientationEvent
+      && typeof window.DeviceOrientationEvent.requestPermission === 'function') {
+      window.DeviceOrientationEvent.requestPermission()
+        .then((s) => { if (s === 'granted') attach(); })
+        .catch(() => {});
+    } else if (window.DeviceOrientationEvent) {
+      attach();
+    }
+  } catch (e) { /* jim */ }
+  stage.addEventListener('pointermove', (e) => {
+    const r = stage.getBoundingClientRect();
+    apply(((e.clientX - r.left) / Math.max(1, r.width) - 0.5) * 2,
+      ((e.clientY - r.top) / Math.max(1, r.height) - 0.5) * 2);
+  });
+}
+
+function buildParticles(theme) {
+  const box = h('div', 'lparts');
+  const n = 14;
+  for (let i = 0; i < n; i++) {
+    const p = h('i');
+    p.style.left = (Math.random() * 100).toFixed(1) + '%';
+    p.style.animationDelay = (Math.random() * 6).toFixed(2) + 's';
+    p.style.animationDuration = (5 + Math.random() * 5).toFixed(2) + 's';
+    p.style.width = p.style.height = (5 + Math.random() * 7).toFixed(0) + 'px';
+    box.appendChild(p);
+  }
+  return box;
+}
+
+function buildStage(text, theme, actions, opts) {
+  opts = opts || {};
+  const stage = h('div', 'lstage theme-' + (theme || 'classic'));
   stage.appendChild(h('div', 'lglow'));
+  stage.appendChild(buildParticles(theme));
   const paper = h('div', 'lpaper');
   const c = CARD_COLORS[theme] || CARD_COLORS.classic;
   const ink = CARD_INK[theme] || '#fff3f7';
@@ -214,7 +288,13 @@ function buildStage(text, theme, actions) {
     p.appendChild(s);
   });
   paper.appendChild(p);
-  paper.appendChild(h('div', 'lfrom', 'Sizga yozilgan ❤️'));
+  const fromName = opts.from ? ' — ' + opts.from : '';
+  paper.appendChild(h('div', 'lfrom', 'Sizga yozilgan ❤️' + fromName));
+  const stamp = h('div', 'lstamp');
+  stamp.appendChild(h('b', '', '❤'));
+  stamp.appendChild(h('span', '', 'OCHILDI'));
+  stamp.appendChild(h('span', '', opts.date || ''));
+  paper.appendChild(stamp);
   stage.appendChild(paper);
   if (actions) {
     actions.classList.add('lact');
@@ -240,11 +320,13 @@ function burst() {
   setTimeout(() => { if (box.parentNode) box.parentNode.removeChild(box); }, 1700);
 }
 
-function showStage(v, text, theme, actions) {
-  const stage = buildStage(text, theme, actions);
+function showStage(v, text, theme, actions, opts) {
+  const stage = buildStage(text, theme, actions, opts);
   v.appendChild(stage);
   requestAnimationFrame(() => requestAnimationFrame(() => stage.classList.add('show')));
   haptic('heavy');
+  playOpenSound();
+  startTilt(stage);
   burst();
   setTimeout(() => { try { confetti(); } catch (e) { /* jim */ } }, 260);
   return stage;
@@ -575,7 +657,12 @@ function letterOpen(v) {
 
   mountScene(v, { t: LETTER.t, theme: LETTER.theme }, {
     after: 'Sizni o\'ylayotgan odam bor ❤️',
-    onOpen: () => { showStage(v, LETTER.t, LETTER.theme, menu); },
+    onOpen: () => {
+      showStage(v, LETTER.t, LETTER.theme, menu, {
+        from: LETTER.n || '',
+        date: fmtDate(Date.now() / 1000),
+      });
+    },
   });
 }
 
@@ -640,7 +727,12 @@ async function viewCapsuleOpen(v, token) {
   mountScene(v, { t: r.text, theme: r.theme }, {
     hint: '✨ Konvertni bosing',
     after: 'Sizga yozilgan xat ❤️',
-    onOpen: () => { showStage(v, r.text, r.theme, actions); },
+    onOpen: () => {
+      showStage(v, r.text, r.theme, actions, {
+        from: r.fromName || '',
+        date: fmtDate(Date.now() / 1000),
+      });
+    },
   });
 }
 

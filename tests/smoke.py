@@ -909,7 +909,21 @@ check("JS: xat va kapsula sahnalari", js.count("showStage(") >= 3, js.count("sho
 check("CSS: sahna uslublari",
       ".lstage" in css and ".lpaper" in css and "paperIn" in css)
 check("CSS: portlash animatsiyasi", ".burst" in css and "burstFly" in css)
-check("cache-busting v7", "app.js?v=7" in idx_html)
+check("cache-busting v7", "app.js?v=8" in idx_html)
+
+# ------------------- 30. XAT SAHNASI 2.0 (ovoz/parallaks) ----------------
+check("JS: ochilish ovozi", "playOpenSound" in js and "AudioContext" in js)
+check("JS: 3D parallaks", "startTilt" in js and "deviceorientation" in js)
+check("JS: shablon zarralari", "buildParticles" in js and "lparts" in js)
+check("JS: 'ochildi' muhr", "lstamp" in js and "OCHILDI" in js)
+check("CSS: zarralar va muhr",
+      ".lparts" in css and ".lstamp" in css and "stampIn" in css)
+check("CSS: parallaks (translate)", "--px" in css and "--py" in css)
+check("cache-busting v8", "app.js?v=8" in idx_html)
+check("bot: xat havolasida ism", '"n": st.r.get' in bot_src)
+check("api: kapsula fromName", "fromName" in open(os.path.join(ROOT, "api/app.py"),
+                                                   encoding="utf-8").read())
+check("kapsula javobida fromName", "fromName" in api_app._capsule_open(7301, {"t": t_s}))
 
 print()
 if FAILS:

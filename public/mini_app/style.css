@@ -605,3 +605,32 @@ body::after{ /* yumshoq vinyetka */
   0%{transform:translate(-50%,-50%) rotate(0) scale(.6);opacity:1}
   70%{opacity:1}
   100%{transform:translate(calc(-50% + var(--dx)),calc(-50% + var(--dy))) rotate(var(--rot)) scale(.85);opacity:0}}
+
+/* ===== xat sahnasi: parallaks, zarralar, muhr ===== */
+.lpaper{translate:var(--px,0px) var(--py,0px);transition:translate .16s ease-out;will-change:translate}
+.lparts{position:absolute;inset:0;overflow:hidden;pointer-events:none;z-index:1}
+.lparts i{position:absolute;bottom:-26px;border-radius:50%;background:rgba(255,255,255,.85);
+  opacity:0;animation-name:floatUp;animation-timing-function:linear;animation-iteration-count:infinite}
+@keyframes floatUp{
+  0%{opacity:0;transform:translateY(0) scale(.5)}
+  12%{opacity:.85}
+  100%{opacity:0;transform:translateY(-118vh) scale(1.05)}}
+.lstage.theme-love .lparts i{background:#ff7aa8;border-radius:50% 50% 50% 0;transform:rotate(45deg)}
+.lstage.theme-velvet .lparts i{background:#ff9ab8}
+.lstage.theme-neon .lparts i{background:#4df0ff;box-shadow:0 0 12px #ff4dff}
+.lstage.theme-gold .lparts i{background:#ffd88a;border-radius:1px;transform:rotate(45deg)}
+.lstage.theme-aurora .lparts i{background:#9ef7d8;box-shadow:0 0 12px rgba(120,255,220,.75)}
+.lstage.theme-marmar .lparts i,
+.lstage.theme-sky .lparts i,
+.lstage.theme-blossom .lparts i,
+.lstage.theme-paper .lparts i{background:rgba(255,255,255,.9);border-radius:50% 0 50% 50%}
+.lstamp{margin:20px auto 2px;width:86px;height:86px;border-radius:50%;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;
+  background:radial-gradient(circle at 34% 28%,#ff9ab8,#d81b60 62%,#8e0f3f);
+  color:#ffe3ec;font:700 9px Nunito;letter-spacing:.5px;text-transform:uppercase;
+  box-shadow:0 12px 24px rgba(0,0,0,.45),inset 0 1px 0 rgba(255,255,255,.55);
+  transform:rotate(-12deg) scale(.55);opacity:0;
+  animation:stampIn .55s cubic-bezier(.2,1.5,.4,1) .95s forwards}
+.lstamp b{font:700 20px Caveat,cursive;line-height:1}
+.lstamp span{font-size:8px;opacity:.92}
+@keyframes stampIn{60%{opacity:1}100%{opacity:1;transform:rotate(-12deg) scale(1)}}
