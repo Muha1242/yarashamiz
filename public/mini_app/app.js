@@ -55,6 +55,19 @@ async function api(action, extra) {
 const h = (tag, cls, txt) => { const e = document.createElement(tag); if (cls) e.className = cls; if (txt != null) e.textContent = txt; return e; };
 const haptic = (s) => { try { tg.HapticFeedback.impactOccurred(s || 'light'); } catch (e) {} };
 
+let splashDone = false;
+function hideSplash() {
+  if (splashDone) return;
+  splashDone = true;
+  const s = document.getElementById('splash');
+  if (!s) return;
+  setTimeout(() => {
+    s.classList.add('hide');
+    setTimeout(() => { if (s.parentNode) s.parentNode.removeChild(s); }, 700);
+  }, 300);
+}
+setTimeout(hideSplash, 4200);
+
 /* ================= XATOLAR ================= */
 window.addEventListener('error', () => {
   try {
@@ -648,8 +661,11 @@ function playGame(v, g) {
     box.innerHTML = '';
     const idx = Math.floor(step / (g.mode === 'guess' ? 2 : 1));
     const qq = g.qs[idx];
-    const opts = g.mode === 'guess' ? [qq[1], qq[2]] : g.opt;
-    q.textContent = (idx + 1) + '/' + g.n + '. ' + (g.mode === 'guess' ? qq[0] : qq);
+    const isPair = Array.isArray(qq);
+    q.textContent = (idx + 1) + '/' + g.n + '. '
+      + (g.mode === 'guess' ? qq[0] : (isPair ? qq[0] : qq));
+    const opts = g.mode === 'guess' ? [qq[1], qq[2]]
+      : (isPair ? [qq[1], qq[2]] : g.opt);
     opts.forEach((o, i) => {
       const b = h('button', '', o);
       b.onclick = () => {
@@ -1098,32 +1114,36 @@ function confetti() {
 
 /* ================= START ================= */
 (async function start() {
-  if (CAPSULE_TOKEN) {
-    const nav = document.querySelector('.tabs');
-    if (nav) nav.style.display = 'none';
-    viewCapsuleOpen($('view'), CAPSULE_TOKEN);
-    return;
+  try {
+    if (CAPSULE_TOKEN) {
+      const nav = document.querySelector('.tabs');
+      if (nav) nav.style.display = 'none';
+      viewCapsuleOpen($('view'), CAPSULE_TOKEN);
+      return;
+    }
+    if (LETTER) {
+      const nav = document.querySelector('.tabs');
+      if (nav) nav.style.display = 'none';
+      letterOpen($('view'));
+      return;
+    }
+    if (!tg.initData) {
+      const nav = document.querySelector('.tabs');
+      if (nav) nav.style.display = 'none';
+      const hasSdk = !!(window.Telegram && window.Telegram.WebApp);
+      authCard($('view'), hasSdk ? 'no_init' : 'no_sdk');
+      return;
+    }
+    const r = await api('me');
+    if (!r.ok && r.err === 'auth') {
+      const nav = document.querySelector('.tabs');
+      if (nav) nav.style.display = 'none';
+      authCard($('view'), r.why);
+      return;
+    }
+    if (r.ok) { ME = r; $('pill').textContent = (r.pts || 0) + ' ball'; }
+    setTab('write');
+  } finally {
+    hideSplash();
   }
-  if (LETTER) {
-    const nav = document.querySelector('.tabs');
-    if (nav) nav.style.display = 'none';
-    letterOpen($('view'));
-    return;
-  }
-  if (!tg.initData) {
-    const nav = document.querySelector('.tabs');
-    if (nav) nav.style.display = 'none';
-    const hasSdk = !!(window.Telegram && window.Telegram.WebApp);
-    authCard($('view'), hasSdk ? 'no_init' : 'no_sdk');
-    return;
-  }
-  const r = await api('me');
-  if (!r.ok && r.err === 'auth') {
-    const nav = document.querySelector('.tabs');
-    if (nav) nav.style.display = 'none';
-    authCard($('view'), r.why);
-    return;
-  }
-  if (r.ok) { ME = r; $('pill').textContent = (r.pts || 0) + ' ball'; }
-  setTab('write');
 })();

@@ -144,10 +144,19 @@ def _games(u):
         elif g == "wh":
             item["qs"] = [core.WHO[core.qidx("wh", k)] for k in range(gg["n"])]
             item["opt"] = ["Men", "U"]
+        elif g == "wyr":
+            item["qs"] = [
+                [f"{a} yoki {b}?", a, b] for a, b in
+                (core.WYR[core.qidx("wyr", k)] for k in range(gg["n"]))
+            ]
         elif g == "ms":
             item["qs"] = [core.mission_of_day()]
+        elif g == "td":
+            item["qs"] = [core.td_of_day()]
         elif g == "kq":
             item["qs"] = [core.dq_of_day()]
+        elif g == "deep":
+            item["qs"] = [core.deep_of_day()]
         out.append(item)
     return {"ok": True, "pair": True, "games": out, "pts": st.get_pts(p[0])}
 
@@ -166,23 +175,24 @@ def _answer(u, d):
         return {"ok": False, "err": "premium"}
     if st.done(p[0], g, u):
         return {"ok": False, "err": "already"}
-    # --- validatsiya ---
-    if g in ("wh", "qz"):
+    # --- validatsiya (o'yin rejimi bo'yicha) ---
+    mode = gg["mode"]
+    if mode == "match":
         if not isinstance(data, list) or len(data) != gg["n"] or \
                 any(not isinstance(x, int) or x not in (0, 1) for x in data):
             return {"ok": False, "err": "bad_data"}
-    elif g == "ab":
+    elif mode == "guess":
         if not isinstance(data, list) or len(data) != gg["n"] or \
                 any(not isinstance(x, list) or len(x) != 2 or
-                    any(not isinstance(v, int) or v not in (0, 1) for v in x) for x in data):
+                    any(not isinstance(v, int) or v not in (0, 1) for v in x)
+                    for x in data):
             return {"ok": False, "err": "bad_data"}
-    elif g == "kq":
+    elif mode == "talk":
         if not isinstance(data, list) or not data or not str(data[0]).strip():
             return {"ok": False, "err": "bad_data"}
         data = [str(data[0]).strip()[:250]]
-    else:  # ms
+    else:  # mission
         data = {"ok": 1}
-
     st.touch(u)
     st.put(p[0], g, u, data)
 
