@@ -45,6 +45,10 @@ GAMES = {
     "ms": {"name": "Kunlik missiya", "n": 1, "mode": "mission"},
     "kq": {"name": "💬 Kunlik savol", "n": 1, "mode": "talk"},
     "qz": {"name": "Sevgi kvizi", "n": 6, "mode": "match", "prem": True},
+    "wyr": {"name": "🤔 Nima bo'lardi?", "n": 5, "mode": "match", "prem": True},
+    "td": {"name": "🎭 Haqiqat yoki jasorat", "n": 1, "mode": "mission",
+           "prem": True},
+    "deep": {"name": "💞 Chuqur savollar", "n": 1, "mode": "talk", "prem": True},
 }
 
 

@@ -95,6 +95,48 @@ QZ = ["Birinchi uchrashuvimiz ajoyib o'tdi.", "Biz haftada bir marta ko'rishardi
       "Biz birga sayohat qilishni yaxshi ko'ramiz.", "Kelajak rejalarimiz bir xil.",
       "Biz ko'p janjallaymiz.", "Biz bir-birimizni juda yaxshi tushunamiz."]
 
+# "Nima bo'lardi?" — ikkita variant, ikkalasi bir xil tanlasa ball
+WYR = [
+    ("Uyda kino kechasi", "Restoranda kechki ovqat"),
+    ("Dengiz bo'yida dam olish", "Tog'da sayr"),
+    ("Birga sayohat", "Birga uy qurish"),
+    ("Ertalabki qahva birga", "Kechki yulduzlar ostida suhbat"),
+    ("Sovg'a olish", "Sovg'a berish"),
+    ("Bir kun telefonsiz", "Bir kun birga ishda"),
+    ("Katta to'y", "Kichik samimiy nikoh"),
+    ("Birga raqs", "Birga qo'shiq"),
+]
+
+# "Haqiqat yoki jasorat" — kun bo'yicha almashadi (18+ emas, xavfsiz)
+TRUTHS = [
+    "Meni birinchi marta ko'rganingda nima deb o'ylagansan?",
+    "Munosabatimizda eng ko'p kulgan lahza qaysi?",
+    "Mening qaysi odatim seni jahlim chiqaradi?",
+    "Menga hali aytmagan, lekin aytishni istagan siring bormi?",
+    "Bizning eng yaxshi xotirang qaysi?",
+    "Meni qaysi paytda eng ko'p qadrlagansan?",
+]
+DARES = [
+    "Juftingizga 3 ta kompliment aytib bering.",
+    "Juftingizning sevimli qo'shig'ini qo'yib bering.",
+    "Birgalikda 30 soniya davomida qarab turing.",
+    "Juftingizga ovozli xabar yuboring — «seni sevaman» deb.",
+    "Juftingizni quchoqlab, 10 soniya ushlab turing.",
+    "Bugungi uchrashuvni rejalashtiring va birinchi qadamni qo'ying.",
+]
+
+# "Chuqur savollar" — premium, har kuni bittasi
+DEEP = [
+    "Siz uchun sevgi nima? Bir gapda aytib bering.",
+    "Bizning munosabatimizni 5 yildan keyin qanday tasavvur qilasiz?",
+    "Menda qaysi xususiyatni yanada rivojlantirishimni xohlaysiz?",
+    "Sizni eng ko'p qo'rqitadigan narsa nima?",
+    "Men bilan bo'lgan qaysi lahza sizni o'zgartirdi?",
+    "Kelajakda birga qanday an'ana yaratmoqchisiz?",
+    "Menga aytish qiyin bo'lgan, lekin muhim bo'lgan narsa bormi?",
+    "Biz bir-birimizni qanday qilib yaxshiroq qo'llab-quvvatlay olamiz?",
+]
+
 DAILY_Q = [
     "Juftingizga minnatdorlik bildiradigan 3 narsa yozing.",
     "Juftingizning qaysi odati sizga eng yoqadi?",
@@ -480,8 +522,22 @@ def invite_text(u, username):
 
 
 def qidx(g, step):
-    qs = {"ab": AB, "wh": WHO, "qz": QZ}[g]
+    qs = QMAP.get(g) or AB
     return (st.now().date().toordinal() + step) % len(qs)
+
+
+QMAP = {"wh": WHO, "qz": QZ, "wyr": WYR}
+
+
+def td_of_day():
+    d = st.now().date().toordinal()
+    if d % 2 == 0:
+        return "🫢 <b>Haqiqat:</b> " + TRUTHS[d % len(TRUTHS)]
+    return "🔥 <b>Jasorat:</b> " + DARES[d % len(DARES)]
+
+
+def deep_of_day():
+    return DEEP[st.now().date().toordinal() % len(DEEP)]
 
 
 # ============================= FSM HOLATLAR =============================
@@ -1162,10 +1218,21 @@ def ab_kb(i):
                                     IB(text=b, callback_data=f"abo:{i}:1")]])
 
 
+def qtext(g, idx):
+    """Savol matni va ikkita variant (match o'yinlar uchun)."""
+    if g == "wyr":
+        a, b = WYR[idx]
+        return f"{a} yoki {b}?", a, b
+    if g == "wh":
+        return WHO[idx], "Men", "U"
+    if g == "qz":
+        return QZ[idx], "Ha", "Yo'q"
+    return str((QMAP.get(g) or AB)[idx]), "Ha", "Yo'q"
+
+
 async def ask_match(msg, g, step):
     gg = GAMES[g]
-    q = {"wh": WHO, "qz": QZ}[g][qidx(g, step)]
-    a, b = ("Men", "U") if g == "wh" else ("Ha", "Yo'q")
+    q, a, b = qtext(g, qidx(g, step))
     await msg.answer(f"{step + 1}/{gg['n']}. {q}",
                      reply_markup=IM(inline_keyboard=[
                          [IB(text=a, callback_data=f"mg:{g}:{step}:0"),
@@ -1205,16 +1272,15 @@ async def after(u, p, g):
         st.add_pts(p[0], pts)
         st.r.set(scored, 1, ex=2 * 86400)   # faqat ball muvaffaqiyatli qo'shilgach
         st.touch(u)
-        if g == "kq":
-            # ikkalasi ham javob bergan — bir-birining javobini ko'rsatamiz.
-            # Yuborish xatosi javobni yo'qotmasligi uchun try/except.
+        if gg["mode"] == "talk":
+            head = "💞 Chuqur savol" if g == "deep" else "💬 Bugungi savol"
             try:
-                await bot.send_message(u, "💬 Juftingizning bugungi javobi:\n\n"
+                await bot.send_message(u, f"{head}\n\nJuftingizning javobi:\n\n"
                                        f"«{html.escape(str(d2[0]))}»\n\n+{pts} ball 🎯")
-                await bot.send_message(o, "💬 Juftingizning bugungi javobi:\n\n"
+                await bot.send_message(o, f"{head}\n\nJuftingizning javobi:\n\n"
                                        f"«{html.escape(str(d1[0]))}»\n\n+{pts} ball 🎯")
             except Exception as e:  # noqa: BLE001
-                print("[after/kq]", repr(e), flush=True)
+                print("[after/talk]", repr(e), flush=True)
             return
         await asyncio.gather(*[
             bot.send_message(x, f"«{gg['name']}» natijasi: {pts} ball 🎯 "
@@ -1236,12 +1302,15 @@ async def go(c: CallbackQuery, state: FSMContext):
     if st.done(p[0], g, u):
         return await c.answer("Bugun o'ynagansiz ✅")
     if gg["mode"] == "mission":
-        await c.message.answer("Bugungi missiya:\n" + mission_of_day(),
+        prompt = td_of_day() if g == "td" else mission_of_day()
+        await c.message.answer("Bugungi topshiriq:\n" + prompt,
                                reply_markup=IM(inline_keyboard=[
-                                   [IB(text="✅ Bajardim", callback_data="msd")]]))
+                                   [IB(text="✅ Bajardim", callback_data=f"msd:{g}")]]))
     elif gg["mode"] == "talk":
         await state.set_state(W.dq)
-        await c.message.answer("💬 Bugungi savol:\n\n" + dq_of_day() +
+        q = deep_of_day() if g == "deep" else dq_of_day()
+        head = "💞 Chuqur savol" if g == "deep" else "💬 Bugungi savol"
+        await c.message.answer(head + ":\n\n" + q +
                                "\n\nJavobingizni matn ko'rinishida yozing:")
     elif gg["mode"] == "guess":
         q, kb = ab_kb(qidx(g, 0))
@@ -1337,29 +1406,34 @@ async def mg(c: CallbackQuery):
     d.append(x)
     st.put(p[0], g, u, d)
     if len(d) < gg["n"]:
-        q = {"wh": WHO, "qz": QZ}[g][qidx(g, len(d))]
-        a, b = ("Men", "U") if g == "wh" else ("Ha", "Yo'q")
-        await c.message.edit_text(f"{len(d) + 1}/{gg['n']}. {q}",
-                                  reply_markup=IM(inline_keyboard=[
-                                      [IB(text=a, callback_data=f"mg:{g}:{len(d)}:0"),
-                                       IB(text=b, callback_data=f"mg:{g}:{len(d)}:1")]]))
+        q, a, b = qtext(g, qidx(g, len(d)))
+        await safe_edit(c.message, f"{len(d) + 1}/{gg['n']}. {q}",
+                        reply_markup=IM(inline_keyboard=[
+                            [IB(text=a, callback_data=f"mg:{g}:{len(d)}:0"),
+                             IB(text=b, callback_data=f"mg:{g}:{len(d)}:1")]]))
     else:
         await c.message.edit_text("Tayyor ✅")
         await after(u, p, g)
     await c.answer()
 
 
-@dp.callback_query(F.data == "msd")
+@dp.callback_query(F.data.startswith("msd"))
 async def ms_done(c: CallbackQuery, state: FSMContext):
+    g = c.data.split(":", 1)[1] if ":" in c.data else "ms"
+    gg = GAMES.get(g)
     u, p = c.from_user.id, st.pair_of(c.from_user.id)
     if not p:
         return await c.answer("Avval yarashing ❤️", show_alert=True)
-    if st.done(p[0], "ms", u):
+    if not gg or gg.get("mode") != "mission":
+        return await c.answer()
+    if gg.get("prem") and not st.is_prem(u):
+        return await c.answer("Bu o'yin premium uchun 💎", show_alert=True)
+    if st.done(p[0], g, u):
         return await c.answer("Bugun allaqachon bajarilgan ✅", show_alert=True)
-    st.put(p[0], "ms", u, {"ok": 1})
+    st.put(p[0], g, u, {"ok": 1})
     await state.clear()
-    await c.message.edit_text("Missiya bajarildi ✅")
-    await after(u, p, "ms")
+    await safe_edit(c.message, "Bajarildi ✅")
+    await after(u, p, g)
     await c.answer()
 
 

@@ -5,7 +5,7 @@ Sevishganlarni yarashtirish uchun Telegram boti — **Vercel'da bepul** ishlaydi
 - 🤖 **aiogram 3.x** + **Upstash Redis** (ma'lumotlar va FSM)
 - ✨ **Haqiqiy AI** (Google Gemini) — kalit bo'lmasa shablon bilan ishlaydi
 - ☁️ **Webhook** rejimi — kompyuter yoki server kerak emas
-- 📱 **3D Mini App** — konvert ochilishi, yurak, konfetti
+- 📱 **3D Mini App** — logotipli animatsion kirish, konvert ochilishi, yurak, konfetti
 
 ---
 
@@ -16,7 +16,7 @@ Sevishganlarni yarashtirish uchun Telegram boti — **Vercel'da bepul** ishlaydi
 | ✍️ **Xat yozish** | 300 belgigacha, **15 shablon** (5 bepul + 10 premium; yangi «Marmar 🤍», «Neon ✨», «Qog'oz 📜») |
 | ✨ **AI yordamchi** | Gemini bilan haqiqiy xat: *uzr, sog'inch, sevgi, minnatdorchilik, uchrashuv* |
 | ❤️ **Juftlik** | Mini App'da «Yarashamiz» bosilsa ikkalasi ham xabar oladi |
-| 🎮 **O'yinlar (5 xil)** | *A yoki B*, *Kim ko'proq?*, *Kunlik missiya*, **💬 Kunlik savol**, **Sevgi kvizi** 💎 |
+| 🎮 **O'yinlar (8 xil)** | *A yoki B*, *Kim ko'proq?*, *Kunlik missiya*, **💬 Kunlik savol**, **Sevgi kvizi** 💎, **🤔 Nima bo'lardi?** 💎, **🎭 Haqiqat yoki jasorat** 💎, **💞 Chuqur savollar** 💎 |
 | 🔥 **Kunlik seriya** | Streak + avtomatik eslatmalar (Vercel Cron) |
 | 💌 **Xotiralar** | Yozgan/olgan xatlar tarixi |
 | 🖼 **Rasm kartochka** | Xatni PNG rasm qilib saqlash (Mini App) |
@@ -117,7 +117,7 @@ https://<loyiha>.vercel.app/api/setup?s=<SETUP_KEY>
 | Yillik | **500 ⭐** | 425 kun (1 yil + 2 oy) |
 | Juftlikka sovg'a | **80 ⭐** | 30 kun |
 
-**Premium beradi:** cheksiz xat · AI yordamchi · 10 premium shablon · Sevgi kvizi ·
+**Premium beradi:** cheksiz xat · AI yordamchi · 10 premium shablon · **8 o'yin (3 tasi premium)** ·
 ⏳ vaqt kapsulasi · cheksiz sevgi biletlari · cheksiz xotiralar.
 
 **Bepul:** kuniga 3 xat, 5 shablon, o'yinlar, kuniga 1 sevgi bileti.

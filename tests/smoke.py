@@ -768,6 +768,49 @@ except TelegramBadRequest:
 check("boshqa Telegram xatosi ko'tariladi", raised)
 
 
+# ------------------- 27. YANGI PREMIUM O'YINLAR --------------------------
+for _g in ("wyr", "td", "deep"):
+    check(f"yangi o'yin {_g}", _g in core.GAMES and core.GAMES[_g].get("prem") is True)
+
+st.add_pair(7501, 7502)
+check("bepul wyr o'ynay olmaydi",
+      api_app._answer(7501, {"g": "wyr", "data": [0, 0, 0, 0, 0]})["err"] == "premium")
+st.add_prem(7501, 30)
+st.add_prem(7502, 30)
+games2 = {g["id"]: g for g in api_app._games(7501)["games"]}
+check("wyr savollari (5 ta, variantlar bilan)",
+      len(games2["wyr"]["qs"]) == 5 and isinstance(games2["wyr"]["qs"][0], list)
+      and len(games2["wyr"]["qs"][0]) == 3, games2["wyr"]["qs"][:1])
+check("td savoli", ("Haqiqat" in games2["td"]["qs"][0]
+                     or "Jasorat" in games2["td"]["qs"][0]))
+check("deep savoli", isinstance(games2["deep"]["qs"][0], str)
+      and len(games2["deep"]["qs"][0]) > 10)
+
+r1 = api_app._answer(7501, {"g": "td", "data": {}})
+r2 = api_app._answer(7502, {"g": "td", "data": {}})
+check("td: ikkalasi bajarsa natija", r1["waiting"] is True and r2["result"] is not None,
+      (r1, r2))
+rw1 = api_app._answer(7501, {"g": "wyr", "data": [0, 1, 0, 1, 0]})
+rw2 = api_app._answer(7502, {"g": "wyr", "data": [0, 1, 0, 1, 0]})
+check("wyr: ball hisoblandi", rw1["waiting"] is True and rw2["result"] is not None,
+      rw2)
+
+SENT.clear()
+dp1 = api_app._answer(7501, {"g": "deep", "data": ["mening javobim"]})
+dp2 = api_app._answer(7502, {"g": "deep", "data": ["uning javobi"]})
+check("deep: javoblar almashildi",
+      dp1["waiting"] is True and dp2["result"] is not None
+      and any("Chuqur" in t for _c, t in SENT),
+      [(c, t[:30]) for c, t in SENT][-2:])
+
+_q, _a, _b = core.qtext("wyr", 0)
+check("bot: wyr savol matni", "yoki" in _q and _a and _b)
+check("bot: td/deep kunlik savol", bool(core.td_of_day()) and bool(core.deep_of_day()))
+
+idx_html = open(os.path.join(ROOT, "mini_app/index.html"), encoding="utf-8").read()
+check("splash logotip (HTML)", 'id="splash"' in idx_html and "splash-logo" in idx_html)
+check("splash CSS/JS", ".splash-screen" in css and "hideSplash" in js)
+
 print()
 if FAILS:
     print(f"❌ {len(FAILS)} ta tekshiruv yiqildi: {FAILS}")
