@@ -35,14 +35,13 @@ PROMPT = (
 )
 
 
-def compose(sit: str, words: str):
-    """Xat matnini qaytaradi; muammo bo'lsa None."""
+def _ask(prompt: str, max_tokens: int = 300):
+    """Gemini'ga so'rov. Kalit yo'q yoki xato bo'lsa None."""
     if not KEY:
         return None
-    prompt = PROMPT.format(sit=SIT_NAMES.get(sit, sit), w=(words or "yo'q"))
     body = json.dumps({
         "contents": [{"parts": [{"text": prompt}]}],
-        "generationConfig": {"maxOutputTokens": 300, "temperature": 0.9},
+        "generationConfig": {"maxOutputTokens": max_tokens, "temperature": 0.85},
     }).encode()
     req = urllib.request.Request(
         ENDPOINT + f"?key={KEY}", data=body,
@@ -50,7 +49,33 @@ def compose(sit: str, words: str):
     try:
         with urllib.request.urlopen(req, timeout=25) as resp:
             data = json.loads(resp.read())
-        text = data["candidates"][0]["content"]["parts"][0]["text"].strip()
-        return text[:400] if text else None
-    except Exception:
+        return (data["candidates"][0]["content"]["parts"][0]["text"] or "").strip()
+    except Exception:  # noqa: BLE001
         return None
+
+
+def compose(sit: str, words: str):
+    """Xat matnini qaytaradi; muammo bo'lsa None."""
+    prompt = PROMPT.format(sit=SIT_NAMES.get(sit, sit), w=(words or "yo'q"))
+    text = _ask(prompt, 300)
+    return text[:400] if text else None
+
+
+COACH_PROMPT = (
+    "Sen «Yarashamiz» botining munosabat maslahatchisisan. Juftliklarga "
+    "arazlarni hal qilishda yordam berasan.\n"
+    "Qoidalar:\n"
+    "- faqat o'zbek tilida (lotin yozuvi)\n"
+    "- 5-7 gap, amaliy va hurmatli\n"
+    "- ayblamang, «men» tilidan gapirishni o'rgating\n"
+    "- agar zo'ravonlik yoki o'z joniga qasd haqida bo'lsa — xavfsizlikni "
+    "birinchi o'ringa qo'y va mutaxassisga murojaat qilishni tavsiya qil\n"
+    "- ro'yxat shaklida 2-3 qadam bering\n\n"
+    "Savol: {q}"
+)
+
+
+def coach(question: str):
+    """Munosabat bo'yicha maslahat; muammo bo'lsa None."""
+    text = _ask(COACH_PROMPT.format(q=(question or "")[:400]), 500)
+    return text[:900] if text else None

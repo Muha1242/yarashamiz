@@ -16,7 +16,10 @@ Sevishganlarni yarashtirish uchun Telegram boti — **Vercel'da bepul** ishlaydi
 | ✍️ **Xat yozish** | 300 belgigacha, **15 shablon** (5 bepul + 10 premium; yangi «Marmar 🤍», «Neon ✨», «Qog'oz 📜») |
 | ✨ **AI yordamchi** | Gemini bilan haqiqiy xat: *uzr, sog'inch, sevgi, minnatdorchilik, uchrashuv* |
 | ❤️ **Juftlik** | Mini App'da «Yarashamiz» bosilsa ikkalasi ham xabar oladi |
-| 🎮 **O'yinlar (8 xil)** | *A yoki B*, *Kim ko'proq?*, *Kunlik missiya*, **💬 Kunlik savol**, **Sevgi kvizi** 💎, **🤔 Nima bo'lardi?** 💎, **🎭 Haqiqat yoki jasorat** 💎, **💞 Chuqur savollar** 💎 |
+| 🎮 **O'yinlar (11 xil)** | Bepul: *A yoki B*, *Kim ko'proq?*, *Kunlik missiya*, *Kunlik savol*, **🙈 Men hech qachon…**, **✍️ Gapni tugat**. Premium: *Sevgi kvizi* 💎, **🤔 Nima bo'lardi?** 💎, **🎭 Haqiqat yoki jasorat** 💎, **💞 Chuqur savollar** 💎, **🧩 Moslik testi** 💎 |
+| 💚 **Kayfiyat barometri** | Kuniga 1–5 kayfiyat, juftingiznikini ko‘rish (bepul) |
+| 🎤 **Ovozli xat** 💎 | Botga ovoz yuboring — juftingizga boradi (kuniga 5 ta) |
+| 💞 **AI maslahatchi** 💎 | Munosabat bo‘yicha savolga maslahat (kuniga 3 ta) |
 | 🔥 **Kunlik seriya** | Streak + avtomatik eslatmalar (Vercel Cron) |
 | 💌 **Xotiralar** | Yozgan/olgan xatlar tarixi |
 | 🖼 **Rasm kartochka** | Xatni PNG rasm qilib saqlash (Mini App) |
@@ -117,10 +120,10 @@ https://<loyiha>.vercel.app/api/setup?s=<SETUP_KEY>
 | Yillik | **500 ⭐** | 425 kun (1 yil + 2 oy) |
 | Juftlikka sovg'a | **80 ⭐** | 30 kun |
 
-**Premium beradi:** cheksiz xat · AI yordamchi · 10 premium shablon · **8 o'yin (3 tasi premium)** ·
-⏳ vaqt kapsulasi · cheksiz sevgi biletlari · cheksiz xotiralar.
+**Premium beradi:** cheksiz xat · AI yordamchi · 10 premium shablon · **11 o‘yin (5 tasi premium)** ·
+⏳ vaqt kapsulasi · cheksiz sevgi biletlari · **🎤 ovozli xat** · **💞 AI maslahatchi** · cheksiz xotiralar.
 
-**Bepul:** kuniga 3 xat, 5 shablon, o'yinlar, kuniga 1 sevgi bileti.
+**Bepul:** kuniga 3 xat, 5 shablon, **6 o‘yin**, kuniga 1 sevgi bileti, kayfiyat barometri.
 
 **Sozlash:** @BotFather → `/mybots` → botni tanlang → **Payments** → **Telegram Stars** yoqilgan bo'lsin.
 
@@ -146,6 +149,9 @@ python bot.py
 | `/help` | Yordam |
 | `/invite` | Do'stlarni taklif qilish havolasi + sovg'alar |
 | `/reminders` | Kunlik eslatmalarni yoqish/o'chirish |
+| `/voice` | 🎤 Ovozli xat (premium) |
+| `/maslahat` | 💞 AI munosabat maslahati (premium) |
+| `/app` | Ilovani ochish (yangi Mini App tugmasi) |
 | `/privacy` | Maxfiylik siyosati |
 | `/feedback` | Fikr/taklif (adminga boradi) |
 | `/cancel` | Joriy amalni bekor qilish |

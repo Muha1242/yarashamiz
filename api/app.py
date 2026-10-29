@@ -109,6 +109,9 @@ def _me(u, usr):
         "refsOk": st.refs_ok(u),
         "remind": st.reminders_on(u),
         "invite": invite_link(u),
+        "mood": st.mood_today(u),
+        "partnerMood": (st.mood_today(st.other(p, u)) if p else 0),
+        "moodIcons": st.MOOD_ICONS,
     }
 
 
@@ -149,6 +152,14 @@ def _games(u):
                 [f"{a} yoki {b}?", a, b] for a, b in
                 (core.WYR[core.qidx("wyr", k)] for k in range(gg["n"]))
             ]
+        elif g == "nhi":
+            item["qs"] = [core.NHI[core.qidx("nhi", k)] for k in range(gg["n"])]
+            item["opt"] = ["Ha", "Yo'q"]
+        elif g == "comp":
+            item["qs"] = [core.COMP[core.qidx("comp", k)] for k in range(gg["n"])]
+            item["opt"] = ["Ha", "Yo'q"]
+        elif g == "fin":
+            item["qs"] = [core.fin_of_day()]
         elif g == "ms":
             item["qs"] = [core.mission_of_day()]
         elif g == "td":
@@ -357,6 +368,18 @@ def _newletter(u, d):
             "left": left}
 
 
+def _mood(u, d):
+    """Kunlik kayfiyatni belgilash."""
+    import store as st
+    m = st.set_mood(u, d.get("m"))
+    if not m:
+        return {"ok": False, "err": "bad_mood"}
+    p = st.pair_of(u)
+    st.touch(u)
+    return {"ok": True, "mood": m,
+            "partnerMood": (st.mood_today(st.other(p, u)) if p else 0)}
+
+
 def _remind(u, d):
     """Eslatmalarni yoqish/o'chirish (parametr yo'q bo'lsa — holatni qaytarish)."""
     import store as st
@@ -531,6 +554,7 @@ ACTIONS = {"me": lambda u, usr, d: _me(u, usr),
            "retheme": lambda u, usr, d: _retheme(u, d),
            "form": lambda u, usr, d: _form(u, d),
            "remind": lambda u, usr, d: _remind(u, d),
+           "mood": lambda u, usr, d: _mood(u, d),
            "capsules": lambda u, usr, d: _capsules(u),
            "capsule_new": lambda u, usr, d: _capsule_new(u, d),
            "capsule_open": lambda u, usr, d: _capsule_open(u, d),

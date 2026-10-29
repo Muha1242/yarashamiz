@@ -714,6 +714,38 @@ async function submit(g, data) {
 }
 
 /* ================= 3. HISOBIM ================= */
+const MOOD = { 1: '😢', 2: '😕', 3: '😐', 4: '🙂', 5: '😍' };
+
+function moodSection(v) {
+  const mine = (ME && ME.mood) || 0;
+  const card = h('div', 'card');
+  card.appendChild(h('h2', '', '💚 Kayfiyat barometri'));
+  card.appendChild(h('p', '', mine
+    ? 'Bugungi kayfiyatingiz: ' + (MOOD[mine] || '')
+    : 'Bugun o‘zingizni qanday his qilyapsiz?'));
+  const row = h('div', 'chips');
+  Object.keys(MOOD).forEach((k) => {
+    const b = h('button', 'chip' + (String(mine) === k ? ' on' : ''), MOOD[k]);
+    b.style.fontSize = '21px';
+    b.style.minWidth = '54px';
+    b.onclick = async () => {
+      haptic();
+      const r = await api('mood', { m: Number(k) });
+      if (!r.ok) return alert(mapErr(r.err));
+      if (ME) { ME.mood = r.mood; ME.partnerMood = r.partnerMood; }
+      setTab('me');
+    };
+    row.appendChild(b);
+  });
+  card.appendChild(row);
+  if (ME && ME.partnerMood) {
+    card.appendChild(h('p', 'hint', 'Juftingiz bugun: ' + (MOOD[ME.partnerMood] || '')));
+  } else if (ME && ME.pair) {
+    card.appendChild(h('p', 'hint', 'Juftingiz hali kayfiyatini belgilamadi.'));
+  }
+  v.appendChild(card);
+}
+
 async function couponsSection(v) {
   const r = await api('coupons');
   if (!r.ok) {
@@ -820,11 +852,13 @@ async function viewMe(v) {
   gr.appendChild(s(ME.letters || 0, 'xatlar'));
   v.appendChild(gr);
 
+  moodSection(v);
+
   const pr = h('div', 'card');
   pr.appendChild(h('h2', '', '💎 Premium'));
   if (ME.prem) pr.appendChild(h('p', '', 'Faol — ' + ME.premDays + ' kun qoldi'));
   else {
-    pr.appendChild(h('p', '', 'Cheksiz xat · AI yordamchi · 10 shablon · Sevgi kvizi'));
+    pr.appendChild(h('p', '', 'Cheksiz xat · AI yordamchi · 10 shablon · ovozli xat · AI maslahat'));
     const pz = h('div', 'price');
     const PR = ME.prices || { month: 50, year: 500, gift: 80 };
     const pm = h('div'); pm.appendChild(h('b', '', PR.month + ' ⭐')); pm.appendChild(h('small', '', '1 oy'));

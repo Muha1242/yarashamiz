@@ -125,7 +125,39 @@ DARES = [
     "Bugungi uchrashuvni rejalashtiring va birinchi qadamni qo'ying.",
 ]
 
-# "Chuqur savollar" — premium, har kuni bittasi
+# "Men hech qachon..." — yumshoq, xavfsiz variantlar
+NHI = [
+    "Men hech qachon juftimga yolg'on aytmaganman.",
+    "Men hech qachon munosabatda kechirim so'ramasdan qolmaganman.",
+    "Men hech qachon sir saqlab qiyin bo'lgan narsani aytib qo'ymaganman.",
+    "Men hech qachon rashk qilib, telefonini tekshirmaganman.",
+    "Men hech qachon juftim uchun kutilmagan syurpriz qilmaganman.",
+    "Men hech qachon munosabatni tanaffusga qo'ymaganman.",
+    "Men hech qachon juftimning oldida yig'lamaganman.",
+    "Men hech qachon birinchi bo'lib kechirim so'ramaganman.",
+]
+
+# "Gapni tugat" — bir gap boshi, ikkalasi yakunlaydi
+FIN = [
+    "Men sen bilan bo'lganda eng ko'p his qiladigan narsam —",
+    "Bizning munosabatimizdagi eng katta kuchimiz —",
+    "Senga hali aytmagan, lekin aytmoqchi bo'lgan narsam —",
+    "Birgalikda qilishni eng ko'p xohlaydigan ishimiz —",
+    "Seni sevishimning eng oddiy sababi —",
+    "Kelajakda biz haqimizda eslab qolishni xohlagan narsam —",
+]
+
+# "Moslik testi" — moslikni tekshiruvchi savollar
+COMP = [
+    "Dam olish kunini uyda o'tkazish menga yoqadi.",
+    "Rejasiz sayohat — eng yaxshi sayohat.",
+    "Pulni tejash muhimroq, lekin ba'zan sarflash ham kerak.",
+    "Men janjalni darhol hal qilishni xohlayman.",
+    "Men sovg'adan ko'ra birga vaqt o'tkazishni qadrlayman.",
+    "Kelajakda katta shaharda yashashni xohlayman.",
+    "Men uchun shaxsiy makon muhim.",
+    "Men his-tuyg'ularimni ochiq aytaman.",
+]
 DEEP = [
     "Siz uchun sevgi nima? Bir gapda aytib bering.",
     "Bizning munosabatimizni 5 yildan keyin qanday tasavvur qilasiz?",
@@ -256,6 +288,9 @@ HELP = ("<b>Qanday ishlaydi?</b>\n\n"
         "/menu — bosh menyu\n/cancel — bekor qilish\n/help — yordam\n"
         "/invite — do'stlarni taklif qilish (sovg'alar bor)\n"
         "/reminders — eslatmalarni yoqish/o'chirish\n"
+        "/voice — 🎤 ovozli xat (premium)\n"
+        "/maslahat — 💞 AI munosabat maslahati (premium)\n"
+        "/app — Ilovani ochish\n"
         "/privacy — maxfiylik\n/feedback — fikr va taklif\n\n"
         "⚠️ Muammo bo'lsa: " + SUPPORT)
 
@@ -526,7 +561,7 @@ def qidx(g, step):
     return (st.now().date().toordinal() + step) % len(qs)
 
 
-QMAP = {"wh": WHO, "qz": QZ, "wyr": WYR}
+QMAP = {"wh": WHO, "qz": QZ, "wyr": WYR, "nhi": NHI, "comp": COMP}
 
 
 def td_of_day():
@@ -540,6 +575,10 @@ def deep_of_day():
     return DEEP[st.now().date().toordinal() % len(DEEP)]
 
 
+def fin_of_day():
+    return FIN[st.now().date().toordinal() % len(FIN)]
+
+
 # ============================= FSM HOLATLAR =============================
 class W(StatesGroup):
     text = State()
@@ -549,6 +588,7 @@ class W(StatesGroup):
     ai_words = State()
     own_offer = State()     # O'z taklifini yozish
     dq = State()
+    voice = State()         # Ovozli xat (premium)
 
 
 # ============================= HANDLERLAR ===============================
@@ -792,6 +832,75 @@ async def app_cmd(m: Message):
     await m.answer("Ilovani ochish 👇", reply_markup=main_kb())
 
 
+@dp.message(Command("voice"))
+async def voice_cmd(m: Message, state: FSMContext):
+    """Ovozli xat (premium): juftingizga ovoz yuboradi."""
+    u = m.from_user.id
+    if not st.pair_of(u):
+        return await m.answer("Avval juftingiz bilan yarashing ❤️")
+    if not st.is_prem(u):
+        return await m.answer("🎤 Ovozli xat — premium funksiya 💎\n"
+                              "Botdagi «💎 Premium» orqali oling.")
+    if st.voices_today(u) >= 5:
+        return await m.answer("Bugungi limit (5 ta) tugadi. Ertaga yana yuboring 🙂")
+    await state.set_state(W.voice)
+    await m.answer("🎤 Ovozli xabar yuboring (60 sekundgacha).\n"
+                   "Bekor qilish: /cancel")
+
+
+@dp.message(W.voice, F.voice)
+async def voice_got(m: Message, state: FSMContext):
+    u = m.from_user.id
+    p = st.pair_of(u)
+    if not p:
+        await state.clear()
+        return await m.answer("Juftlik topilmadi.")
+    if (m.voice.duration or 0) > 60:
+        return await m.answer("Juda uzun — 60 sekundgacha yuboring.")
+    other = st.other(p, u)
+    try:
+        await bot.send_voice(other, m.voice.file_id,
+                             caption="🎤 Sizga ovozli xat ❤️")
+    except Exception:  # noqa: BLE001
+        return await m.answer("Yuborilmadi. Keyinroq urinib ko'ring.")
+    st.add_voice(u, other, m.voice.file_id, m.voice.duration)
+    st.touch(u)
+    await state.clear()
+    await m.answer("✅ Ovozli xabar juftingizga yuborildi.")
+
+
+@dp.message(W.voice)
+async def voice_other(m: Message, state: FSMContext):
+    await m.answer("Iltimos, ovozli xabar yuboring yoki /cancel bilan bekor qiling.")
+
+
+@dp.message(Command("maslahat", "coach"))
+async def coach_cmd(m: Message):
+    """AI munosabat maslahatchisi (premium, kuniga 3 ta)."""
+    u = m.from_user.id
+    if not st.is_prem(u):
+        return await m.answer("💞 AI maslahatchi — premium funksiya 💎")
+    q = (m.text or "").partition(" ")[2].strip()[:400]
+    if not q:
+        return await m.answer("Savolingizni yozing, masalan:\n"
+                              "/maslahat janjalda qanday gaplashsam bo'ladi?")
+    if st.coach_used(u) >= 3:
+        return await m.answer("Bugungi 3 ta savol limiti tugadi. Ertaga davom etamiz 🙂")
+    st.coach_incr(u)
+    await m.answer("💭 O'ylayapman…")
+    ans = None
+    try:
+        ans = await asyncio.wait_for(
+            asyncio.to_thread(ai_helper.coach, q), timeout=25)
+    except Exception:  # noqa: BLE001
+        ans = None
+    if not ans:
+        ans = ("Avval o'z hissiyotingizni ayting: «men ... his qilyapman». "
+               "Keyin juftingizdan nima kerakligini aniq so'rang — bir vaqtda "
+               "bitta mavzu.")
+    await m.answer("💡 " + html.escape(ans))
+
+
 @dp.message(Command("myid"))
 async def myid_cmd(m: Message):
     """Foydalanuvchi o'z Telegram ID'sini bilishi uchun."""
@@ -854,7 +963,8 @@ async def admin(m: Message):
                    f"💌 Xatlar: <b>{s['letters']}</b> (bugun {s['letters_today']})\n"
                    f"🎁 Referral: <b>{s['refs']}</b>\n"
                    f"⏳ Kapsulalar: <b>{s['capsules']}</b> · "
-                   f"🎟 Biletlar: <b>{s['coupons']}</b>\n"
+                   f"🎟 Biletlar: <b>{s['coupons']}</b> · "
+                   f"🎤 Ovozli: <b>{s['voices']}</b>\n"
                    f"📩 Feedback: <b>{s['feedback']}</b> · "
                    f"⚠️ Shikoyat: <b>{s['reports']}</b>\n"
                    f"💎 Premium: <b>{s['prem_active']}</b> faol / {s['prem']} jami")
@@ -1225,6 +1335,10 @@ def qtext(g, idx):
         return f"{a} yoki {b}?", a, b
     if g == "wh":
         return WHO[idx], "Men", "U"
+    if g == "nhi":
+        return NHI[idx], "Ha", "Yo'q"
+    if g == "comp":
+        return COMP[idx], "Ha", "Yo'q"
     if g == "qz":
         return QZ[idx], "Ha", "Yo'q"
     return str((QMAP.get(g) or AB)[idx]), "Ha", "Yo'q"
@@ -1308,8 +1422,12 @@ async def go(c: CallbackQuery, state: FSMContext):
                                    [IB(text="✅ Bajardim", callback_data=f"msd:{g}")]]))
     elif gg["mode"] == "talk":
         await state.set_state(W.dq)
-        q = deep_of_day() if g == "deep" else dq_of_day()
-        head = "💞 Chuqur savol" if g == "deep" else "💬 Bugungi savol"
+        if g == "deep":
+            q, head = deep_of_day(), "💞 Chuqur savol"
+        elif g == "fin":
+            q, head = fin_of_day() + " …", "✍️ Gapni tugat"
+        else:
+            q, head = dq_of_day(), "💬 Bugungi savol"
         await c.message.answer(head + ":\n\n" + q +
                                "\n\nJavobingizni matn ko'rinishida yozing:")
     elif gg["mode"] == "guess":

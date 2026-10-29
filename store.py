@@ -44,11 +44,14 @@ GAMES = {
     "wh": {"name": "Kim ko'proq?", "n": 5, "mode": "match"},
     "ms": {"name": "Kunlik missiya", "n": 1, "mode": "mission"},
     "kq": {"name": "💬 Kunlik savol", "n": 1, "mode": "talk"},
+    "nhi": {"name": "🙈 Men hech qachon...", "n": 5, "mode": "match"},
+    "fin": {"name": "✍️ Gapni tugat", "n": 1, "mode": "talk"},
     "qz": {"name": "Sevgi kvizi", "n": 6, "mode": "match", "prem": True},
     "wyr": {"name": "🤔 Nima bo'lardi?", "n": 5, "mode": "match", "prem": True},
     "td": {"name": "🎭 Haqiqat yoki jasorat", "n": 1, "mode": "mission",
            "prem": True},
     "deep": {"name": "💞 Chuqur savollar", "n": 1, "mode": "talk", "prem": True},
+    "comp": {"name": "🧩 Moslik testi", "n": 6, "mode": "match", "prem": True},
 }
 
 
@@ -629,6 +632,86 @@ def use_coupon(cid, u):
         return c, "ok"
 
 
+# --------------------------- KAYFIYAT -----------------------------------
+MOOD_ICONS = {1: "😢", 2: "😕", 3: "😐", 4: "🙂", 5: "😍"}
+
+
+def set_mood(u, m):
+    """Kunlik kayfiyat (1..5)."""
+    try:
+        m = int(m)
+    except (TypeError, ValueError):
+        return 0
+    if m not in MOOD_ICONS:
+        return 0
+    r.hset(f"mood:{u}", today(), m)
+    r.expire(f"mood:{u}", 400 * 86400)
+    return m
+
+
+def mood_today(u):
+    try:
+        return int(r.hget(f"mood:{u}", today()) or 0)
+    except (TypeError, ValueError):
+        return 0
+
+
+def mood_history(u, days=7):
+    d = r.hgetall(f"mood:{u}")
+    base = now().date()
+    out = []
+    for i in range(days - 1, -1, -1):
+        day = (base - dt.timedelta(i)).isoformat()
+        try:
+            out.append(int(d.get(day) or 0))
+        except (TypeError, ValueError):
+            out.append(0)
+    return out
+
+
+# --------------------------- OVOZLI XAT (premium) -----------------------
+def add_voice(sender, receiver, file_id, duration=0):
+    vid = r.incr("seq:voices")
+    r.hset(f"voice:{vid}", mapping={
+        "from": sender, "to": receiver, "file": file_id,
+        "dur": int(duration or 0), "ts": int(time.time())})
+    r.lpush(f"voices:{sender}", vid)
+    r.lpush(f"voices:{receiver}", vid)
+    r.ltrim(f"voices:{sender}", 0, 49)
+    r.ltrim(f"voices:{receiver}", 0, 49)
+    r.incr(f"cnt:voices:{today()}")
+    return vid
+
+
+def voices_today(u):
+    ids = [int(x) for x in r.lrange(f"voices:{u}", 0, 49)]
+    start = day_start_ts()
+    n = 0
+    for i in ids:
+        v = r.hgetall(f"voice:{i}") or {}
+        try:
+            if int(v.get("from") or 0) == u and int(v.get("ts") or 0) >= start:
+                n += 1
+        except (TypeError, ValueError):
+            continue
+    return n
+
+
+# --------------------------- AI MASLAHATCHI -----------------------------
+def coach_used(u):
+    try:
+        return int(r.get(f"coach:{u}:{today()}") or 0)
+    except (TypeError, ValueError):
+        return 0
+
+
+def coach_incr(u):
+    key = f"coach:{u}:{today()}"
+    n = r.incr(key)
+    r.expire(key, 2 * 86400)
+    return n
+
+
 # ------------------------------- ADMIN ----------------------------------
 def admin_stats():
     t = today()
@@ -662,5 +745,6 @@ def admin_stats():
             "refs": int(r.get("cnt:refs") or 0),
             "capsules": int(r.get("seq:capsules") or 0),
             "coupons": int(r.get("seq:coupons") or 0),
+            "voices": int(r.get("seq:voices") or 0),
             "reports": r.llen("reports"),
             "feedback": r.llen("feedback")}
