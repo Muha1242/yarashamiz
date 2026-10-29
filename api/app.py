@@ -488,6 +488,7 @@ def _capsule_open(u, d):
         return {"ok": False, "err": "none"}
     return {"ok": True, "locked": False, "text": c["text"], "theme": c["theme"],
             "openAt": c["open_at"], "from": c["sender"],
+            "fromName": (st.r.get(f"name:{c['sender']}") or ""),
             "mine": c["sender"] == u}
 
 
