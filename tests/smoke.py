@@ -811,6 +811,96 @@ idx_html = open(os.path.join(ROOT, "mini_app/index.html"), encoding="utf-8").rea
 check("splash logotip (HTML)", 'id="splash"' in idx_html and "splash-logo" in idx_html)
 check("splash CSS/JS", ".splash-screen" in css and "hideSplash" in js)
 
+# ------------- 28. KAYFIYAT / OVOZ / AI / YANGI O'YINLAR ----------------
+check("kayfiyat: set/today", st.set_mood(7901, 4) == 4 and st.mood_today(7901) == 4)
+check("kayfiyat: noto'g'ri qiymat", st.set_mood(7901, 9) == 0)
+check("kayfiyat: tarix", st.mood_history(7901, 3)[-1] == 4)
+check("mood API", api_app._mood(7901, {"m": 5})["mood"] == 5)
+check("mood API xato", api_app._mood(7901, {"m": "x"})["err"] == "bad_mood")
+me_m = api_app._me(7901, {"first_name": "M"})
+check("me: kayfiyat maydonlari", me_m["mood"] == 5 and "moodIcons" in me_m)
+
+for _g in ("nhi", "fin", "comp"):
+    check(f"yangi o'yin {_g}", _g in core.GAMES)
+st.add_pair(7902, 7903)
+g3 = {g["id"]: g for g in api_app._games(7902)["games"]}
+check("nhi savollari", len(g3["nhi"]["qs"]) == 5 and g3["nhi"]["opt"] == ["Ha", "Yo'q"])
+check("comp savollari (premium)", len(g3["comp"]["qs"]) == 6 and g3["comp"]["locked"] is True)
+check("fin savoli", isinstance(g3["fin"]["qs"][0], str) and len(g3["fin"]["qs"][0]) > 5)
+check("nhi bepul javob",
+      api_app._answer(7902, {"g": "nhi", "data": [0, 1, 0, 1, 0]})["waiting"] is True)
+check("comp premium (bepul)",
+      api_app._answer(7902, {"g": "comp", "data": [0] * 6})["err"] == "premium")
+
+orig_coach = core.ai_helper.coach
+core.ai_helper.coach = lambda q: "1) Hissiyotingizni ayting. 2) Tinch o'tiring."
+st.add_prem(7904, 30)
+m_c = FakeOut(7904, text="/maslahat nima qilay?")
+asyncio.run(core.coach_cmd(m_c))
+check("AI maslahat (premium)",
+      any("Hissiyotingizni" in (a or "") for a in m_c.answers), m_c.answers)
+m_f = FakeOut(7905, text="/maslahat x")
+asyncio.run(core.coach_cmd(m_f))
+check("AI maslahat premium gate",
+      any("premium" in (a or "").lower() for a in m_f.answers), m_f.answers)
+for _i in range(2):
+    asyncio.run(core.coach_cmd(FakeOut(7904, text="/maslahat yana")))
+m_lim = FakeOut(7904, text="/maslahat yana")
+asyncio.run(core.coach_cmd(m_lim))
+check("AI maslahat kunlik limit",
+      any("limit" in (a or "").lower() for a in m_lim.answers), m_lim.answers)
+core.ai_helper.coach = orig_coach
+
+
+async def _fake_send_voice(chat_id, file_id, **kw):
+    SENT.append((chat_id, "voice:" + file_id))
+
+
+core.bot.send_voice = _fake_send_voice
+
+
+class FakeVoiceMsg(FakeOut):
+    def __init__(self, uid, file_id="F1", duration=10):
+        super().__init__(uid)
+        self.voice = types.SimpleNamespace(file_id=file_id, duration=duration)
+
+
+class St2:
+    def __init__(self):
+        self.cur = None
+
+    async def set_state(self, s):
+        self.cur = s
+
+    async def get_state(self):
+        return self.cur
+
+    async def clear(self):
+        self.cur = None
+
+    async def update_data(self, **k):
+        pass
+
+
+st.add_pair(7906, 7907)
+m_v0 = FakeOut(7906)
+asyncio.run(core.voice_cmd(m_v0, St2()))
+check("ovozli xat premium",
+      any("premium" in (a or "").lower() for a in m_v0.answers), m_v0.answers)
+st.add_prem(7906, 30)
+SENT.clear()
+asyncio.run(core.voice_cmd(FakeOut(7906), St2()))
+mv = FakeVoiceMsg(7906)
+asyncio.run(core.voice_got(mv, St2()))
+check("ovozli xabar yuborildi",
+      any(cid == 7907 and t.startswith("voice:") for cid, t in SENT)
+      and st.voices_today(7906) == 1, SENT)
+mv_long = FakeVoiceMsg(7906, duration=120)
+asyncio.run(core.voice_got(mv_long, St2()))
+check("uzun ovoz rad etiladi",
+      any("uzun" in (a or "").lower() for a in mv_long.answers))
+check("JS: kayfiyat UI", "moodSection" in js and "Kayfiyat barometri" in js)
+
 print()
 if FAILS:
     print(f"❌ {len(FAILS)} ta tekshiruv yiqildi: {FAILS}")
