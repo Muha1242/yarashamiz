@@ -901,6 +901,16 @@ check("uzun ovoz rad etiladi",
       any("uzun" in (a or "").lower() for a in mv_long.answers))
 check("JS: kayfiyat UI", "moodSection" in js and "Kayfiyat barometri" in js)
 
+# ------------------- 29. XAT OCHILISH SAHNASI ---------------------------
+check("JS: sahna (buildStage/showStage)",
+      "buildStage" in js and "showStage" in js and "lstage" in js)
+check("JS: yurak portlashi", "function burst" in js and "burst()" in js)
+check("JS: xat va kapsula sahnalari", js.count("showStage(") >= 3, js.count("showStage("))
+check("CSS: sahna uslublari",
+      ".lstage" in css and ".lpaper" in css and "paperIn" in css)
+check("CSS: portlash animatsiyasi", ".burst" in css and "burstFly" in css)
+check("cache-busting v7", "app.js?v=7" in idx_html)
+
 print()
 if FAILS:
     print(f"❌ {len(FAILS)} ta tekshiruv yiqildi: {FAILS}")

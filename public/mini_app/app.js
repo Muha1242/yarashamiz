@@ -196,6 +196,60 @@ function mountScene(v, L, opts) {
   return scene;
 }
 
+/* --- xat ochilganda: to'liq ekranli "wow" sahna --- */
+function buildStage(text, theme, actions) {
+  const stage = h('div', 'lstage');
+  stage.appendChild(h('div', 'lglow'));
+  const paper = h('div', 'lpaper');
+  const c = CARD_COLORS[theme] || CARD_COLORS.classic;
+  const ink = CARD_INK[theme] || '#fff3f7';
+  paper.style.background = 'linear-gradient(160deg,' + c[0] + ',' + c[1] + ')';
+  paper.style.color = ink;
+  const p = h('p', 'ltext');
+  let idx = 0;
+  String(text || '').split(/(\s+)/).forEach((w) => {
+    if (!w.trim()) { p.appendChild(document.createTextNode(w)); return; }
+    const s = h('span', 'lword', w);
+    s.style.animationDelay = (0.055 * idx++) + 's';
+    p.appendChild(s);
+  });
+  paper.appendChild(p);
+  paper.appendChild(h('div', 'lfrom', 'Sizga yozilgan ❤️'));
+  stage.appendChild(paper);
+  if (actions) {
+    actions.classList.add('lact');
+    actions.style.display = 'flex';
+    stage.appendChild(actions);
+  }
+  return stage;
+}
+
+function burst() {
+  const box = h('div', 'burst');
+  const colors = ['#ff7aa8', '#f7c98b', '#a06bff', '#ffffff', '#7be0a8'];
+  for (let i = 0; i < 20; i++) {
+    const s = h('i');
+    s.style.background = colors[i % colors.length];
+    s.style.setProperty('--dx', ((Math.random() - 0.5) * 300).toFixed(0) + 'px');
+    s.style.setProperty('--dy', (-90 - Math.random() * 210).toFixed(0) + 'px');
+    s.style.setProperty('--rot', ((Math.random() - 0.5) * 540).toFixed(0) + 'deg');
+    s.style.animationDelay = (Math.random() * 0.16).toFixed(2) + 's';
+    box.appendChild(s);
+  }
+  document.body.appendChild(box);
+  setTimeout(() => { if (box.parentNode) box.parentNode.removeChild(box); }, 1700);
+}
+
+function showStage(v, text, theme, actions) {
+  const stage = buildStage(text, theme, actions);
+  v.appendChild(stage);
+  requestAnimationFrame(() => requestAnimationFrame(() => stage.classList.add('show')));
+  haptic('heavy');
+  burst();
+  setTimeout(() => { try { confetti(); } catch (e) { /* jim */ } }, 260);
+  return stage;
+}
+
 function viewWrite(v) {
   v.innerHTML = '';
   v.appendChild(h('div', 'splash', 'Yuklanmoqda…'));
@@ -500,13 +554,13 @@ function letterOpen(v) {
     const back = h('button', 'btn btn-ghost', 'Orqaga');
     back.onclick = () => { haptic(); box.remove(); menu.style.display = 'flex'; };
     box.appendChild(back);
-    v.appendChild(box);
+    (menu.parentNode || v).appendChild(box);
     ta.focus();
   };
   menu.appendChild(replyBtn);
 
   const saveBtn = h('button', 'btn btn-ghost', '🖼 Rasm qilib saqlash');
-  saveBtn.onclick = () => { haptic(); saveCard(v, LETTER.t, LETTER.theme); };
+  saveBtn.onclick = () => { haptic(); saveCard(menu.parentNode || v, LETTER.t, LETTER.theme); };
   menu.appendChild(saveBtn);
 
   const rep = h('button', 'btn btn-ghost', '⚠️ Shikoyat qilish');
@@ -521,9 +575,8 @@ function letterOpen(v) {
 
   mountScene(v, { t: LETTER.t, theme: LETTER.theme }, {
     after: 'Sizni o\'ylayotgan odam bor ❤️',
-    onOpen: () => { menu.style.display = 'flex'; },
+    onOpen: () => { showStage(v, LETTER.t, LETTER.theme, menu); },
   });
-  v.appendChild(menu);
 }
 
 function sendAnswer(a, o) {
@@ -573,14 +626,22 @@ async function viewCapsuleOpen(v, token) {
     v.appendChild(c);
     return;
   }
+  const actions = h('div');
+  const closeBtn = h('button', 'btn btn-ghost', 'Yopish');
+  closeBtn.onclick = () => {
+    haptic();
+    const st = document.querySelector('.lstage');
+    if (st) {
+      st.classList.remove('show');
+      setTimeout(() => { if (st.parentNode) st.parentNode.removeChild(st); }, 650);
+    }
+  };
+  actions.appendChild(closeBtn);
   mountScene(v, { t: r.text, theme: r.theme }, {
     hint: '✨ Konvertni bosing',
     after: 'Sizga yozilgan xat ❤️',
+    onOpen: () => { showStage(v, r.text, r.theme, actions); },
   });
-  const c = h('div', 'card');
-  c.appendChild(h('h2', '', '⏳ Vaqt kapsulasi ochildi'));
-  c.appendChild(h('p', 'hint', 'Yozilgan sana: ' + fmtDate(r.openAt)));
-  v.appendChild(c);
 }
 
 /* ================= 2. O'YINLAR ================= */

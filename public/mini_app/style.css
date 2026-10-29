@@ -131,7 +131,7 @@ body::before{content:"";position:fixed;inset:-20%;pointer-events:none;z-index:0;
 .price b{display:block;font:800 19px Nunito;color:var(--gold)}
 .price small{font-size:11px;opacity:.7}
 
-#confetti{position:fixed;inset:0;z-index:9;pointer-events:none}
+#confetti{position:fixed;inset:0;z-index:110;pointer-events:none}
 
 /* ===== mavzu (theme) ranglari ===== */
 .card.theme-love{background:rgba(255,77,109,.16);border-color:rgba(255,120,140,.4)}
@@ -574,3 +574,34 @@ body::after{ /* yumshoq vinyetka */
 @keyframes splashOut{to{opacity:0;visibility:hidden}}
 
 
+
+/* ===== XAT OCHILISH SAHNASI (wow effekt) ===== */
+.lstage{position:fixed;inset:0;z-index:95;display:flex;flex-direction:column;align-items:center;
+  padding:calc(26px + env(safe-area-inset-top)) 18px 30px;overflow-y:auto;
+  background:radial-gradient(120% 85% at 50% -5%,rgba(74,29,92,.97),rgba(18,6,28,.985));
+  opacity:0;visibility:hidden;transform:scale(.965);
+  transition:opacity .55s ease,transform .8s cubic-bezier(.2,.8,.2,1),visibility .55s}
+.lstage.show{opacity:1;visibility:visible;transform:none}
+.lglow{position:absolute;inset:-25%;pointer-events:none;
+  background:radial-gradient(circle at 50% 18%,rgba(255,122,168,.3),transparent 58%);
+  animation:aura 9s ease-in-out infinite}
+.lpaper{position:relative;width:min(430px,100%);border-radius:20px;padding:28px 22px 22px;
+  box-shadow:0 34px 80px rgba(0,0,0,.62),inset 0 1px 0 rgba(255,255,255,.28);
+  transform-origin:50% 0;animation:paperIn 1.05s cubic-bezier(.2,.85,.2,1) both}
+@keyframes paperIn{from{opacity:0;transform:translateY(34px) rotateX(14deg) scale(.86)}
+  to{opacity:1;transform:none}}
+.ltext{font-family:Caveat,cursive;font-size:23px;line-height:1.55;margin:0;text-align:center}
+.lword{display:inline-block;opacity:0;transform:translateY(7px);animation:wordIn .5s ease forwards}
+@keyframes wordIn{to{opacity:1;transform:none}}
+.lfrom{margin-top:20px;text-align:center;font:600 11px Nunito;letter-spacing:1.4px;
+  text-transform:uppercase;opacity:.5}
+.lact{width:min(430px,100%);display:flex;flex-direction:column;gap:9px;margin-top:16px;
+  opacity:0;transform:translateY(10px);animation:stageUp .6s ease .55s forwards}
+@keyframes stageUp{to{opacity:1;transform:none}}
+.burst{position:fixed;inset:0;pointer-events:none;z-index:120;overflow:hidden}
+.burst i{position:absolute;left:50%;top:42%;width:9px;height:9px;border-radius:2px;
+  animation:burstFly 1.15s cubic-bezier(.2,.7,.3,1) forwards}
+@keyframes burstFly{
+  0%{transform:translate(-50%,-50%) rotate(0) scale(.6);opacity:1}
+  70%{opacity:1}
+  100%{transform:translate(calc(-50% + var(--dx)),calc(-50% + var(--dy))) rotate(var(--rot)) scale(.85);opacity:0}}
