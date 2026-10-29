@@ -832,8 +832,8 @@ check("nhi bepul javob",
 check("comp premium (bepul)",
       api_app._answer(7902, {"g": "comp", "data": [0] * 6})["err"] == "premium")
 
-orig_coach = core.ai_helper.coach
-core.ai_helper.coach = lambda q: "1) Hissiyotingizni ayting. 2) Tinch o'tiring."
+orig_coach = core.ai_helper.coach_chat
+core.ai_helper.coach_chat = lambda h, q: "1) Hissiyotingizni ayting. 2) Tinch o'tiring."
 st.add_prem(7904, 30)
 m_c = FakeOut(7904, text="/maslahat nima qilay?")
 asyncio.run(core.coach_cmd(m_c))
@@ -849,7 +849,25 @@ m_lim = FakeOut(7904, text="/maslahat yana")
 asyncio.run(core.coach_cmd(m_lim))
 check("AI maslahat kunlik limit",
       any("limit" in (a or "").lower() for a in m_lim.answers), m_lim.answers)
-core.ai_helper.coach = orig_coach
+check("AI suhbat tarixi saqlandi", len(st.coach_history(7904)) >= 4,
+      st.coach_history(7904))
+m_clr = FakeOut(7904, text="/maslahat tozalash")
+asyncio.run(core.coach_cmd(m_clr))
+check("AI suhbat tozalanadi", st.coach_history(7904) == [],
+      st.coach_history(7904))
+
+# ai_helper: tarix promptga qo'shiladi
+_captured = {}
+_orig_ask = core.ai_helper._ask
+def _fake_ask(prompt, n=300):
+    _captured["p"] = prompt
+    return "javob"
+core.ai_helper._ask = _fake_ask
+core.ai_helper.coach("savol", [{"r": "user", "t": "oldingi gap"}])
+check("AI: tarix promptda", "Oldingi suhbat" in _captured.get("p", "")
+      and "oldingi gap" in _captured.get("p", ""))
+core.ai_helper._ask = _orig_ask
+core.ai_helper.coach_chat = orig_coach
 
 
 async def _fake_send_voice(chat_id, file_id, **kw):
@@ -909,7 +927,7 @@ check("JS: xat va kapsula sahnalari", js.count("showStage(") >= 3, js.count("sho
 check("CSS: sahna uslublari",
       ".lstage" in css and ".lpaper" in css and "paperIn" in css)
 check("CSS: portlash animatsiyasi", ".burst" in css and "burstFly" in css)
-check("cache-busting v7", "app.js?v=8" in idx_html)
+check("cache-busting v7", "app.js?v=9" in idx_html)
 
 # ------------------- 30. XAT SAHNASI 2.0 (ovoz/parallaks) ----------------
 check("JS: ochilish ovozi", "playOpenSound" in js and "AudioContext" in js)
@@ -919,11 +937,24 @@ check("JS: 'ochildi' muhr", "lstamp" in js and "OCHILDI" in js)
 check("CSS: zarralar va muhr",
       ".lparts" in css and ".lstamp" in css and "stampIn" in css)
 check("CSS: parallaks (translate)", "--px" in css and "--py" in css)
-check("cache-busting v8", "app.js?v=8" in idx_html)
+check("cache-busting v8", "app.js?v=9" in idx_html)
 check("bot: xat havolasida ism", '"n": st.r.get' in bot_src)
 check("api: kapsula fromName", "fromName" in open(os.path.join(ROOT, "api/app.py"),
                                                    encoding="utf-8").read())
 check("kapsula javobida fromName", "fromName" in api_app._capsule_open(7301, {"t": t_s}))
+
+# ------------------- 31. BIZNING HIKOYA + AI CHAT -----------------------
+check("story: premium gate", api_app._story(7902)["err"] == "premium")
+st.add_prem(7902, 30)
+st.add_prem(7908, 30)
+check("story: juftlik kerak", api_app._story(7908)["err"] == "no_pair")
+_st = api_app._story(7902)
+check("story: maydonlar", _st["ok"] and {"user", "partner", "days", "pts",
+      "streak", "letters", "quotes", "topTheme"} <= set(_st), _st)
+check("JS: hikoya slaydlari",
+      "storySection" in js and "drawStorySlide" in js and "STORY_W" in js)
+check("CSS: hikoya rasmi", ".story-img" in css)
+check("AI: suhbat funksiyasi", hasattr(core.ai_helper, "coach_chat"))
 
 print()
 if FAILS:

@@ -19,7 +19,8 @@ Sevishganlarni yarashtirish uchun Telegram boti — **Vercel'da bepul** ishlaydi
 | 🎮 **O'yinlar (11 xil)** | Bepul: *A yoki B*, *Kim ko'proq?*, *Kunlik missiya*, *Kunlik savol*, **🙈 Men hech qachon…**, **✍️ Gapni tugat**. Premium: *Sevgi kvizi* 💎, **🤔 Nima bo'lardi?** 💎, **🎭 Haqiqat yoki jasorat** 💎, **💞 Chuqur savollar** 💎, **🧩 Moslik testi** 💎 |
 | 💚 **Kayfiyat barometri** | Kuniga 1–5 kayfiyat, juftingiznikini ko‘rish (bepul) |
 | 🎤 **Ovozli xat** 💎 | Botga ovoz yuboring — juftingizga boradi (kuniga 5 ta) |
-| 💞 **AI maslahatchi** 💎 | Munosabat bo‘yicha savolga maslahat (kuniga 3 ta) |
+| 💞 **AI maslahatchi** 💎 | Suhbatni eslab qoladigan murabbiy: savol bering, davom eting (kuniga 3 ta) |
+| 📖 **Bizning hikoya** 💎 | 4 ta chiroyli slayd: tanishuv, raqamlar, so‘zlar, davom — saqlash/ulashish |
 | 🔥 **Kunlik seriya** | Streak + avtomatik eslatmalar (Vercel Cron) |
 | 💌 **Xotiralar** | Yozgan/olgan xatlar tarixi |
 | 🖼 **Rasm kartochka** | Xatni PNG rasm qilib saqlash (Mini App) |
@@ -121,7 +122,8 @@ https://<loyiha>.vercel.app/api/setup?s=<SETUP_KEY>
 | Juftlikka sovg'a | **80 ⭐** | 30 kun |
 
 **Premium beradi:** cheksiz xat · AI yordamchi · 10 premium shablon · **11 o‘yin (5 tasi premium)** ·
-⏳ vaqt kapsulasi · cheksiz sevgi biletlari · **🎤 ovozli xat** · **💞 AI maslahatchi** · cheksiz xotiralar.
+⏳ vaqt kapsulasi · cheksiz sevgi biletlari · **🎤 ovozli xat** · **💞 AI murabbiy (chat)** ·
+**📖 Bizning hikoya** · cheksiz xotiralar.
 
 **Bepul:** kuniga 3 xat, 5 shablon, **6 o‘yin**, kuniga 1 sevgi bileti, kayfiyat barometri.
 

@@ -61,7 +61,7 @@ def compose(sit: str, words: str):
     return text[:400] if text else None
 
 
-COACH_PROMPT = (
+COACH_RULES = (
     "Sen «Yarashamiz» botining munosabat maslahatchisisan. Juftliklarga "
     "arazlarni hal qilishda yordam berasan.\n"
     "Qoidalar:\n"
@@ -70,12 +70,23 @@ COACH_PROMPT = (
     "- ayblamang, «men» tilidan gapirishni o'rgating\n"
     "- agar zo'ravonlik yoki o'z joniga qasd haqida bo'lsa — xavfsizlikni "
     "birinchi o'ringa qo'y va mutaxassisga murojaat qilishni tavsiya qil\n"
-    "- ro'yxat shaklida 2-3 qadam bering\n\n"
-    "Savol: {q}"
+    "- ro'yxat shaklida 2-3 qadam bering\n"
+    "- oldingi suhbatni hisobga ol, takrorlamang"
 )
 
 
-def coach(question: str):
+def coach(question: str, history=None):
     """Munosabat bo'yicha maslahat; muammo bo'lsa None."""
-    text = _ask(COACH_PROMPT.format(q=(question or "")[:400]), 500)
+    parts = [COACH_RULES]
+    if history:
+        parts.append("Oldingi suhbat:")
+        for m in history[-8:]:
+            who = "Foydalanuvchi" if m.get("r") == "user" else "Maslahatchi"
+            parts.append(f"{who}: {m.get('t')}")
+    parts.append(f"Yangi savol: {(question or '')[:400]}")
+    text = _ask("\n".join(parts), 500)
     return text[:900] if text else None
+
+
+def coach_chat(history, question):
+    return coach(question, history)

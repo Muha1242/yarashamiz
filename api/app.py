@@ -368,6 +368,37 @@ def _newletter(u, d):
             "left": left}
 
 
+def _story(u):
+    """Premium: juftlik statistikasi + iqtiboslar (Mini App slaydlari)."""
+    import store as st
+    if not st.is_prem(u):
+        return {"ok": False, "err": "premium"}
+    ps = st.profile_stats(u)
+    p = ps["pair"]
+    if not p:
+        return {"ok": False, "err": "no_pair"}
+    o = st.other(p, u)
+    rows = st.my_library(u, 50)
+    themes, quotes = {}, []
+    for x in rows:
+        themes[x["theme"]] = themes.get(x["theme"], 0) + 1
+        if len(quotes) < 3 and len(x["text"]) >= 15:
+            quotes.append({"t": x["text"][:130], "mine": x["sender"] == u})
+    top = max(themes, key=themes.get) if themes else "classic"
+
+    def name_of(i):
+        return st.r.get(f"name:{i}") or ("Siz" if i == u else "Juftingiz")
+
+    days = max(0, (int(time.time()) - ps["since"]) // 86400) if ps["since"] else 0
+    coupons = sum(1 for c in st.coupons_of(u) if c["from"] == u)
+    return {"ok": True, "user": name_of(u), "partner": name_of(o),
+            "days": days, "pts": ps["pts"], "streak": ps["streak"],
+            "letters": len(rows), "topTheme": top, "quotes": quotes,
+            "capsules": st.r.scard(f"caps:{u}"),
+            "coupons": coupons, "voices": st.r.llen(f"voices:{u}"),
+            "since": ps["since"]}
+
+
 def _mood(u, d):
     """Kunlik kayfiyatni belgilash."""
     import store as st
@@ -556,6 +587,7 @@ ACTIONS = {"me": lambda u, usr, d: _me(u, usr),
            "form": lambda u, usr, d: _form(u, d),
            "remind": lambda u, usr, d: _remind(u, d),
            "mood": lambda u, usr, d: _mood(u, d),
+           "story": lambda u, usr, d: _story(u),
            "capsules": lambda u, usr, d: _capsules(u),
            "capsule_new": lambda u, usr, d: _capsule_new(u, d),
            "capsule_open": lambda u, usr, d: _capsule_open(u, d),
