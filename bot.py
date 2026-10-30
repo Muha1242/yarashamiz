@@ -916,6 +916,50 @@ async def myid_cmd(m: Message):
     await m.answer(f"Sizning Telegram ID: <code>{m.from_user.id}</code>")
 
 
+def weekly_text(s):
+    w, t = s["week"], s["totals"]
+    d1 = dt.datetime.fromisoformat(s["from"]).strftime("%d.%m")
+    d2 = dt.datetime.fromisoformat(s["to"]).strftime("%d.%m")
+    return (
+        f"📊 <b>Haftalik hisobot</b> ({d1}–{d2})\n\n"
+        f"👥 Yangi foydalanuvchi: <b>{w['new']}</b>\n"
+        f"⚡️ Haftada faol: <b>{w['active']}</b>\n"
+        f"❤️ Yangi juftlik: <b>{w['pairs']}</b>\n"
+        f"💌 Yozilgan xat: <b>{w['letters']}</b>\n"
+        f"🎟 Bilet: <b>{w['coupons']}</b> · ⏳ Kapsula: <b>{w['capsules']}</b>\n"
+        f"🎤 Ovozli: <b>{w['voices']}</b> · 🎁 Referral: <b>{w['refs']}</b>\n\n"
+        f"<b>Jami:</b> 👥 {t['users']} · ❤️ {t['pairs']} · 💌 {t['letters']}\n"
+        f"💎 Premium: <b>{t['prem_active']}</b> faol / {t['prem']} jami\n"
+        f"⚠️ Shikoyat: {t['reports']} · 📩 Feedback: {t['feedback']}"
+    )
+
+
+async def send_weekly_report(force=False):
+    """Dushanba kuni 20:00 (cron) — faqat ADMIN_ID ga haftalik hisobot."""
+    if not ADMIN_ID:
+        return False
+    if st.now().weekday() != 0 and not force:   # 0 = dushanba
+        return False
+    key = f"report:week:{st.today()}"
+    if not force and not st.r.set(key, 1, nx=True, ex=8 * 86400):
+        return False
+    s = st.week_stats()
+    await bot.send_message(int(ADMIN_ID), weekly_text(s))
+    return True
+
+
+@dp.message(Command("report", "hisobot"))
+async def report_cmd(m: Message):
+    """Admin uchun: haftalik hisobotni hoziroq yuborish."""
+    if not ADMIN_ID or str(m.from_user.id) != ADMIN_ID:
+        return
+    try:
+        ok = await send_weekly_report(force=True)
+        await m.answer("📊 Hisobot yuborildi." if ok else "Hisobot yuborilmadi.")
+    except Exception as e:  # noqa: BLE001
+        await m.answer("Xatolik: " + html.escape(repr(e)))
+
+
 @dp.message(Command("diag"))
 async def diag_cmd(m: Message):
     """Admin uchun tezkor diagnostika (bot chatida)."""

@@ -377,6 +377,7 @@ def set_ref(new, referrer):
         return False
     r.incr(f"refs:{referrer}")
     r.incr("cnt:refs")
+    r.incr(f"cnt:refs:{today()}")
     return True
 
 
@@ -736,6 +737,43 @@ def coach_clear(u):
 
 
 # ------------------------------- ADMIN ----------------------------------
+def week_stats(days=7):
+    """Oxirgi N kunlik yig'ma statistika + umumiy ko'rsatkichlar."""
+    base = now().date()
+    dates = [(base - dt.timedelta(days=i)).isoformat() for i in range(days)]
+    pipe = r.pipeline()
+    for d in dates:
+        pipe.get(f"cnt:letters:{d}")
+        pipe.get(f"cnt:pairs:{d}")
+        pipe.get(f"cnt:coupons:{d}")
+        pipe.get(f"cnt:capsules:{d}")
+        pipe.get(f"cnt:voices:{d}")
+        pipe.get(f"cnt:refs:{d}")
+    vals = pipe.execute()
+
+    def total(offset):
+        out = 0
+        for i in range(days):
+            try:
+                out += int(vals[i * 6 + offset] or 0)
+            except (TypeError, ValueError):
+                continue
+        return out
+
+    def union(prefix):
+        try:
+            return len(r.sunion(*[f"{prefix}:{d}" for d in dates]) or [])
+        except Exception:  # noqa: BLE001
+            return 0
+
+    return {"from": dates[-1], "to": dates[0],
+            "week": {"new": union("new"), "active": union("active"),
+                     "letters": total(0), "pairs": total(1),
+                     "coupons": total(2), "capsules": total(3),
+                     "voices": total(4), "refs": total(5)},
+            "totals": admin_stats()}
+
+
 def admin_stats():
     t = today()
     prem_all = []
