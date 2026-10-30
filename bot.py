@@ -877,14 +877,19 @@ async def voice_other(m: Message, state: FSMContext):
 
 @dp.message(Command("maslahat", "coach"))
 async def coach_cmd(m: Message):
-    """AI munosabat maslahatchisi (premium, kuniga 3 ta)."""
+    """AI munosabat maslahatchisi (premium, kuniga 3 ta, suhbatni eslab qoladi)."""
     u = m.from_user.id
     if not st.is_prem(u):
         return await m.answer("💞 AI maslahatchi — premium funksiya 💎")
     q = (m.text or "").partition(" ")[2].strip()[:400]
+    if q.lower() in ("tozalash", "clear", "reset", "yangi"):
+        st.coach_clear(u)
+        return await m.answer("🧹 Suhbat tozalandi. Yangi mavzudan boshlaymiz.")
+    hist = st.coach_history(u)
     if not q:
+        tip = ("\n\nSuhbatni tozalash: /maslahat tozalash" if hist else "")
         return await m.answer("Savolingizni yozing, masalan:\n"
-                              "/maslahat janjalda qanday gaplashsam bo'ladi?")
+                              "/maslahat janjalda qanday gaplashsam bo'ladi?" + tip)
     if st.coach_used(u) >= 3:
         return await m.answer("Bugungi 3 ta savol limiti tugadi. Ertaga davom etamiz 🙂")
     st.coach_incr(u)
@@ -892,14 +897,17 @@ async def coach_cmd(m: Message):
     ans = None
     try:
         ans = await asyncio.wait_for(
-            asyncio.to_thread(ai_helper.coach, q), timeout=25)
+            asyncio.to_thread(ai_helper.coach_chat, hist, q), timeout=25)
     except Exception:  # noqa: BLE001
         ans = None
     if not ans:
         ans = ("Avval o'z hissiyotingizni ayting: «men ... his qilyapman». "
                "Keyin juftingizdan nima kerakligini aniq so'rang — bir vaqtda "
                "bitta mavzu.")
-    await m.answer("💡 " + html.escape(ans))
+    st.coach_push(u, "user", q)
+    st.coach_push(u, "model", ans)
+    await m.answer("💡 " + html.escape(ans) +
+                   "\n\n<i>Yangi mavzu boshlasangiz: /maslahat tozalash</i>")
 
 
 @dp.message(Command("myid"))

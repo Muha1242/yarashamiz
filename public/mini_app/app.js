@@ -56,17 +56,20 @@ const h = (tag, cls, txt) => { const e = document.createElement(tag); if (cls) e
 const haptic = (s) => { try { tg.HapticFeedback.impactOccurred(s || 'light'); } catch (e) {} };
 
 let splashDone = false;
+const SPLASH_START = Date.now();
+const SPLASH_MIN = 1900;      // animatsiya ko'rinishi uchun minimal vaqt (ms)
 function hideSplash() {
   if (splashDone) return;
   splashDone = true;
   const s = document.getElementById('splash');
   if (!s) return;
+  const wait = Math.max(250, SPLASH_MIN - (Date.now() - SPLASH_START));
   setTimeout(() => {
     s.classList.add('hide');
     setTimeout(() => { if (s.parentNode) s.parentNode.removeChild(s); }, 700);
-  }, 300);
+  }, wait);
 }
-setTimeout(hideSplash, 4200);
+setTimeout(hideSplash, 6000);   // zaxira: JS xato bo'lsa ham yopiladi
 
 /* ================= XATOLAR ================= */
 window.addEventListener('error', () => {
@@ -866,6 +869,185 @@ async function submit(g, data) {
   v.appendChild(c); v.appendChild(back);
 }
 
+/* ================= BIZNING HIKOYA (premium slaydlar) ================= */
+const STORY_W = 1080;
+const STORY_H = 1350;
+
+function storyCanvas(theme) {
+  const cv = document.createElement('canvas');
+  cv.width = STORY_W; cv.height = STORY_H;
+  const ctx = cv.getContext('2d');
+  const c = CARD_COLORS[theme] || CARD_COLORS.classic;
+  const g = ctx.createLinearGradient(0, 0, STORY_W, STORY_H);
+  g.addColorStop(0, c[0]); g.addColorStop(1, c[1]);
+  ctx.fillStyle = g; ctx.fillRect(0, 0, STORY_W, STORY_H);
+  const rg = ctx.createRadialGradient(STORY_W / 2, 180, 40, STORY_W / 2, 180, 900);
+  rg.addColorStop(0, 'rgba(255,122,168,.32)'); rg.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = rg; ctx.fillRect(0, 0, STORY_W, STORY_H);
+  ctx.strokeStyle = 'rgba(255,255,255,.22)'; ctx.lineWidth = 3;
+  ctx.strokeRect(36, 36, STORY_W - 72, STORY_H - 72);
+  return { cv, ctx };
+}
+
+function storyCenter(ctx, text, y, font, fill, maxW, lh) {
+  ctx.font = font;
+  ctx.fillStyle = fill;
+  ctx.textAlign = 'center';
+  const lines = wrapLines(ctx, text, maxW || STORY_W - 180);
+  let yy = y;
+  lines.forEach((ln) => { ctx.fillText(ln, STORY_W / 2, yy); yy += (lh || 70); });
+  return yy;
+}
+
+function storyStat(ctx, x, y, w, h, value, label) {
+  ctx.fillStyle = 'rgba(255,255,255,.07)';
+  ctx.strokeStyle = 'rgba(255,255,255,.18)';
+  ctx.lineWidth = 2;
+  const r = 28;
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y, x + w, y + h, r);
+  ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r);
+  ctx.arcTo(x, y, x + w, y, r);
+  ctx.closePath();
+  ctx.fill(); ctx.stroke();
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#f7c98b';
+  ctx.font = '800 72px Nunito, sans-serif';
+  ctx.fillText(String(value), x + w / 2, y + 92);
+  ctx.fillStyle = 'rgba(255,255,255,.72)';
+  ctx.font = '600 26px Nunito, sans-serif';
+  ctx.fillText(label, x + w / 2, y + 138);
+}
+
+function drawStorySlide(s, idx) {
+  const { cv, ctx } = storyCanvas(s.topTheme);
+  ctx.textAlign = 'center';
+  if (idx === 0) {
+    ctx.font = '120px Nunito, sans-serif';
+    ctx.fillText('💌', STORY_W / 2, 380);
+    const tg = ctx.createLinearGradient(STORY_W * 0.2, 0, STORY_W * 0.8, 0);
+    tg.addColorStop(0, '#ffffff'); tg.addColorStop(.55, '#f7c98b'); tg.addColorStop(1, '#ff7aa8');
+    ctx.fillStyle = tg;
+    ctx.font = '700 96px Caveat, cursive';
+    ctx.fillText('Bizning hikoya', STORY_W / 2, 540);
+    ctx.fillStyle = '#fff6fa';
+    ctx.font = '700 46px Nunito, sans-serif';
+    ctx.fillText(s.user + ' & ' + s.partner, STORY_W / 2, 660);
+    ctx.fillStyle = '#f7c98b';
+    ctx.font = '700 40px Nunito, sans-serif';
+    ctx.fillText(s.days + ' kun birgamiz', STORY_W / 2, 730);
+    ctx.fillStyle = 'rgba(255,255,255,.55)';
+    ctx.font = '600 26px Nunito, sans-serif';
+    ctx.fillText('Yarashamiz ❤️', STORY_W / 2, STORY_H - 120);
+  } else if (idx === 1) {
+    ctx.fillStyle = '#fff6fa';
+    ctx.font = '700 64px Caveat, cursive';
+    ctx.fillText('Raqamlarda biz', STORY_W / 2, 220);
+    const w = 430, h = 210, gap = 40;
+    const x1 = (STORY_W - (w * 2 + gap)) / 2;
+    storyStat(ctx, x1, 330, w, h, s.letters, 'xat');
+    storyStat(ctx, x1 + w + gap, 330, w, h, s.pts, 'ball');
+    storyStat(ctx, x1, 330 + h + gap, w, h, s.streak, 'kun seriya');
+    storyStat(ctx, x1 + w + gap, 330 + h + gap, w, h, s.coupons, 'bilet');
+    ctx.fillStyle = 'rgba(255,255,255,.7)';
+    ctx.font = '600 30px Nunito, sans-serif';
+    ctx.fillText('Kapsulalar: ' + s.capsules + ' · Ovozli: ' + s.voices,
+      STORY_W / 2, STORY_H - 250);
+    ctx.fillStyle = 'rgba(255,255,255,.45)';
+    ctx.font = '600 24px Nunito, sans-serif';
+    ctx.fillText('Yarashamiz ❤️', STORY_W / 2, STORY_H - 120);
+  } else if (idx === 2) {
+    ctx.fillStyle = '#fff6fa';
+    ctx.font = '700 64px Caveat, cursive';
+    ctx.fillText('Sizning so‘zlaringiz', STORY_W / 2, 220);
+    const quotes = (s.quotes || []).slice(0, 2);
+    if (!quotes.length) {
+      storyCenter(ctx, 'Hali xat yozilmagan — birinchisini yozing!', 520,
+        '600 40px Nunito, sans-serif', 'rgba(255,255,255,.75)', STORY_W - 220, 60);
+    }
+    let y = 380;
+    quotes.forEach((q) => {
+      storyCenter(ctx, '«' + q.t + '»', y, '600 44px Caveat, cursive',
+        '#fff6fa', STORY_W - 220, 62);
+      ctx.fillStyle = 'rgba(247,201,139,.8)';
+      ctx.font = '600 24px Nunito, sans-serif';
+      ctx.fillText(q.mine ? '— siz' : '— juftingiz', STORY_W / 2, y + 40);
+      y += 300;
+    });
+    ctx.fillStyle = 'rgba(255,255,255,.45)';
+    ctx.font = '600 24px Nunito, sans-serif';
+    ctx.fillText('Yarashamiz ❤️', STORY_W / 2, STORY_H - 120);
+  } else {
+    ctx.font = '120px Nunito, sans-serif';
+    ctx.fillText('❤️', STORY_W / 2, 480);
+    ctx.fillStyle = '#fff6fa';
+    ctx.font = '700 76px Caveat, cursive';
+    ctx.fillText('Davom etamiz', STORY_W / 2, 640);
+    ctx.fillStyle = '#f7c98b';
+    ctx.font = '700 34px Nunito, sans-serif';
+    ctx.fillText(s.days + ' kun · ' + s.pts + ' ball · ' + s.streak + ' kun seriya',
+      STORY_W / 2, 720);
+    ctx.fillStyle = 'rgba(255,255,255,.55)';
+    ctx.font = '600 26px Nunito, sans-serif';
+    ctx.fillText('Yarashamiz bot · ' + new Date().toLocaleDateString('uz'),
+      STORY_W / 2, STORY_H - 140);
+  }
+  return cv.toDataURL('image/png');
+}
+
+async function storySection(v) {
+  const card = h('div', 'card');
+  card.appendChild(h('h2', '', '📖 Bizning hikoya'));
+  if (!ME || !ME.prem) {
+    card.appendChild(h('p', '', 'Juftligingiz tarixini chiroyli 4 ta slaydda saqlang.'));
+    card.appendChild(h('p', 'hint', 'Premium funksiya 💎 — botdagi «💎 Premium».'));
+    v.appendChild(card);
+    return;
+  }
+  if (!ME.pair) {
+    card.appendChild(h('p', 'hint', 'Hikoya uchun avval juftingiz bilan yarashing.'));
+    v.appendChild(card);
+    return;
+  }
+  card.appendChild(h('p', 'hint', '4 ta slayd: tanishuv, raqamlar, so‘zlar, davom.'));
+  const btn = h('button', 'btn btn-main', '✨ Hikoyani yaratish');
+  btn.style.marginTop = '10px';
+  const out = h('div');
+  out.style.display = 'none';
+  btn.onclick = async () => {
+    btn.disabled = true;
+    btn.textContent = 'Yaratilmoqda…';
+    const r = await api('story');
+    btn.disabled = false;
+    btn.textContent = '✨ Hikoyani yaratish';
+    if (!r.ok) return alert(mapErr(r.err));
+    try { await document.fonts.ready; } catch (e) { /* jim */ }
+    out.style.display = 'block';
+    out.innerHTML = '';
+    out.appendChild(h('h2', '', '🖼 Tayyor!'));
+    for (let i = 0; i < 4; i++) {
+      const url = drawStorySlide(r, i);
+      const img = h('img', 'story-img');
+      img.src = url;
+      out.appendChild(img);
+      const a = h('a', 'btn btn-ghost', '⬇️ ' + (i + 1) + '-slaydni saqlash');
+      a.href = url;
+      a.download = 'yarashamiz-hikoya-' + (i + 1) + '.png';
+      a.style.cssText = 'display:block;text-align:center;text-decoration:none;margin:8px 0 14px';
+      out.appendChild(a);
+    }
+    out.appendChild(h('p', 'hint', 'Rasmni uzoq bosib «Saqlash»ni tanlang'));
+    out.scrollIntoView({ behavior: 'smooth' });
+    haptic('medium');
+    confetti();
+  };
+  card.appendChild(btn);
+  card.appendChild(out);
+  v.appendChild(card);
+}
+
 /* ================= 3. HISOBIM ================= */
 const MOOD = { 1: '😢', 2: '😕', 3: '😐', 4: '🙂', 5: '😍' };
 
@@ -1063,6 +1245,7 @@ async function viewMe(v) {
   v.appendChild(rf);
 
   await couponsSection(v);
+  await storySection(v);
 
   const tip = h('div', 'card');
   tip.appendChild(h('h2', '', '💡 Bugungi savol'));

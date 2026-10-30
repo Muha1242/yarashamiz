@@ -712,6 +712,29 @@ def coach_incr(u):
     return n
 
 
+def coach_history(u, limit=8):
+    """Oxirgi suhbat (role/text)."""
+    out = []
+    for x in r.lrange(f"coach:h:{u}", -limit, -1):
+        try:
+            d = json.loads(x)
+            if isinstance(d, dict) and d.get("t"):
+                out.append(d)
+        except Exception:  # noqa: BLE001
+            continue
+    return out
+
+
+def coach_push(u, role, text):
+    r.rpush(f"coach:h:{u}", json.dumps({"r": role, "t": str(text)[:600]}))
+    r.ltrim(f"coach:h:{u}", -12, -1)
+    r.expire(f"coach:h:{u}", 2 * 86400)
+
+
+def coach_clear(u):
+    r.delete(f"coach:h:{u}")
+
+
 # ------------------------------- ADMIN ----------------------------------
 def admin_stats():
     t = today()
