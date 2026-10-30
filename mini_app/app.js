@@ -56,17 +56,20 @@ const h = (tag, cls, txt) => { const e = document.createElement(tag); if (cls) e
 const haptic = (s) => { try { tg.HapticFeedback.impactOccurred(s || 'light'); } catch (e) {} };
 
 let splashDone = false;
+const SPLASH_START = Date.now();
+const SPLASH_MIN = 1900;      // animatsiya ko'rinishi uchun minimal vaqt (ms)
 function hideSplash() {
   if (splashDone) return;
   splashDone = true;
   const s = document.getElementById('splash');
   if (!s) return;
+  const wait = Math.max(250, SPLASH_MIN - (Date.now() - SPLASH_START));
   setTimeout(() => {
     s.classList.add('hide');
     setTimeout(() => { if (s.parentNode) s.parentNode.removeChild(s); }, 700);
-  }, 300);
+  }, wait);
 }
-setTimeout(hideSplash, 4200);
+setTimeout(hideSplash, 6000);   // zaxira: JS xato bo'lsa ham yopiladi
 
 /* ================= XATOLAR ================= */
 window.addEventListener('error', () => {

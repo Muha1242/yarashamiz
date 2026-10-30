@@ -927,7 +927,7 @@ check("JS: xat va kapsula sahnalari", js.count("showStage(") >= 3, js.count("sho
 check("CSS: sahna uslublari",
       ".lstage" in css and ".lpaper" in css and "paperIn" in css)
 check("CSS: portlash animatsiyasi", ".burst" in css and "burstFly" in css)
-check("cache-busting v7", "app.js?v=9" in idx_html)
+check("cache-busting v7", "app.js?v=10" in idx_html)
 
 # ------------------- 30. XAT SAHNASI 2.0 (ovoz/parallaks) ----------------
 check("JS: ochilish ovozi", "playOpenSound" in js and "AudioContext" in js)
@@ -937,7 +937,7 @@ check("JS: 'ochildi' muhr", "lstamp" in js and "OCHILDI" in js)
 check("CSS: zarralar va muhr",
       ".lparts" in css and ".lstamp" in css and "stampIn" in css)
 check("CSS: parallaks (translate)", "--px" in css and "--py" in css)
-check("cache-busting v8", "app.js?v=9" in idx_html)
+check("cache-busting v8", "app.js?v=10" in idx_html)
 check("bot: xat havolasida ism", '"n": st.r.get' in bot_src)
 check("api: kapsula fromName", "fromName" in open(os.path.join(ROOT, "api/app.py"),
                                                    encoding="utf-8").read())
@@ -955,6 +955,13 @@ check("JS: hikoya slaydlari",
       "storySection" in js and "drawStorySlide" in js and "STORY_W" in js)
 check("CSS: hikoya rasmi", ".story-img" in css)
 check("AI: suhbat funksiyasi", hasattr(core.ai_helper, "coach_chat"))
+
+# ------------------- 32. SPLASH LOGO v2 ---------------------------------
+check("splash: yurak + konvert logotipi",
+      "sp-heart" in idx_html and "sp-env2" in idx_html and "sp-halo" in idx_html)
+check("splash: minimal ko'rish vaqti", "SPLASH_MIN" in js and "1900" in js)
+check("splash: halo animatsiyasi", ".sp-halo" in css and "haloIn" in css)
+check("splash: zaxira yopilish (6s)", "splashOut .7s ease 6s" in css)
 
 print()
 if FAILS:
