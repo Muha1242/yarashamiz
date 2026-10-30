@@ -1,0 +1,166 @@
+{
+ "daily": [
+  {
+   "type": "text",
+   "text": "💌 <b>Kichik odat, katta natija</b>\n\nHar kuni juftingizga bitta savol bering: «Bugun seni nima xursand qildi?»\n\n15 daqiqa diqqat — bir oylik arazdan ko‘ra kuchliroq."
+  },
+  {
+   "type": "text",
+   "text": "🌙 <b>Arazda 24 soat qoidasi</b>\n\nJanjalni bir kunga cho‘zmang. 24 soat ichida:\n1) hissiyotingizni ayting\n2) ayblamasdan gapiring\n3) birgalikda yechim tanlang.\n\nErtaga qoldirilgan araz 2 barobar og‘irlashadi."
+  },
+  {
+   "type": "poll",
+   "text": "Sizning sevgi tilingiz qaysi?",
+   "options": [
+    "So‘zlar",
+    "Birga vaqt",
+    "Sovg‘a",
+    "Yordam",
+    "Tegish"
+   ]
+  },
+  {
+   "type": "text",
+   "text": "⏳ <b>Vaqt kapsulasi</b>\n\nKelajakdagi sanaga xat qulflang — masalan, 6 oydan keyin. Vaqti kelganda bot o‘zi ochadi va ikkalangizga xabar beradi.\n\nBu — hozirgi hislaringizni kelajakka sovg‘a qilish."
+  },
+  {
+   "type": "text",
+   "text": "❤️ <b>Sevgi — bu har kuni tanlash</b>\n\nBir marta «sevaman» deyish yetarli emas. Har kuni kichik tanlov: telefonni qo‘yish, quloq solish, choy tayyorlash.\n\nBugun qaysi tanlovni qildingiz?"
+  },
+  {
+   "type": "text",
+   "text": "🗣 <b>«Men» tilida gapiring</b>\n\n❌ «Sen hech qachon eshitmaysan»\n✅ «Men gapimni eshitilishini xohlayman»\n\nAyblov emas — ehtiyoj. Bu janjalni suhbatga aylantiradi."
+  },
+  {
+   "type": "text",
+   "text": "🎤 <b>Ovozli xat</b>\n\nMatnda aytish qiyin bo‘lgan narsani ovozda ayting. Botda <b>/voice</b> → ovoz yuboring, juftingizga boradi.\n\nPremium imkoniyat 💎"
+  },
+  {
+   "type": "poll",
+   "text": "Nima muhimroq?",
+   "options": [
+    "Qimmat sovg‘a",
+    "Birga o‘tkazilgan vaqt",
+    "Ikkalasi ham"
+   ]
+  },
+  {
+   "type": "text",
+   "text": "📱 <b>Ilova — hammasi bir joyda</b>\n\nXat, o‘yinlar, kayfiyat, kapsula, biletlar.\nBotda <b>/app</b> → «📱 Ilovani ochish».\n\nBugun kayfiyatingizni belgiladingizmi?"
+  },
+  {
+   "type": "text",
+   "text": "☕️ <b>10 daqiqa telefonsiz</b>\n\nKuniga 10 daqiqa: telefonni boshqa xonaga qo‘ying va faqat bir-biringizga qarang.\n\nBu kichik mashq ishonchni sezilarli oshiradi."
+  },
+  {
+   "type": "text",
+   "text": "💬 <b>Kunlik savol</b>\n\nBirinchi uchrashuvingiz qanday o‘tgan? Eng kutilmagan lahzani eslang va juftingizga yozing.\n\nXotiralar — eng arzon sovg‘a."
+  },
+  {
+   "type": "text",
+   "text": "🎮 <b>11 o‘yin</b>\n\nA yoki B · Kim ko‘proq? · Haqiqat yoki jasorat · Chuqur savollar · Moslik testi...\n\nBall faqat ikkalangiz ham o‘ynasangiz qo‘shiladi.\nBot: /app → O‘yinlar"
+  },
+  {
+   "type": "text",
+   "text": "🌱 <b>Araz — eshik, devor emas</b>\n\nAraz ko‘pincha «meni eshit» degan signal. Eshikni oching: «Nima bo‘ldi? Men eshitishga tayyorman».\n\nDevor qursangiz, ichkarida ikkalangiz ham qolasiz."
+  },
+  {
+   "type": "text",
+   "text": "💌 <b>Kechirim so‘rash formulasi</b>\n\n1) Nima qilganimni ayting\n2) U sizga qanday ta’sir qilganini tan oling\n3) nima o‘zgarishini ayting\n4) «Kechirasanmi?» deb so‘rang.\n\nUzr — tan olish, oqlanish emas."
+  },
+  {
+   "type": "text",
+   "text": "🎁 <b>Do‘stni taklif qiling</b>\n\nDo‘stingizni botga taklif qilsangiz: har biri uchun +10 ball, 3 ta uchun 7 kun Premium.\n\nBot: /invite"
+  },
+  {
+   "type": "text",
+   "text": "🤔 <b>Rashq bilan ishlash</b>\n\nRashqni ayblovga aylantirmang: «Men o‘zimni ishonchsiz his qilyapman, menga bir oz tasdiq kerak».\n\nBu — talab emas, ehtiyoj."
+  },
+  {
+   "type": "text",
+   "text": "💞 <b>AI murabbiy</b>\n\nSavolingizga maslahat: <b>/maslahat</b> + savol. Suhbatni eslab qoladi, kuniga 3 ta.\n\nPremium 💎"
+  },
+  {
+   "type": "text",
+   "text": "✨ <b>Kunlik savol</b>\n\nKelajakda birga qilmoqchi bo‘lgan 3 ta ishingizni yozing.\n\nKichik ro‘yxat — katta reja boshlanishi."
+  },
+  {
+   "type": "text",
+   "text": "📖 <b>Bizning hikoya</b>\n\nBirga kunlar, xatlar, ballar — 4 ta chiroyli slayd.\n\nHisobim → «Bizning hikoya» (Premium 💎)"
+  },
+  {
+   "type": "text",
+   "text": "🫶 <b>Minnatdorchilik — 3 ta narsa</b>\n\nBugun juftingizda qadrlaydigan 3 narsani ayting.\n\nTadqiqotlar: minnatdorchilik munosabat qoniqishini oshiradi."
+  },
+  {
+   "type": "text",
+   "text": "📵 <b>Telefonni stolga qo‘ying</b>\n\nBirgalikda ovqatlanayotganda telefonni ko‘rinmas joyga qo‘ying.\n\nDiqqat — eng qimmat sovg‘a."
+  },
+  {
+   "type": "poll",
+   "text": "Haftada necha marta uchrashasiz?",
+   "options": [
+    "Har kuni",
+    "3-4 marta",
+    "1-2 marta",
+    "Kamroq"
+   ]
+  },
+  {
+   "type": "text",
+   "text": "🌙 <b>Kechki suhbat</b>\n\nYotishdan oldin 5 daqiqa: «Bugun seni nima xursand qildi?» va «Ertaga nima kerak?»\n\nBu ikki savol ko‘p janjallarning oldini oladi."
+  },
+  {
+   "type": "text",
+   "text": "💌 <b>Xat yozish</b>\n\nAytish qiyin bo‘lsa — yozing. 300 belgi yetarli.\n\nBotda /app → Xat yozish → havolani juftingizga yuboring."
+  },
+  {
+   "type": "text",
+   "text": "🎟 <b>Sevgi biletlari</b>\n\n«Kino tanlash huquqi», «Massaj», «Kechki ovqat» — bir marta ishlatiladigan vaucherlar.\n\nHisobim → Biletlar (bepul: 1/kun)"
+  },
+  {
+   "type": "text",
+   "text": "🌟 <b>Kichik syurpriz</b>\n\nQimmat sovg‘a shart emas: sevimli shokolad, qo‘lda yozilgan eslatma, kutilmagan qo‘ng‘iroq.\n\nSyurpriz — «seni o‘yladim» degani."
+  },
+  {
+   "type": "text",
+   "text": "😂 <b>Kunlik savol</b>\n\nJuftingiz sizni eng ko‘p kuldirgan lahza qaysi?\n\nUni eslab, bugun yana kuling."
+  },
+  {
+   "type": "text",
+   "text": "🎨 <b>15 shablon</b>\n\nKlassik, Sevgi, Tun, Oltin, Neon, Marmar, Qog‘oz...\n\nHar kayfiyatga mos dizayn. Xat yozganda tanlang."
+  },
+  {
+   "type": "text",
+   "text": "🌿 <b>Birga o‘sish</b>\n\nMunosabat — natija emas, jarayon. Har kuni 1% yaxshilash bir yilda 37 barobar."
+  },
+  {
+   "type": "text",
+   "text": "📱 <b>Qaytish vaqti</b>\n\nBugun ilovaga kirib: kayfiyatni belgilang, bitta o‘yin o‘ynang, seriyani saqlang.\n\nBot: /app"
+  }
+ ],
+ "weekly": [
+  {
+   "type": "text",
+   "text": "📊 <b>Hafta yakuni</b>\n\nBu hafta juftingiz bilan qanday o‘tdi?\n\n1) eng yaxshi lahza\n2) bitta yaxshilash kerak bo‘lgan narsa\n3) keyingi hafta uchun bitta reja.\n\nBirgalikda yozib qo‘ying — farqni ko‘rasiz."
+  },
+  {
+   "type": "text",
+   "text": "💞 <b>Hafta savoli</b>\n\n«Bu hafta men senga qanday yordam bera oldim?»\n\nJavobni eshitib, rahmat ayting. Tanqid qilmang."
+  },
+  {
+   "type": "poll",
+   "text": "Bu hafta munosabatingiz qanday o‘tdi?",
+   "options": [
+    "Ajoyib",
+    "Yaxshi",
+    "O‘rtacha",
+    "Qiyin"
+   ]
+  },
+  {
+   "type": "text",
+   "text": "🔥 <b>Seriyani saqlang</b>\n\nHar kuni kichik qadam: savol, o‘yin yoki xat.\n\n7 kun — odat, 30 kun — natija.\nBot: /app"
+  }
+ ]
+}

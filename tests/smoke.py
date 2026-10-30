@@ -985,6 +985,29 @@ m_rep = FakeOut(1, text="/report")
 asyncio.run(core.report_cmd(m_rep))
 check("haftalik: begona /report olmaydi", m_rep.answers == [], m_rep.answers)
 
+# ------------------- 34. KANAL KONTENTI / KUNLIK POST -------------------
+import importlib  # noqa: E402
+_ch = json.load(open(os.path.join(ROOT, "content/channel_posts.json"), encoding="utf-8"))
+check("kanal: 30 kunlik kontent", len(_ch["daily"]) >= 30 and len(_ch["weekly"]) >= 4,
+      (len(_ch["daily"]), len(_ch["weekly"])))
+check("kanal: matnlar to'liq", all((p.get("text") or "").strip() for p in _ch["daily"]))
+check("kanal: poll variantlari",
+      all(len(p.get("options") or []) >= 2
+          for p in _ch["daily"] if p.get("type") == "poll"))
+
+os.environ["CRON_SECRET"] = "test-secret"
+import api.channel as ch  # noqa: E402
+importlib.reload(ch)
+_it, _kind, _idx, _day = ch._pick(dt.datetime(2026, 11, 2, 9, 0))
+check("kanal: dushanba weekly", _kind == "weekly" and _day == "2026-11-02")
+_it2, _kind2, _idx2, _day2 = ch._pick(dt.datetime(2026, 11, 3, 9, 0))
+check("kanal: seshanba daily", _kind2 == "daily" and _day2 == "2026-11-03")
+check("kanal: kalitsiz rad", ch._key_ok("/api/channel", {}) is False)
+check("kanal: kalit bilan", ch._key_ok("/api/channel?s=test-secret", {}) is True)
+os.environ.pop("CRON_SECRET", None)
+check("kanal: vercel cron", any(c.get("path") == "/api/channel"
+      for c in json.load(open(os.path.join(ROOT, "vercel.json")))["crons"]))
+
 print()
 if FAILS:
     print(f"❌ {len(FAILS)} ta tekshiruv yiqildi: {FAILS}")
