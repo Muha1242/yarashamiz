@@ -4,7 +4,8 @@
     { "source": "/yarashamiz", "destination": "/mini_app/", "permanent": false }
   ],
   "crons": [
-    { "path": "/api/cron", "schedule": "0 15 * * *" }
+    { "path": "/api/cron", "schedule": "0 15 * * *" },
+    { "path": "/api/channel", "schedule": "0 4 * * *" }
   ],
   "functions": {
     "api/*.py": { "maxDuration": 60 }
