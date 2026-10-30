@@ -963,6 +963,28 @@ check("splash: minimal ko'rish vaqti", "SPLASH_MIN" in js and "1900" in js)
 check("splash: halo animatsiyasi", ".sp-halo" in css and "haloIn" in css)
 check("splash: zaxira yopilish (6s)", "splashOut .7s ease 6s" in css)
 
+# ------------------- 33. HAFTALIK HISOBOT (admin) -----------------------
+_ws = st.week_stats()
+check("haftalik: maydonlar", {"week", "totals", "from", "to"} <= set(_ws))
+check("haftalik: matn",
+      all(x in core.weekly_text(_ws) for x in ("Haftalik", "Yangi", "Premium")))
+_saved_admin = core.ADMIN_ID
+_saved_now = st.now
+core.ADMIN_ID = "7009"
+st.now = lambda: dt.datetime(2026, 11, 2, 20, 0)      # dushanba
+SENT.clear()
+_ok1 = asyncio.run(core.send_weekly_report())
+_ok2 = asyncio.run(core.send_weekly_report())
+_ok3 = asyncio.run(core.send_weekly_report(force=True))
+check("haftalik: yuborildi", bool(_ok1) and any(c == 7009 for c, _ in SENT), SENT)
+check("haftalik: takrorlanmaydi", _ok2 is False)
+check("haftalik: force ishlaydi", _ok3 is True)
+core.ADMIN_ID = _saved_admin
+st.now = _saved_now
+m_rep = FakeOut(1, text="/report")
+asyncio.run(core.report_cmd(m_rep))
+check("haftalik: begona /report olmaydi", m_rep.answers == [], m_rep.answers)
+
 print()
 if FAILS:
     print(f"❌ {len(FAILS)} ta tekshiruv yiqildi: {FAILS}")

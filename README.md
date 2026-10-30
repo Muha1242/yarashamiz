@@ -32,6 +32,7 @@ Sevishganlarni yarashtirish uchun Telegram boti — **Vercel'da bepul** ishlaydi
 | 🏆 **Yutuqlar** | Badge tizimi |
 | 💎 **Premium** | Telegram Stars (XTR) + juftlikka sovg'a |
 | 📊 **/admin** | Statistika: DAU, yangi, xat/juftlik bugun, referral, shikoyat (faqat `ADMIN_ID` uchun) |
+| 📈 **Haftalik hisobot** | Har dushanba 20:00 da faqat sizga: yangi/faol, juftlik, xat, bilet, kapsula, ovoz, referral, premium |
 
 ---
 
@@ -159,6 +160,7 @@ python bot.py
 | `/cancel` | Joriy amalni bekor qilish |
 | `/admin` | Statistika (faqat `ADMIN_ID`) |
 | `/diag` | 🩺 Diagnostika: Redis, token, webhook, oxirgi xato (faqat `ADMIN_ID`) |
+| `/report` | 📊 Haftalik hisobotni hoziroq yuborish (faqat `ADMIN_ID`) |
 
 `/api/setup` ni bir marta ochganda bot menyusi, qisqa tavsif va to'liq tavsif ham
 avtomatik o'rnatiladi.

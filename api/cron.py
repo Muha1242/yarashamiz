@@ -84,11 +84,16 @@ def _run() -> dict:
                 await core.bot.session.close()
             except Exception:
                 pass
-        return sent, failed, len(pairs), capped
+        weekly = False
+        try:
+            weekly = await core.send_weekly_report()
+        except Exception:  # noqa: BLE001
+            pass
+        return sent, failed, len(pairs), capped, weekly
 
-    sent, failed, total, capped = asyncio.run(go())
+    sent, failed, total, capped, weekly = asyncio.run(go())
     return {"ok": True, "job": "reminders", "sent": sent, "failed": failed,
-            "total": total, "capped": capped}
+            "total": total, "capped": capped, "weekly": weekly}
 
 
 class handler(BaseHTTPRequestHandler):
