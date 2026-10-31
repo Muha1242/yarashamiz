@@ -993,6 +993,12 @@ check("kanal: 30 kunlik kontent", len(_ch["daily"]) >= 30 and len(_ch["weekly"])
 check("kanal: hafta kontenti qo'shilgan (37+5)",
       len(_ch["daily"]) >= 37 and len(_ch["weekly"]) >= 5,
       (len(_ch["daily"]), len(_ch["weekly"])))
+check("kanal: 2-batch (47+6)",
+      len(_ch["daily"]) >= 47 and len(_ch["weekly"]) >= 6,
+      (len(_ch["daily"]), len(_ch["weekly"])))
+check("kanal: matnlar takrorlanmaydi",
+      len({p["text"].strip() for p in _ch["daily"] + _ch["weekly"]})
+      == len(_ch["daily"]) + len(_ch["weekly"]))
 check("kanal: matnlar to'liq", all((p.get("text") or "").strip() for p in _ch["daily"]))
 check("kanal: poll variantlari",
       all(len(p.get("options") or []) >= 2

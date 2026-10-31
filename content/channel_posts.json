@@ -178,6 +178,58 @@
     {
       "type": "text",
       "text": "🎁 <b>Do‘stni taklif qiling — premium oling</b>\n\nHar bir taklif uchun +10 ball:\n• 3 ta taklif — 7 kun premium\n• 10 ta taklif — 30 kun premium\n\nHavolangiz: /invite\nYangi juftlikka 3 kunlik sinov sovg‘a. Taklif qilgan do‘stingiz juftligi bilan ro‘yxatdan o‘tsa, ballar hisoblanadi.\n\n👉 t.me/yarashamiz_bot"
+    },
+    {
+      "type": "text",
+      "text": "🤝 <b>Kelishuv — yutqazish emas</b>\n\nKelishuv «men fikrimdan voz kechdim» degani emas. Uchinchi yo‘lni qidiring:\n1) har biringiz ehtiyojingizni ayting\n2) ikki-uch variant taklif qiling\n3) bugun sinab ko‘riladiganini tanlang\n\nMasalan: u kino xohlaydi, siz uyquni — bugun erta seans, ertaga kechki. Ikkala tomonga foyda bo‘lsa, kelishuv mustahkam bo‘ladi.\n\nQaysi mavzuda kelisha olmaysiz? @yarashamiz_bot"
+    },
+    {
+      "type": "text",
+      "text": "🧱 <b>Chegara — devor emas, yo‘l belgisi</b>\n\nChegara «menga yaqinlashma» emas, «menga qanday munosabatda o‘zimni yaxshi his qilaman» degan xarita:\n• ruxsatimsiz telefonimni ko‘rishmasin\n• janjalda haqorat bo‘lmasin\n• dam olish uchun shaxsiy vaqtim bo‘lsin\n\nChegarani tinch, aniq va «men» tilida ayting, keyin juftingizdan savol kuting. Chegara hurmatni o‘rgatadi.\n\nSizning bitta chegarangiz qanday? @yarashamiz_bot"
+    },
+    {
+      "type": "text",
+      "text": "🛠 <b>Ishonchni tiklash — tez emas, izchil</b>\n\nIshonch bir suhbatda qaytmaydi. U kichik va takrorlanadigan amallar bilan quriladi:\n1) nima buzilganini aniq tan oling\n2) «endi nima qilaman» deb aniq va’da bering\n3) va’da bajarilayotganini ko‘rsatib boring\n4) shubha bo‘lsa, xotirjam javob bering\n\nIshonch — so‘z emas, takrorlangan xatti-harakat. Sabr kerak, lekin yo‘l bor. @yarashamiz_bot"
+    },
+    {
+      "type": "text",
+      "text": "🎮 <b>O‘yin: A yoki B</b>\n\n5 savol, har birida ikki tanlov. Siz o‘zingiz tanlaysiz va juftingiz nimani tanlashini taxmin qilasiz — bot ikkala javobni solishtiradi.\n\nNamuna:\nA) Birga sayohat · B) Uyda film kechasi\nA) Ertalab suhbat · B) Kechqurun suhbat\n\nTo‘g‘ri taxmin va mos tanlov uchun ball beriladi. Ball faqat ikkalangiz ham o‘ynasangiz qo‘shiladi.\n\nBot: /app → O‘yinlar → A yoki B. @yarashamiz_bot"
+    },
+    {
+      "type": "text",
+      "text": "🏆 <b>O‘yin: Kim ko‘proq?</b>\n\n5 ta savolga ikkalangiz alohida javob berasiz: kim ko‘proq choy ichadi, kim tezroq kechadi, kim ko‘proq kuladi.\n\nKeyin bot javoblarni ochadi — mos kelganlari ball bo‘ladi, hammasi mos kelsa bonus. Bahslashmang, faqat kuling: maqsad bir-birini yaxshiroq bilish.\n\nBugun kechqurun 5 daqiqa yetarli.\nBot: /app → O‘yinlar → Kim ko‘proq? @yarashamiz_bot"
+    },
+    {
+      "type": "poll",
+      "text": "🗳 <b>Kim birinchi qadam tashlaydi?</b>\n\nJanjaldan keyin sukunat cho‘ziladi. Ikkalangiz ham yozishni xohlaysiz, lekin «birinchi bo‘lsam, ojiz ko‘rinaman» deb kutasiz.\n\nAslida birinchi qadam — mag‘lubiyat emas, jasorat. Kimdir boshlashi kerak, aks holda muzlashib qolamiz.\n\nHalol javob bering: odatda birinchi qadamni kim tashlaydi? @yarashamiz_bot",
+      "options": [
+        "Men",
+        "Juftim",
+        "Navbat bilan",
+        "Hech kim — muzlab qolamiz"
+      ]
+    },
+    {
+      "type": "poll",
+      "text": "🗳 <b>Qaysi mavzuda gaplashish qiyin?</b>\n\nBa’zi suhbatlar oson: bugungi kun, ish, ob-havo. Boshqalari og‘ir: pul, kelajak, qarindoshlar, hislar.\n\nOg‘ir mavzudan qochish oson, lekin aynan shu mavzular munosabatni chuqurlashtiradi. Kichik qadam: bir mavzuni tanlab, 10 daqiqa tinch gaplashing.\n\nSiz uchun qaysi mavzu eng qiyin? @yarashamiz_bot",
+      "options": [
+        "Pul",
+        "Kelajak rejalari",
+        "Qarindoshlar",
+        "His-tuyg‘ular"
+      ]
+    },
+    {
+      "type": "text",
+      "text": "💎 <b>Premium — kuniga 1,7 ⭐</b>\n\n50 ⭐/oy — 30 kun. Kuniga hisoblasangiz, bir choy narxidan kam. Nima olasiz:\n• ✍️ cheksiz xat (bepulda kuniga 3 ta)\n• 🎤 ovozli xat — ohangingiz bilan\n• ⏳ vaqt kapsulasi — kelajakka xat\n• 💞 AI maslahat — savolingizga javob\n• 10 shablon va premium o‘yinlar\n\nHisobim → 💎 Premium. @yarashamiz_bot"
+    },
+    {
+      "type": "text",
+      "text": "🎟 <b>Promo-kod bormi?</b>\n\nVaqti-vaqti bilan kanalda promo-kod tarqatamiz — u premium kunlarini sovg‘a qiladi.\n\nQanday ishlatiladi:\n1) botni oching\n2) kodni yuboring: /promo KOD\n3) premium kunlaringiz hisobingizga qo‘shiladi\n\nHar bir odam kodni bir marta ishlatadi, kodning umumiy limiti ham bor — shuning uchun erta sinab ko‘ring.\n\nSinash: /promo KOD"
+    },
+    {
+      "type": "text",
+      "text": "💬 <b>Sizning fikringiz — keyingi yangilanish</b>\n\nKanal obunachilariga ochiq savol: botda nima yetishmayapti? Qaysi o‘yin, qaysi maslahat, qaysi til sizga kerak?\n\nYozish oson: botga o‘ting va /feedback buyrug‘idan keyin xabaringizni yuboring (bir xabarda, 500 belgigacha). Har bir fikrni o‘qiymiz, eng ko‘p taklif qilingan g‘oyalarni keyingi versiyaga qo‘shamiz.\n\nBir daqiqa vaqt ajrating: /feedback yozing — @yarashamiz_bot"
     }
   ],
   "weekly": [
@@ -211,6 +263,15 @@
         "Janjal kamaydi",
         "Birga vaqt ko‘paydi",
         "O‘zgarish sezmadim"
+      ]
+    },
+    {
+      "type": "poll",
+      "text": "📊 <b>Hafta yakuni: qadam tashlandimi?</b>\n\nO‘tgan haftada chegara, kelishuv va ishonch haqida gaplashdik, o‘yin o‘ynadik.\n\nEndi halol savol: shu hafta munosabatingizda qaysi qadamni tashladingiz? Kichik bo‘lsa ham — muhim, chunki o‘zgarish shundan boshlanadi.\n\nOvoz bering, natijani dushanba kuni kanalda ko‘rsatamiz. @yarashamiz_bot",
+      "options": [
+        "Chegara qo‘ydim",
+        "Kelishuvga keldim",
+        "Ishonchga qadam"
       ]
     }
   ]
