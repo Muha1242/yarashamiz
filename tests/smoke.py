@@ -927,7 +927,7 @@ check("JS: xat va kapsula sahnalari", js.count("showStage(") >= 3, js.count("sho
 check("CSS: sahna uslublari",
       ".lstage" in css and ".lpaper" in css and "paperIn" in css)
 check("CSS: portlash animatsiyasi", ".burst" in css and "burstFly" in css)
-check("cache-busting v7", "app.js?v=10" in idx_html)
+check("cache-busting v12", "app.js?v=12" in idx_html)
 
 # ------------------- 30. XAT SAHNASI 2.0 (ovoz/parallaks) ----------------
 check("JS: ochilish ovozi", "playOpenSound" in js and "AudioContext" in js)
@@ -937,7 +937,7 @@ check("JS: 'ochildi' muhr", "lstamp" in js and "OCHILDI" in js)
 check("CSS: zarralar va muhr",
       ".lparts" in css and ".lstamp" in css and "stampIn" in css)
 check("CSS: parallaks (translate)", "--px" in css and "--py" in css)
-check("cache-busting v8", "app.js?v=10" in idx_html)
+check("cache-busting v12 (splash)", "app.js?v=12" in idx_html)
 check("bot: xat havolasida ism", '"n": st.r.get' in bot_src)
 check("api: kapsula fromName", "fromName" in open(os.path.join(ROOT, "api/app.py"),
                                                    encoding="utf-8").read())
@@ -956,12 +956,25 @@ check("JS: hikoya slaydlari",
 check("CSS: hikoya rasmi", ".story-img" in css)
 check("AI: suhbat funksiyasi", hasattr(core.ai_helper, "coach_chat"))
 
-# ------------------- 32. SPLASH LOGO v2 ---------------------------------
-check("splash: yurak + konvert logotipi",
-      "sp-heart" in idx_html and "sp-env2" in idx_html and "sp-halo" in idx_html)
+# ------------------- 32. SPLASH LOGO v3 (bot avatarining o'zi) ----------
+check("splash: logo rasmi (bot avatarining aynan o'zi)",
+      "splash-logo" in idx_html and "logo.jpg" in idx_html
+      and "splash-glow" in idx_html)
+check("splash: logo fayli mavjud va yengil",
+      os.path.exists(os.path.join(ROOT, "mini_app/logo.jpg"))
+      and os.path.getsize(os.path.join(ROOT, "mini_app/logo.jpg")) < 60000,
+      os.path.getsize(os.path.join(ROOT, "mini_app/logo.jpg"))
+      if os.path.exists(os.path.join(ROOT, "mini_app/logo.jpg")) else "yo'q")
+check("splash: logo nusxasi sinxron",
+      open(os.path.join(ROOT, "mini_app/logo.jpg"), "rb").read()
+      == open(os.path.join(ROOT, "public/mini_app/logo.jpg"), "rb").read())
 check("splash: minimal ko'rish vaqti", "SPLASH_MIN" in js and "1900" in js)
-check("splash: halo animatsiyasi", ".sp-halo" in css and "haloIn" in css)
+check("splash: kirish va glow animatsiyasi",
+      "logoIn" in css and "glowPulse" in css and "floatY" in css)
 check("splash: zaxira yopilish (6s)", "splashOut .7s ease 6s" in css)
+check("splash: reduced-motion hurmat qilinadi",
+      "prefers-reduced-motion:reduce" in css
+      and ".splash-logo{opacity:1" in css)
 
 # ------------------- 33. HAFTALIK HISOBOT (admin) -----------------------
 _ws = st.week_stats()
