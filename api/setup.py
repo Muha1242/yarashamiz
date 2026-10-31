@@ -52,6 +52,7 @@ async def _set():
             BotCommand(command="reminders", description="Eslatmalar yoqish/o'chirish"),
             BotCommand(command="voice", description="🎤 Ovozli xat (premium)"),
             BotCommand(command="maslahat", description="💞 AI maslahat (premium)"),
+            BotCommand(command="promo", description="🎟 Promo-kodni faollashtirish"),
             BotCommand(command="app", description="Ilovani ochish"),
             BotCommand(command="help", description="Yordam"),
             BotCommand(command="privacy", description="Maxfiylik"),

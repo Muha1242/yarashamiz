@@ -331,6 +331,142 @@ def use_gift(token, u):
     return int(d["days"])
 
 
+# ---------------------------- TO'LOV HIMOYASI ---------------------------
+def claim_charge(charge_id):
+    """Telegram `telegram_payment_charge_id` — bir marta hisobga olinadi.
+
+    Webhook takror yuborilsa premium ikki marta berilmaydi (replay himoyasi).
+    """
+    cid = str(charge_id or "").strip()[:120]
+    if not cid:
+        return False
+    return bool(r.set(f"charge:{cid}", 1, nx=True, ex=400 * 86400))
+
+
+# ------------------- SINOV MUDDATI (trial, bir marta) --------------------
+TRIAL_DAYS = int(os.environ.get("TRIAL_DAYS", "3"))
+
+
+def grant_trial(u, days=None):
+    """Yangi juftlikka bir marta bepul sinov premium. Qaytaradi: kunlar (0 — yo'q)."""
+    try:
+        days = int(days if days is not None else TRIAL_DAYS)
+    except (TypeError, ValueError):
+        return 0
+    if days <= 0 or days > 30:
+        return 0
+    if not r.set(f"trial:{u}", 1, nx=True):
+        return 0
+    r.expire(f"trial:{u}", 400 * 86400)
+    add_prem(u, days)
+    return days
+
+
+# ----------------------------- PROMO KODLAR -----------------------------
+PROMO_MAX_USES = 500
+PROMO_MAX_DAYS = 365
+
+
+def _promo_code(code):
+    """Kodni tozalash: faqat A-Z, 0-9, - va _ (24 belgigacha, katta harf)."""
+    return "".join(ch for ch in str(code or "").upper().strip()
+                   if ch.isalnum() or ch in "-_")[:24]
+
+
+def promo_info(code):
+    c = _promo_code(code)
+    if not c:
+        return None
+    d = r.hgetall(f"promo:{c}") or {}
+    if not d:
+        return None
+    try:
+        days, left = int(d.get("days") or 0), int(d.get("left") or 0)
+    except (TypeError, ValueError):
+        return None
+    return {"code": c, "days": days, "left": left,
+            "ts": int(d.get("ts") or 0)}
+
+
+def promo_new(code, days, uses=50):
+    """Yangi promo-kod. Band kod yoki noto'g'ri qiymatda None."""
+    c = _promo_code(code)
+    if not c:
+        return None
+    try:
+        days, uses = int(days), int(uses)
+    except (TypeError, ValueError):
+        return None
+    if not 1 <= days <= PROMO_MAX_DAYS or not 1 <= uses <= PROMO_MAX_USES:
+        return None
+    key = f"promo:{c}"
+    if not r.hsetnx(key, "days", days):
+        return None                       # kod allaqachon bor
+    r.hset(key, mapping={"left": uses, "ts": int(time.time())})
+    return promo_info(c)
+
+
+def promo_list(limit=20):
+    """Oxirgi promo-kodlar (kod, kun, qoldiq)."""
+    out = []
+    for k in r.scan_iter("promo:*", count=200):
+        code = str(k).split(":", 1)[-1]
+        if code in ("used",) or str(k).startswith("promo:used:"):
+            continue
+        info = promo_info(code)
+        if info:
+            out.append(info)
+    out.sort(key=lambda x: x["ts"], reverse=True)
+    return out[:limit]
+
+
+def promo_use(code, u):
+    """Promo-kodni faollashtirish. (kunlar, sabab).
+
+    sabab: ok / used (bu odam ishlatgan) / empty (limiti tugagan) /
+           none (kod yo'q) / busy (qulf) / bad (kod bo'sh)
+    """
+    c = _promo_code(code)
+    if not c:
+        return 0, "bad"
+    seen = f"promo:used:{c}"
+    if not r.hsetnx(seen, u, int(time.time())):
+        return 0, "used"                 # bir odam bir marta
+    with lock(f"promo:{c}") as ok:
+        if not ok:
+            r.hdel(seen, u)
+            return 0, "busy"
+        info = promo_info(c)
+        if not info:
+            r.hdel(seen, u)
+            return 0, "none"
+        if info["left"] <= 0:
+            r.hdel(seen, u)
+            return 0, "empty"
+        r.hset(f"promo:{c}", "left", info["left"] - 1)
+    add_prem(u, info["days"])
+    return info["days"], "ok"
+
+
+# -------------------------------- FEEDBACK ------------------------------
+def recent_feedback(limit=10):
+    """Oxirgi feedback'lar (yangi -> eski): [{u, t, ts}]."""
+    try:
+        limit = max(1, min(int(limit), 50))
+    except (TypeError, ValueError):
+        limit = 10
+    out = []
+    for raw in r.lrange("feedback", -limit, -1):
+        try:
+            d = json.loads(raw)
+        except Exception:  # noqa: BLE001
+            continue
+        if isinstance(d, dict) and d.get("t"):
+            out.append(d)
+    out.reverse()
+    return out
+
+
 # ------------------------------ ESLATMALAR ------------------------------
 def sent(u, kind):
     return r.get(f"sent:{u}:{kind}") == today()
