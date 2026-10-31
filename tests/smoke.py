@@ -990,6 +990,9 @@ import importlib  # noqa: E402
 _ch = json.load(open(os.path.join(ROOT, "content/channel_posts.json"), encoding="utf-8"))
 check("kanal: 30 kunlik kontent", len(_ch["daily"]) >= 30 and len(_ch["weekly"]) >= 4,
       (len(_ch["daily"]), len(_ch["weekly"])))
+check("kanal: hafta kontenti qo'shilgan (37+5)",
+      len(_ch["daily"]) >= 37 and len(_ch["weekly"]) >= 5,
+      (len(_ch["daily"]), len(_ch["weekly"])))
 check("kanal: matnlar to'liq", all((p.get("text") or "").strip() for p in _ch["daily"]))
 check("kanal: poll variantlari",
       all(len(p.get("options") or []) >= 2
@@ -1175,6 +1178,8 @@ core.ADMIN_ID = _saved_admin
 _chk_src = open(os.path.join(ROOT, "api/check.py"), encoding="utf-8").read()
 check("check: CHANNEL_ID ko'rsatiladi", '"CHANNEL_ID"' in _chk_src)
 check("check: TRIAL_DAYS ko'rsatiladi", '"TRIAL_DAYS"' in _chk_src)
+check("check: ADMIN_ID qiymati oshkor bo'lmaydi", '"ADMIN_ID": bool(' in _chk_src)
+check("check: maxfiy maydonlar SETUP_KEY ortida", "_key_ok(self.path or \"\")" in _chk_src)
 _readme = open(os.path.join(ROOT, "README.md"), encoding="utf-8").read()
 check("README: CHANNEL_ID hujjatlashtirilgan", "CHANNEL_ID" in _readme)
 check("README: /api/channel hujjatlashtirilgan", "/api/channel" in _readme)

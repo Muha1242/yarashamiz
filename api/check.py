@@ -43,7 +43,7 @@ class handler(BaseHTTPRequestHandler):
             "APP_URL": os.environ.get("APP_URL") or None,
             "VERCEL_PROJECT_PRODUCTION_URL": os.environ.get("VERCEL_PROJECT_PRODUCTION_URL") or None,
             "GEMINI_API_KEY": bool(os.environ.get("GEMINI_API_KEY")),
-            "ADMIN_ID": os.environ.get("ADMIN_ID") or None,
+            "ADMIN_ID": bool(os.environ.get("ADMIN_ID")),
             "SETUP_KEY": bool(os.environ.get("SETUP_KEY")),
             "CRON_SECRET": bool(os.environ.get("CRON_SECRET")),
             "CHANNEL_ID": bool(os.environ.get("CHANNEL_ID")),
@@ -53,9 +53,15 @@ class handler(BaseHTTPRequestHandler):
             "PRICE_GIFT": os.environ.get("PRICE_GIFT") or "80 (standart)",
             "request_host": self.headers.get("host"),
         }
-        token = os.environ.get("BOT_TOKEN") or ""
-        info["token_bot_id"] = token.split(":", 1)[0] if ":" in token else None
-        info["token_len"] = len(token)
+        # Maxfiyroq maydonlar (ADMIN_ID qiymati, token tafsiloti) faqat
+        # ?s=SETUP_KEY bilan ko'rinadi — ochiq endpoint'da oshkor bo'lmaydi.
+        if os.environ.get("SETUP_KEY") and _key_ok(self.path or ""):
+            admin = os.environ.get("ADMIN_ID") or ""
+            if admin:
+                info["admin_id"] = admin
+            token = os.environ.get("BOT_TOKEN") or ""
+            info["token_bot_id"] = token.split(":", 1)[0] if ":" in token else None
+            info["token_len"] = len(token)
 
         # Muammolarni aniqlash
         warn = []
