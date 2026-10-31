@@ -117,7 +117,7 @@ https://<loyiha>.vercel.app/api/setup?s=<SETUP_KEY>
 ### 6. Kanaldagi kunlik post (Vercel Cron)
 `/api/channel` har kuni **09:00** (04:00 UTC) da ishlaydi va
 `content/channel_posts.json` dan navbatdagi postni kanalga yuboradi
-(**30 daily + 4 weekly**; dushanba — haftalik). Qo'lda sinash:
+(**47 daily + 6 weekly**; dushanba — haftalik). Qo'lda sinash:
 
 ```
 https://<loyiha>.vercel.app/api/channel?s=<CRON_SECRET>
