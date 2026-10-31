@@ -88,6 +88,8 @@ Vercel → **Settings → Environment Variables**:
 | `CRON_MAX_MSGS` | ixtiyoriy | Bir cron'da yuboriladigan maksimal xabar (standart `600`) |
 | `CRON_CONCURRENCY` | ixtiyoriy | Parallel yuborish (standart `12`) |
 | `CRON_RATE` | ixtiyoriy | Global tezlik, xabar/soni (standart `28`, Telegram ~30/s) |
+| `CHANNEL_ID` | ixtiyoriy | Kanalingiz ID'si (`-100...`) — kunlik post uchun. Bo'lmasa kanal posti yuborilmaydi (`/api/check` da `CHANNEL_ID: false`) |
+| `TRIAL_DAYS` | ixtiyoriy | Yangi juftlikka sinov premium (standart `3` kun, `0` — o'chirilgan) |
 
 **Premium narxlari** (ixtiyoriy):
 
@@ -112,6 +114,18 @@ https://<loyiha>.vercel.app/api/setup?s=<SETUP_KEY>
 `vercel.json` da sozlangan — kuniga bir marta `/api/cron` chaqiriladi
 (15:00 UTC = **20:00** O'zbekiston). Qo'lda sinash: `/api/cron`.
 
+### 6. Kanaldagi kunlik post (Vercel Cron)
+`/api/channel` har kuni **09:00** (04:00 UTC) da ishlaydi va
+`content/channel_posts.json` dan navbatdagi postni kanalga yuboradi
+(**30 daily + 4 weekly**; dushanba — haftalik). Qo'lda sinash:
+
+```
+https://<loyiha>.vercel.app/api/channel?s=<CRON_SECRET>
+```
+
+Kerak: `CHANNEL_ID` env va bot kanalda **administrator** (Post messages).
+Post bir kunda ikki marta ketmasligi uchun Redis'da belgi qo'yiladi.
+
 ---
 
 ## 💎 Premium
@@ -127,6 +141,8 @@ https://<loyiha>.vercel.app/api/setup?s=<SETUP_KEY>
 **📖 Bizning hikoya** · cheksiz xotiralar.
 
 **Bepul:** kuniga 3 xat, 5 shablon, **6 o‘yin**, kuniga 1 sevgi bileti, kayfiyat barometri.
+**Sinov:** yangi juftlikka **3 kunlik premium** sovg‘a (`TRIAL_DAYS`, bir marta).
+**Promo:** admin `/promo new 7 KOD 100` bilan kod yaratadi, obunachi `/promo KOD` bilan faollashtiradi.
 
 **Sozlash:** @BotFather → `/mybots` → botni tanlang → **Payments** → **Telegram Stars** yoqilgan bo'lsin.
 
@@ -154,6 +170,7 @@ python bot.py
 | `/reminders` | Kunlik eslatmalarni yoqish/o'chirish |
 | `/voice` | 🎤 Ovozli xat (premium) |
 | `/maslahat` | 💞 AI munosabat maslahati (premium) |
+| `/promo KOD` | 🎟 Promo-kodni faollashtirish (premium kunlar) |
 | `/app` | Ilovani ochish (yangi Mini App tugmasi) |
 | `/privacy` | Maxfiylik siyosati |
 | `/feedback` | Fikr/taklif (adminga boradi) |
@@ -161,6 +178,9 @@ python bot.py
 | `/admin` | Statistika (faqat `ADMIN_ID`) |
 | `/diag` | 🩺 Diagnostika: Redis, token, webhook, oxirgi xato (faqat `ADMIN_ID`) |
 | `/report` | 📊 Haftalik hisobotni hoziroq yuborish (faqat `ADMIN_ID`) |
+| `/feedbacks` | 📩 Oxirgi 10 feedback matni (faqat `ADMIN_ID`) |
+| `/promo new 7 KOD 100` | 🎟 Promo-kod yaratish: 7 kun, 100 marta (faqat `ADMIN_ID`) |
+| `/promo list` | 🎟 Promo-kodlar va qoldiq (faqat `ADMIN_ID`) |
 
 `/api/setup` ni bir marta ochganda bot menyusi, qisqa tavsif va to'liq tavsif ham
 avtomatik o'rnatiladi.

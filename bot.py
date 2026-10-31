@@ -290,6 +290,7 @@ HELP = ("<b>Qanday ishlaydi?</b>\n\n"
         "/reminders — eslatmalarni yoqish/o'chirish\n"
         "/voice — 🎤 ovozli xat (premium)\n"
         "/maslahat — 💞 AI munosabat maslahati (premium)\n"
+        "/promo KOD — promo-kodni faollashtirish\n"
         "/app — Ilovani ochish\n"
         "/privacy — maxfiylik\n/feedback — fikr va taklif\n\n"
         "⚠️ Muammo bo'lsa: " + SUPPORT)
@@ -707,6 +708,7 @@ async def reply(m: Message):
         return await m.answer("💝 Yurak yuborildi.")
     if a == "yes":
         refused = None
+        trial_days = 0
         with st.lock(f"yes:{L['id']}") as ok:
             if not ok:
                 return await m.answer("⏳ Bir oz kuting, qayta urinib ko'ring.")
@@ -730,13 +732,17 @@ async def reply(m: Message):
                 st.set_receiver(L["id"], u)
                 st.touch(u)
                 st.touch(sender)
+                # yangi juftlikka bir martalik sinov premium (TRIAL_DAYS)
+                trial_days = max(st.grant_trial(sender), st.grant_trial(u))
         if refused:
             return await m.answer(refused)
+        trial_txt = (f"\n🎁 Ikkalangizga {trial_days} kunlik premium sinov "
+                     "sovg'a qilindi 💎" if trial_days else "")
         await bot.send_message(sender, "Javob: <b>yarashamiz</b> 🎉 "
                                f"Taklif: {html.escape(str(r.get('o') or ''))}\n"
-                               "Endi birga o'ynashingiz mumkin.",
+                               "Endi birga o'ynashingiz mumkin." + trial_txt,
                                reply_markup=menu_kb(sender))
-        return await m.answer("Yarashdingiz 🎉 Endi birga o'ynang.",
+        return await m.answer("Yarashdingiz 🎉 Endi birga o'ynang." + trial_txt,
                               reply_markup=menu_kb(u))
     if a == "report":
         if not st.has_seen(L["id"], u):
@@ -804,6 +810,77 @@ async def feedback_cmd(m: Message):
         except Exception:  # noqa: BLE001
             pass
     await m.answer("Rahmat! Fikringiz adminga yuborildi 🙏")
+
+
+@dp.message(Command("feedbacks", "fikrlar"))
+async def feedbacks_cmd(m: Message):
+    """Oxirgi feedback'lar matni (faqat ADMIN_ID uchun)."""
+    if not ADMIN_ID or str(m.from_user.id) != ADMIN_ID:
+        return
+    rows = st.recent_feedback(10)
+    if not rows:
+        return await m.answer("📩 Hozircha feedback yo'q.")
+    out = ["📩 <b>Oxirgi feedback'lar</b>"]
+    for x in rows:
+        try:
+            when = dt.datetime.fromtimestamp(int(x.get("ts") or 0)).strftime(
+                "%d.%m %H:%M")
+        except (TypeError, ValueError, OSError):
+            when = "—"
+        out.append(f"\n<b>{when}</b> · <code>{x.get('u')}</code>\n"
+                   + html.escape(str(x.get("t") or "")[:250]))
+    await m.answer("\n".join(out))
+
+
+@dp.message(Command("promo"))
+async def promo_cmd(m: Message):
+    """Promo-kod: admin yaratadi (/promo new 7 KOD 100), user faollashtiradi."""
+    args = (m.text or "").partition(" ")[2].strip()
+    parts = args.split()
+    admin_here = bool(ADMIN_ID) and str(m.from_user.id) == ADMIN_ID
+    if not parts:
+        return await m.answer("Promo-kodni yozing: <code>/promo KOD</code>")
+    sub = parts[0].lower()
+    if admin_here and sub in ("new", "yangi", "yarat"):
+        if len(parts) < 3:
+            return await m.answer(
+                "Format: <code>/promo new KUN KOD [SONI]</code>\n"
+                "Masalan: <code>/promo new 7 SEVGI2026 100</code>")
+        try:
+            days = int(parts[1])
+            uses = int(parts[3]) if len(parts) > 3 else 50
+        except ValueError:
+            return await m.answer("Kun va soni raqam bo'lishi kerak.")
+        info = st.promo_new(parts[2], days, uses)
+        if not info:
+            return await m.answer(
+                "Kod yaratilmadi: bunday kod bor yoki qiymat noto'g'ri "
+                f"(kun 1..{st.PROMO_MAX_DAYS}, soni 1..{st.PROMO_MAX_USES}).")
+        code = html.escape(info["code"])
+        return await m.answer(f"✅ Promo-kod: <code>{code}</code>\n"
+                              f"💎 {info['days']} kun premium · "
+                              f"{info['left']} marta\n\n"
+                              f"Foydalanuvchi yozadi: <code>/promo {code}</code>")
+    if admin_here and sub in ("list", "royxat", "ro'yxat"):
+        rows = st.promo_list()
+        if not rows:
+            return await m.answer("Promo-kodlar yo'q. Yangi: "
+                                  "<code>/promo new 7 KOD 100</code>")
+        return await m.answer("🎟 <b>Promo-kodlar</b>\n" + "\n".join(
+            f"<code>{html.escape(x['code'])}</code> — {x['days']} kun · "
+            f"qoldi {x['left']}" for x in rows))
+    days, why = st.promo_use(parts[0], m.from_user.id)
+    if why == "ok":
+        st.touch(m.from_user.id)
+        return await m.answer(f"✅ Promo-kod faollashtirildi: <b>{days} kun</b> "
+                              "premium 💎\n«📊 Hisobim»da tekshiring.",
+                              reply_markup=menu_kb(m.from_user.id))
+    return await m.answer({
+        "used": "Siz bu kodni allaqachon ishlatgansiz 🙂",
+        "empty": "Kod limiti tugagan 😔",
+        "busy": "Bir oz kuting, qayta urinib ko'ring.",
+        "bad": "Promo-kodni yozing: <code>/promo KOD</code>",
+    }.get(why, "Bunday promo-kod topilmadi."))
 
 
 @dp.message(Command("invite"))
@@ -1314,29 +1391,72 @@ async def buy(c: CallbackQuery):
     await c.answer()
 
 
+def pay_kind(payload):
+    """Invoice payload -> to'lov turi ('month', 'year', 'gift') yoki None."""
+    parts = (payload or "").split(":")
+    if parts[0] == "prem" and len(parts) >= 3 and parts[1] in PREMIUM_DAYS:
+        return parts[1]
+    if parts[0] == "gift" and len(parts) >= 2:
+        return "gift"
+    return None
+
+
+def pay_amount_ok(kind, amount, currency):
+    """Summa va valyuta bizning narxga mos keladimi (XTR = Telegram Stars)."""
+    try:
+        amount = int(amount or 0)
+    except (TypeError, ValueError):
+        return False
+    return currency == "XTR" and amount == int(PRICES.get(kind) or 0)
+
+
 @dp.pre_checkout_query()
 async def pre(q: PreCheckoutQuery):
-    await q.answer(ok=True)
+    kind = pay_kind(q.invoice_payload)
+    if kind and pay_amount_ok(kind, q.total_amount, q.currency):
+        return await q.answer(ok=True)
+    await q.answer(ok=False,
+                   error_message="To'lov ma'lumoti mos emas. Qaytadan urinib ko'ring.")
 
 
 @dp.message(F.successful_payment)
 async def paid(m: Message):
-    parts = (m.successful_payment.invoice_payload or "").split(":")
-    if parts[0] == "prem" and len(parts) >= 3 and parts[1] in PREMIUM_DAYS:
-        try:
-            uid = int(parts[2])
-        except ValueError:
-            return
-        days = PREMIUM_DAYS[parts[1]]
-        st.add_prem(uid, days)
-        await m.answer(f"💎 Premium faollashdi! {days} kunlik "
-                       "imtiyozlar sizniki.")
-    elif parts[0] == "gift":
+    sp = m.successful_payment
+    kind = pay_kind(sp.invoice_payload)
+    # replay himoyasi: bitta Telegram to'lovi faqat bir marta hisobga olinadi
+    if not st.claim_charge(sp.telegram_payment_charge_id):
+        return await m.answer("Bu to'lov allaqachon hisobga olingan ✅")
+    if not kind or not pay_amount_ok(kind, sp.total_amount, sp.currency):
+        if ADMIN_ID:
+            try:
+                await bot.send_message(
+                    int(ADMIN_ID),
+                    "⚠️ <b>To'lov mos emas</b>\n"
+                    f"User: <code>{m.from_user.id}</code>\n"
+                    f"Payload: <code>{html.escape(str(sp.invoice_payload))}</code>\n"
+                    f"Summa: {sp.total_amount} {sp.currency} (kutilgan: "
+                    f"{PRICES.get(kind or '', '—')} XTR)")
+            except Exception:  # noqa: BLE001
+                pass
+        return await m.answer("To'lov ma'lumoti mos emas — premium berilmadi. "
+                              "Admin tekshiradi.")
+    parts = (sp.invoice_payload or "").split(":")
+    if kind == "gift":
         token = st.make_gift(GIFT_DAYS)
         uname = await me_username()
         await m.answer("🎁 Sovg'a tayyor! Havolani juftingizga yuboring:\n"
                        + (f"https://t.me/{uname}?start=gift_{token}" if uname
                           else "havola yaratilmadi (BOT_USERNAME sozlanmagan)"))
+        return
+    try:
+        uid = int(parts[2])
+    except (TypeError, ValueError, IndexError):
+        return await m.answer("To'lov qabul qilindi, lekin hisob aniqlanmadi. "
+                              "Admin tekshiradi.")
+    days = PREMIUM_DAYS[kind]
+    st.add_prem(uid, days)
+    await m.answer(f"💎 Premium faollashdi! {days} kunlik "
+                   "imtiyozlar sizniki.")
 
 
 # --------------------------- PASTKI TUGMALAR ----------------------------

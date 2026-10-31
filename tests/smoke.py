@@ -1008,6 +1008,182 @@ os.environ.pop("CRON_SECRET", None)
 check("kanal: vercel cron", any(c.get("path") == "/api/channel"
       for c in json.load(open(os.path.join(ROOT, "vercel.json")))["crons"]))
 
+# --------------- 35. TO'LOV HIMOYASI / TRIAL / PROMO / FEEDBACK ----------
+check("to'lov: charge bir marta hisobga olinadi", st.claim_charge("ch_test_1") is True)
+check("to'lov: replay rad etiladi", st.claim_charge("ch_test_1") is False)
+check("to'lov: bo'sh charge rad etiladi", st.claim_charge("") is False)
+check("to'lov: summa mos", core.pay_amount_ok("month", core.PRICES["month"], "XTR"))
+check("to'lov: summa mos emas",
+      core.pay_amount_ok("month", core.PRICES["month"] - 1, "XTR") is False)
+check("to'lov: valyuta XTR bo'lishi shart",
+      core.pay_amount_ok("month", core.PRICES["month"], "USD") is False)
+check("to'lov: payload o'qiladi",
+      core.pay_kind("prem:month:777") == "month"
+      and core.pay_kind("gift:777") == "gift"
+      and core.pay_kind("boshqa") is None)
+
+
+class FakePayMsg(FakeMsg):
+    def __init__(self, uid, payload, amount, currency="XTR", charge="ch_x"):
+        super().__init__(uid)
+        self.successful_payment = types.SimpleNamespace(
+            invoice_payload=payload, total_amount=amount,
+            currency=currency, telegram_payment_charge_id=charge)
+
+
+class FakePre:
+    def __init__(self, payload, amount, currency="XTR"):
+        self.invoice_payload = payload
+        self.total_amount = amount
+        self.currency = currency
+        self.ok = None
+        self.err = None
+
+    async def answer(self, ok=True, error_message=None):
+        self.ok, self.err = ok, error_message
+
+
+_p_ok = FakePre("prem:month:555", core.PRICES["month"])
+asyncio.run(core.pre(_p_ok))
+check("pre_checkout: to'g'ri summa qabul qilinadi", _p_ok.ok is True)
+_p_bad = FakePre("prem:month:555", 1)
+asyncio.run(core.pre(_p_bad))
+check("pre_checkout: noto'g'ri summa rad etiladi",
+      _p_bad.ok is False and bool(_p_bad.err), (_p_bad.ok, _p_bad.err))
+_p_none = FakePre("boshqa:1", core.PRICES["month"])
+asyncio.run(core.pre(_p_none))
+check("pre_checkout: notanish payload rad etiladi", _p_none.ok is False)
+
+_m_pay = FakePayMsg(9101, "prem:month:9101", core.PRICES["month"], charge="ch_ok_1")
+asyncio.run(core.paid(_m_pay))
+check("to'lov: premium faollashadi",
+      st.is_prem(9101) and st.prem_days(9101) >= 29, st.prem_days(9101))
+_days_before = st.prem_days(9101)
+_m_replay = FakePayMsg(9101, "prem:month:9101", core.PRICES["month"],
+                       charge="ch_ok_1")
+asyncio.run(core.paid(_m_replay))
+check("to'lov: replay premium qo'shmaydi", st.prem_days(9101) == _days_before,
+      st.prem_days(9101))
+check("to'lov: replay xabari",
+      any("allaqachon" in (a or "").lower() for a in _m_replay.answers),
+      _m_replay.answers)
+_m_bad_pay = FakePayMsg(9102, "prem:month:9102", 1, charge="ch_bad_1")
+asyncio.run(core.paid(_m_bad_pay))
+check("to'lov: noto'g'ri summa premium bermaydi", not st.is_prem(9102),
+      st.prem_days(9102))
+check("to'lov: noto'g'ri summa xabari",
+      any("mos emas" in (a or "") for a in _m_bad_pay.answers), _m_bad_pay.answers)
+_m_gift = FakePayMsg(9103, "gift:9103", core.PRICES["gift"], charge="ch_gift_1")
+asyncio.run(core.paid(_m_gift))
+check("to'lov: sovg'a havolasi beriladi",
+      any("gift_" in (a or "") for a in _m_gift.answers), _m_gift.answers)
+
+check("trial: bir marta beriladi", st.grant_trial(9201, 3) == 3)
+check("trial: premium faol", st.is_prem(9201) and st.prem_days(9201) >= 2,
+      st.prem_days(9201))
+check("trial: qayta berilmaydi", st.grant_trial(9201, 3) == 0)
+check("trial: noto'g'ri kunlar rad etiladi",
+      st.grant_trial(9202, 0) == 0 and st.grant_trial(9203, 40) == 0)
+
+_l_trial = st.add_letter(9301, "Yarashamizmi?", ["Kino"], "classic")
+_m_yes = FakeMsg(9302, {"a": "yes", "l": _l_trial, "o": "Kino"})
+asyncio.run(core.reply(_m_yes))
+check("trial: yangi juftlikka ikkalasiga beriladi",
+      st.is_prem(9301) and st.is_prem(9302),
+      (st.prem_days(9301), st.prem_days(9302)))
+check("trial: xabarda aytiladi",
+      any("sinov" in (a or "") for a in _m_yes.answers), _m_yes.answers)
+
+_promo = st.promo_new("sevgi2026", 7, 2)
+check("promo: yaratiladi",
+      bool(_promo) and _promo["code"] == "SEVGI2026" and _promo["days"] == 7
+      and _promo["left"] == 2, _promo)
+check("promo: takroriy kod yaratilmaydi",
+      st.promo_new("SEVGI2026", 7, 5) is None)
+check("promo: noto'g'ri kun/soni rad etiladi",
+      st.promo_new("K1", 0, 5) is None and st.promo_new("K2", 7, 9999) is None)
+check("promo: kod tozalanadi", st._promo_code(" sevgi 2026! ") == "SEVGI2026",
+      st._promo_code(" sevgi 2026! "))
+check("promo: faollashtiriladi", st.promo_use("sevgi2026", 9401) == (7, "ok"))
+check("promo: premium beriladi", st.is_prem(9401))
+check("promo: bir odam bir marta",
+      st.promo_use("SEVGI2026", 9401) == (0, "used"))
+check("promo: qoldiq kamayadi", st.promo_info("SEVGI2026")["left"] == 1)
+check("promo: ikkinchi odam ishlatadi",
+      st.promo_use("SEVGI2026", 9402) == (7, "ok"))
+check("promo: limit tugaganda rad etiladi",
+      st.promo_use("SEVGI2026", 9403) == (0, "empty"))
+check("promo: yo'q kod", st.promo_use("YOQKOD", 9404) == (0, "none"))
+check("promo: bo'sh kod", st.promo_use("", 9405) == (0, "bad"))
+check("promo: ro'yxatda ko'rinadi",
+      any(x["code"] == "SEVGI2026" for x in st.promo_list()), st.promo_list())
+
+_saved_admin = core.ADMIN_ID
+core.ADMIN_ID = "7009411199"
+_m_new = FakeMsg(7009411199, text="/promo new 5 BAYRAM 2")
+asyncio.run(core.promo_cmd(_m_new))
+check("bot: admin promo yaratadi",
+      any("BAYRAM" in (a or "") for a in _m_new.answers), _m_new.answers)
+_m_use = FakeMsg(9501, text="/promo BAYRAM")
+asyncio.run(core.promo_cmd(_m_use))
+check("bot: promo faollashtiriladi",
+      st.is_prem(9501)
+      and any("faollashtirildi" in (a or "") for a in _m_use.answers),
+      _m_use.answers)
+_m_use2 = FakeMsg(9501, text="/promo BAYRAM")
+asyncio.run(core.promo_cmd(_m_use2))
+check("bot: promo ikkinchi marta ishlamaydi",
+      any("allaqachon" in (a or "") for a in _m_use2.answers), _m_use2.answers)
+_m_use3 = FakeMsg(9502, text="/promo BAYRAM")
+asyncio.run(core.promo_cmd(_m_use3))
+check("bot: oxirgi qoldiq ishlatiladi",
+      st.promo_info("BAYRAM")["left"] == 0
+      and any("faollashtirildi" in (a or "") for a in _m_use3.answers),
+      (_m_use3.answers, st.promo_info("BAYRAM")))
+_m_use4 = FakeMsg(9504, text="/promo BAYRAM")
+asyncio.run(core.promo_cmd(_m_use4))
+check("bot: qoldiq tugagach rad etiladi",
+      any("limit" in (a or "").lower() for a in _m_use4.answers), _m_use4.answers)
+_m_list = FakeMsg(7009411199, text="/promo list")
+asyncio.run(core.promo_cmd(_m_list))
+check("bot: promo ro'yxati",
+      any("BAYRAM" in (a or "") for a in _m_list.answers), _m_list.answers)
+_m_hack = FakeMsg(9503, text="/promo new 5 HACK 2")
+asyncio.run(core.promo_cmd(_m_hack))
+check("bot: oddiy user kod yarata olmaydi", st.promo_info("HACK") is None,
+      st.promo_info("HACK"))
+
+st.r.rpush("feedback", json.dumps({"u": 9601, "t": "Birinchi fikr",
+                                   "ts": 1700000000}))
+st.r.rpush("feedback", json.dumps({"u": 9602, "t": "<b>xavfli</b>",
+                                   "ts": 1700000100}))
+st.r.rpush("feedback", "buzuq-json")
+_rows = st.recent_feedback(10)
+check("feedback: yangi -> eski tartibda", [x["u"] for x in _rows] == [9602, 9601],
+      _rows)
+check("feedback: buzuq yozuv o'tkazib yuboriladi", len(_rows) == 2)
+_m_fb = FakeMsg(7009411199)
+asyncio.run(core.feedbacks_cmd(_m_fb))
+check("bot: /feedbacks admin uchun (escape bilan)",
+      bool(_m_fb.answers) and "xavfli" in _m_fb.answers[-1]
+      and "&lt;b&gt;" in _m_fb.answers[-1], _m_fb.answers)
+_m_fb2 = FakeMsg(9603)
+asyncio.run(core.feedbacks_cmd(_m_fb2))
+check("bot: /feedbacks begonaga jim", _m_fb2.answers == [], _m_fb2.answers)
+core.ADMIN_ID = _saved_admin
+
+_chk_src = open(os.path.join(ROOT, "api/check.py"), encoding="utf-8").read()
+check("check: CHANNEL_ID ko'rsatiladi", '"CHANNEL_ID"' in _chk_src)
+check("check: TRIAL_DAYS ko'rsatiladi", '"TRIAL_DAYS"' in _chk_src)
+_readme = open(os.path.join(ROOT, "README.md"), encoding="utf-8").read()
+check("README: CHANNEL_ID hujjatlashtirilgan", "CHANNEL_ID" in _readme)
+check("README: /api/channel hujjatlashtirilgan", "/api/channel" in _readme)
+check("README: promo hujjatlashtirilgan", "/promo" in _readme)
+check("README: trial hujjatlashtirilgan", "TRIAL_DAYS" in _readme)
+_setup_src = open(os.path.join(ROOT, "api/setup.py"), encoding="utf-8").read()
+check("setup: /promo menyuda", 'command="promo"' in _setup_src)
+check("bot: /feedbacks buyrug'i", 'Command("feedbacks"' in bot_src)
+
 print()
 if FAILS:
     print(f"❌ {len(FAILS)} ta tekshiruv yiqildi: {FAILS}")

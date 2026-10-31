@@ -46,6 +46,8 @@ class handler(BaseHTTPRequestHandler):
             "ADMIN_ID": os.environ.get("ADMIN_ID") or None,
             "SETUP_KEY": bool(os.environ.get("SETUP_KEY")),
             "CRON_SECRET": bool(os.environ.get("CRON_SECRET")),
+            "CHANNEL_ID": bool(os.environ.get("CHANNEL_ID")),
+            "TRIAL_DAYS": os.environ.get("TRIAL_DAYS") or "3 (standart)",
             "PRICE_MONTH": os.environ.get("PRICE_MONTH") or "50 (standart)",
             "PRICE_YEAR": os.environ.get("PRICE_YEAR") or "500 (standart)",
             "PRICE_GIFT": os.environ.get("PRICE_GIFT") or "80 (standart)",
