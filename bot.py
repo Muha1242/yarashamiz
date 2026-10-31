@@ -664,6 +664,15 @@ async def start(m: Message, command: CommandObject, state: FSMContext):
             reply_markup=capsule_open_kb(token))
 
     st.touch(m.from_user.id)
+    # yangi odam ilovani darhol tushunishi uchun qisqa demo (GIF)
+    if URL:
+        try:
+            await bot.send_animation(
+                m.chat.id, URL.rstrip("/") + "/assets/04_xat_ochilishi.gif",
+                caption="💌 Xat shunday ochiladi — 3 qadam: xat yozing → "
+                        "havolani yuboring → u «Yarashamiz» desa, juftlik ochiladi.")
+        except Exception:  # noqa: BLE001
+            pass
     await m.answer(WELCOME if URL else WELCOME_NO_APP,
                    reply_markup=main_kb() or menu_kb(m.from_user.id))
 

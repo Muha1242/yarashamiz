@@ -1208,6 +1208,26 @@ _setup_src = open(os.path.join(ROOT, "api/setup.py"), encoding="utf-8").read()
 check("setup: /promo menyuda", 'command="promo"' in _setup_src)
 check("bot: /feedbacks buyrug'i", 'Command("feedbacks"' in bot_src)
 
+# ------------------- 36. KANAL VIZUAL KONTENTI (rasm/GIF) ---------------
+_assets = os.path.join(ROOT, "mini_app/assets")
+_names = ("01_qanday_ishlaydi.png", "02_imkoniyatlar.png", "03_premium.png",
+          "04_xat_ochilishi.gif")
+check("assets: barcha fayllar bor",
+      all(os.path.exists(os.path.join(_assets, n)) for n in _names),
+      [n for n in _names if not os.path.exists(os.path.join(_assets, n))])
+check("assets: hajmlar oqilona (< 600 KB)",
+      all(os.path.getsize(os.path.join(_assets, n)) < 600000 for n in _names))
+check("assets: public nusxasi sinxron",
+      all(open(os.path.join(_assets, n), "rb").read()
+          == open(os.path.join(ROOT, "public/mini_app/assets", n), "rb").read()
+          for n in _names))
+check("assets: generator mavjud", os.path.exists(
+    os.path.join(ROOT, "content/gen_assets.py")))
+check("bot: /start da demo animatsiya",
+      "04_xat_ochilishi.gif" in bot_src and "send_animation" in bot_src)
+check("assets: GIF 2+ frame",
+      open(os.path.join(_assets, "04_xat_ochilishi.gif"), "rb").read(6)[:3] == b"GIF")
+
 print()
 if FAILS:
     print(f"❌ {len(FAILS)} ta tekshiruv yiqildi: {FAILS}")
