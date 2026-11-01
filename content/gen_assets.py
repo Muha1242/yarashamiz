@@ -177,91 +177,10 @@ def premium():
     save(img, "03_premium.png")
 
 
-# ------------------------------------------------ 4. XAT OCHILISHI (GIF demo)
-def letter_gif():
-    w, h = 540, 960
-    frames = []
-    text = "Kechir meni. Seni juda sog'indim."
-    for f in range(36):
-        base = bg(w, h).convert("RGBA")
-        d = ImageDraw.Draw(base)
-        # fon yorug'i
-        cx, cy = w / 2, h * 0.46
-        # konvert
-        env_y = cy + 40
-        opened = min(1.0, max(0.0, (f - 8) / 10))
-        if opened < 1.0:
-            d.rounded_rectangle([cx - 170, env_y - 110, cx + 170, env_y + 110],
-                                radius=18, fill=(74, 28, 92, 255),
-                                outline=(255, 160, 190, 200), width=3)
-            # qopqoq
-            flap_h = 110 * (1 - opened)
-            if flap_h > 2:
-                d.polygon([(cx - 170, env_y - 110), (cx + 170, env_y - 110),
-                           (cx, env_y - 110 + 120 * (1 - opened))],
-                          fill=(96, 38, 118, 255), outline=(255, 160, 190, 200))
-        # yurak (konvertdan chiqadi)
-        rise = 120 * max(0.0, min(1.0, (f - 12) / 14))
-        hy = env_y - 70 - rise
-        r = 34 + 6 * opened
-        d.ellipse([cx - r, hy - r, cx - r + 2 * r * .62, hy + r * .62], fill=PINK)
-        d.ellipse([cx + r - 2 * r * .62, hy - r, cx + r, hy + r * .62], fill=PINK)
-        d.polygon([(cx - r + 3, hy + r * .18), (cx + r - 3, hy + r * .18),
-                   (cx, hy + r * 1.5)], fill=PINK)
-        # xat varaqasi
-        if f >= 16:
-            k = min(1.0, (f - 16) / 12)
-            ph = int(330 * k)
-            top = env_y + 60 - ph
-            if ph > 10:
-                d.rounded_rectangle([cx - 150, top, cx + 150, env_y + 60],
-                                    radius=14, fill=(252, 238, 246, 255))
-                lines = wrap(d, text, font(26, False), 250)[:4]
-                shown = max(0, int((f - 20) * 1.2))
-                for i, ln in enumerate(lines[:shown]):
-                    d.text((cx - 128, top + 34 + i * 42), ln,
-                           font=font(26, False), fill=(74, 34, 52))
-        # "Yarashamiz" tugmasi
-        if f >= 26:
-            a = min(1.0, (f - 26) / 6)
-            bw = 300 * a
-            by = env_y + 150
-            d.rounded_rectangle([cx - bw / 2, by, cx + bw / 2, by + 78],
-                                radius=39, fill=(255, 122, 168, int(235 * a)))
-            if a > .6:
-                t = "Yarashamiz"
-                tf = font(34)
-                d.text((cx - d.textlength(t, font=tf) / 2, by + 20), t,
-                       font=tf, fill=(40, 8, 30))
-        # zarralar
-        if f >= 20:
-            import math
-            for i in range(10):
-                ang = math.pi * (i / 9) * 2
-                dist = 40 + 6 * (f - 20)
-                px = cx + math.cos(ang) * dist
-                py = cy - 30 + math.sin(ang) * dist * .7
-                sz = max(1, 6 - (f - 20) // 4)
-                d.ellipse([px - sz, py - sz, px + sz, py + sz],
-                          fill=(255, 190, 210, max(0, 230 - (f - 20) * 12)))
-        frames.append(base.convert("RGB"))
-    os.makedirs(OUT, exist_ok=True)
-    path = os.path.join(OUT, "04_xat_ochilishi.gif")
-    frames[0].save(path, save_all=True, append_images=frames[1:], duration=55,
-                   loop=0, optimize=True)
-    print("saved", os.path.relpath(path, ROOT), os.path.getsize(path), "bytes")
-    # tekshirish uchun kontakt-sheet
-    sheet = Image.new("RGB", (w * 3, h), (10, 4, 16))
-    for i, idx in enumerate((4, 22, 35)):
-        sheet.paste(frames[idx], (i * w, 0))
-    sheet.resize((w * 3 // 2, h // 2)).save("/tmp/letter_preview.png")
-
-
 if __name__ == "__main__":
     how_it_works()
     features()
     premium()
-    letter_gif()
     os.makedirs(PUB, exist_ok=True)
     for f in sorted(os.listdir(OUT)):
         shutil.copy2(os.path.join(OUT, f), os.path.join(PUB, f))
