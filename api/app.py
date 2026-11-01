@@ -578,8 +578,32 @@ def _coupon_use(u, d):
     return {"ok": True, "status": "used"}
 
 
+def _letter_seen(u, d):
+    """Animatsion sahifada xat ochildi — yuboruvchiga bir marta xabar beradi.
+
+    Takroriy chaqiruvda xabar qayta yuborilmaydi; o'z xati uchun jim.
+    """
+    import store as st
+    try:
+        lid = int(d.get("l") or 0)
+    except (TypeError, ValueError):
+        return {"ok": False, "err": "bad_id"}
+    L = st.letter(lid) if lid else None
+    if not L:
+        return {"ok": False, "err": "none"}
+    if L["sender"] == u:
+        return {"ok": True, "mine": True}
+    st.seen(lid, u)
+    first = st.r.set(f"seen_notify:{lid}:{u}", 1, nx=True, ex=90 * 86400)
+    if first:
+        _notify(L["sender"], "👀 <b>Xatingiz ochildi!</b>\n"
+                             "«Yarashamiz» tugmasini bosib javob bering.")
+    return {"ok": True, "notified": bool(first)}
+
+
 ACTIONS = {"me": lambda u, usr, d: _me(u, usr),
            "library": lambda u, usr, d: _library(u),
+           "letter_seen": lambda u, usr, d: _letter_seen(u, d),
            "games": lambda u, usr, d: _games(u),
            "answer": lambda u, usr, d: _answer(u, d),
            "letter": lambda u, usr, d: _letter(u, d),

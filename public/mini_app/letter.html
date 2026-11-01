@@ -1,0 +1,785 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#0d0010">
+<title>Yarashamiz — animatsion xat</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Caveat+Brush&family=Caveat:wght@500;700&family=Nunito:wght@400;600;800&display=swap" rel="stylesheet">
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+/* ==========================================================================
+   XAT OCHILISH ANIMATSIYASI — bitta sahifa (Telegram Mini App)
+   Ketma-ketlik: konvert (zarrachalar) → portlash → halqa → 3D atirgul →
+   ism harf-harf → idle porlash. Zarrachalar soni 800 dan oshmaydi.
+   ========================================================================== */
+:root{
+  --bg:#0d0010; --pink:#ff6fae; --pink-soft:#ff9ac6; --gold:#f2b27a;
+  --cyan:#4fe3c1; --ink:#fff2f7; --muted:rgba(255,242,247,.62);
+  --tg-bg:#0d0010;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;padding:0;height:100%;overflow:hidden;background:var(--bg)}
+body{
+  font-family:Nunito,system-ui,-apple-system,sans-serif;color:var(--ink);
+  /* Telegram WebApp ichida pastki safe-area ham hisobga olinadi */
+  padding:env(safe-area-inset-top) env(safe-area-inset-right)
+          env(safe-area-inset-bottom) env(safe-area-inset-left);
+  background:
+    radial-gradient(120% 70% at 50% 8%,rgba(120,20,90,.55),transparent 62%),
+    radial-gradient(90% 60% at 50% 100%,rgba(70,10,110,.45),transparent 70%),
+    var(--tg-bg);
+  user-select:none;
+}
+#stage{position:fixed;inset:0;display:block;width:100%;height:100%}
+.wrap{position:fixed;inset:0;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;pointer-events:none;z-index:2}
+
+/* --- konvert ustidagi "FOR YOU" --- */
+.foryou{
+  position:absolute;top:calc(50% - 130px);left:50%;transform:translate(-50%,-50%);
+  font:700 clamp(26px,7vw,38px)/1 Nunito,sans-serif;letter-spacing:.28em;
+  color:#fff;text-transform:uppercase;text-align:center;
+  text-shadow:0 0 18px rgba(255,111,174,.95),0 0 46px rgba(255,111,174,.6);
+  opacity:0;transition:opacity .5s ease;white-space:nowrap;
+}
+.foryou.on{opacity:1;animation:forYouPulse 1.5s ease-in-out infinite}
+.foryou small{display:block;margin-top:12px;font:600 10px Nunito;letter-spacing:.34em;
+  color:var(--pink-soft);text-transform:uppercase;opacity:.9;text-shadow:none}
+@keyframes forYouPulse{0%,100%{transform:translate(-50%,-50%) scale(1)}
+  50%{transform:translate(-50%,-50%) scale(1.045)}}
+
+/* --- ism (harf-harf) --- */
+.name{
+  position:absolute;bottom:calc(50% - 190px);left:0;right:0;text-align:center;
+  font-family:'Caveat Brush',Caveat,cursive;font-size:clamp(34px,11vw,58px);
+  color:#fff;line-height:1.1;padding:0 18px;
+  text-shadow:0 0 20px rgba(255,111,174,.85),0 0 60px rgba(160,107,255,.55);
+}
+.name span{display:inline-block;opacity:0;transform:translateY(10px) scale(.9);
+  animation:letterIn .5s cubic-bezier(.2,.9,.2,1) forwards}
+@keyframes letterIn{to{opacity:1;transform:none}}
+.name.idle{animation:nameGlow 3.4s ease-in-out infinite}
+@keyframes nameGlow{0%,100%{filter:brightness(1)}50%{filter:brightness(1.22)}}
+
+/* --- hint (bosishga chaqiriq) --- */
+.hint{
+  position:absolute;bottom:calc(env(safe-area-inset-bottom) + 112px);left:0;right:0;
+  text-align:center;font:600 13px Nunito;color:var(--muted);letter-spacing:.04em;
+  opacity:0;transition:opacity .6s ease;padding:0 24px;
+}
+.hint.on{opacity:1}
+
+/* --- pastki tugmalar --- */
+.panel{
+  position:fixed;left:0;right:0;bottom:calc(env(safe-area-inset-bottom) + 14px);
+  z-index:5;display:flex;flex-direction:column;align-items:center;gap:10px;
+  padding:0 18px;pointer-events:auto;
+}
+.btn{
+  -webkit-appearance:none;appearance:none;border:0;cursor:pointer;
+  width:100%;max-width:344px;min-height:52px;border-radius:16px;
+  font:800 16px Nunito;letter-spacing:.02em;
+  display:flex;align-items:center;justify-content:center;gap:8px;
+  transition:transform .12s ease,box-shadow .2s ease,opacity .2s ease;
+}
+.btn:active{transform:scale(.975)}
+.btn-main{color:#2a0016;background:linear-gradient(100deg,#ff8ec0,#ffd08a 55%,#c79bff);
+  box-shadow:0 14px 34px rgba(255,111,174,.35)}
+.btn-ghost{color:var(--ink);background:rgba(255,255,255,.08);
+  border:1px solid rgba(255,255,255,.18)}
+.btn[disabled]{opacity:.45;pointer-events:none}
+.row{display:flex;gap:8px;width:100%;max-width:344px}
+.row .btn{flex:1;min-height:46px;font-size:13px;padding:0 6px}
+.hidden{display:none!important}
+
+/* --- xat matni (pastdan chiqadigan panel) --- */
+.sheet{
+  position:fixed;left:0;right:0;bottom:0;z-index:7;
+  max-height:82vh;overflow-y:auto;-webkit-overflow-scrolling:touch;
+  padding:22px 20px calc(env(safe-area-inset-bottom) + 24px);
+  border-radius:26px 26px 0 0;
+  background:linear-gradient(180deg,rgba(40,8,56,.98),rgba(16,4,26,.99));
+  border-top:1px solid rgba(255,255,255,.14);
+  box-shadow:0 -20px 60px rgba(0,0,0,.6);
+  transform:translateY(102%);transition:transform .45s cubic-bezier(.2,.9,.2,1);
+}
+.sheet.on{transform:none}
+.sheet h3{margin:0 0 14px;font-family:'Caveat Brush',cursive;font-size:26px;
+  color:var(--pink-soft)}
+.letter-text{font-family:Caveat,cursive;font-size:23px;line-height:1.55;
+  white-space:pre-wrap;word-break:break-word;margin:0 0 18px}
+.sheet .meta{font:600 11px Nunito;letter-spacing:.08em;text-transform:uppercase;
+  color:var(--muted);margin-bottom:14px}
+</style>
+</head>
+<body>
+<canvas id="stage" aria-hidden="true"></canvas>
+
+<div class="wrap">
+  <div class="foryou" id="forYou">FOR YOU<small id="forYouSub">sizga yozilgan xat</small></div>
+  <div class="name" id="nameBox" aria-live="polite"></div>
+  <div class="hint" id="hint">✨ Konvertni bosing</div>
+</div>
+
+<div class="panel" id="panel">
+  <button class="btn btn-main hidden" id="readBtn">💌 Xatni o'qish</button>
+  <div class="row hidden" id="toolsRow">
+    <button class="btn btn-ghost" id="replayBtn">🔁 Qayta</button>
+    <button class="btn btn-ghost" id="musicBtn">🎵 Musiqa</button>
+    <button class="btn btn-ghost" id="shareBtn">📤 Ulashish</button>
+  </div>
+</div>
+
+<div class="sheet" id="sheet">
+  <div class="meta" id="letterMeta"></div>
+  <h3 id="letterTitle">Xat</h3>
+  <p class="letter-text" id="letterBody"></p>
+  <button class="btn btn-ghost" id="closeSheet">Yopish</button>
+</div>
+
+<script>
+/* ==========================================================================
+   0) SOZLAMALAR VA HOLAT
+   ========================================================================== */
+const MAX_PARTICLES = 800;          // past quvvatli telefonlar uchun chegara
+const N_ENVELOPE = 460;             // konvert konturi
+const N_ROSE = 660;                 // atirgul (poyasi va bargi bilan)
+const PHASE = { ENVELOPE: 0, BURST: 1, ROSE: 2, IDLE: 3 };
+const T = { burst: 2000, rose: 3000, name: 9000 };   // ms
+
+const tg = (window.Telegram && window.Telegram.WebApp) || null;
+const P = new URLSearchParams(location.search);
+const params = {
+  name: (P.get('name') || '').trim().slice(0, 40),
+  text: (P.get('text') || '').trim().slice(0, 1000),
+  theme: (P.get('theme') || 'love').slice(0, 20),
+  letterId: P.get('l') || '',
+  at: Number(P.get('at') || 0),          // ochilish vaqti (unix sekund)
+};
+
+const canvas = document.getElementById('stage');
+const ctx = canvas.getContext('2d', { alpha: false });
+const ui = {
+  forYou: document.getElementById('forYou'),
+  forYouSub: document.getElementById('forYouSub'),
+  name: document.getElementById('nameBox'),
+  hint: document.getElementById('hint'),
+  read: document.getElementById('readBtn'),
+  tools: document.getElementById('toolsRow'),
+  sheet: document.getElementById('sheet'),
+  sheetMeta: document.getElementById('letterMeta'),
+  sheetBody: document.getElementById('letterBody'),
+};
+
+let W = 0, H = 0, DPR = 1, cx = 0, cy = 0;
+let phase = PHASE.ENVELOPE, phaseStart = 0, started = false, finished = false;
+let rotY = 0, rotX = 0, spin = 0, targetRotY = 0;
+let dragging = false, lastX = 0, lastY = 0, dragSpin = 0;
+const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+/* Zarrachalar: bitta massiv, 800 tadan oshmaydi */
+const parts = [];
+
+function rnd(a, b) { return a + Math.random() * (b - a); }
+function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
+
+/* Konvert konturi: to'rtburchak + qopqoq diagonallari (markaz 0,0) */
+function envelopeShape(n) {
+  const bw = Math.min(W * 0.62, 300), bh = bw * 0.66;
+  const out = [];
+  const edge = (x1, y1, x2, y2, k) => {
+    for (let i = 0; i < k; i++) {
+      const t = i / (k - 1);
+      out.push([x1 + (x2 - x1) * t, y1 + (y2 - y1) * t, rnd(-8, 8)]);
+    }
+  };
+  const k = Math.max(20, Math.floor(n / 6.4));   // 6 ta chiziq: 4 chekka + 2 V + 2 qopqoq
+  edge(-bw / 2, -bh / 2, bw / 2, -bh / 2, k);          // yuqori
+  edge(-bw / 2, bh / 2, bw / 2, bh / 2, k);            // pastki
+  edge(-bw / 2, -bh / 2, -bw / 2, bh / 2, k);          // chap
+  edge(bw / 2, -bh / 2, bw / 2, bh / 2, k);            // o'ng
+  edge(-bw / 2, -bh / 2, 0, bh * 0.06, Math.floor(k * .7));   // qopqoq chap
+  edge(bw / 2, -bh / 2, 0, bh * 0.06, Math.floor(k * .7));    // qopqoq o'ng
+  edge(-bw / 2, bh / 2, 0, bh * 0.06, Math.floor(k * .5));    // pastki V chap
+  edge(bw / 2, bh / 2, 0, bh * 0.06, Math.floor(k * .5));     // pastki V o'ng
+  return out.slice(0, n);
+}
+
+/* Halqa: yumshoq ellips (3D tekislikda yotgan) */
+function ringShape(n) {
+  const R = Math.min(W * 0.34, 170);
+  const out = [];
+  for (let i = 0; i < n; i++) {
+    const a = (i / n) * Math.PI * 2;
+    out.push([Math.cos(a) * R, Math.sin(a) * R * 0.42, Math.sin(a) * 26]);
+  }
+  return out;
+}
+
+/* Atirgul: qatlamli gulbarglar (pushti) + kurtak + poya/barg (cyan) */
+function roseShape(n) {
+  const out = [];
+  const R = Math.min(W * 0.24, 122);
+  const buds = Math.floor(n * 0.20);          // markazdagi kurtak (spiral)
+  for (let i = 0; i < buds; i++) {
+    const u = i / buds;
+    const th = u * Math.PI * 2 * 2.6;
+    const rr = (0.10 + u * 0.34) * R;
+    out.push([Math.cos(th) * rr, Math.sin(th) * rr * 0.9 - R * 0.16,
+              (1 - u) * R * 0.28, 'petal', rnd(1.0, 1.7)]);
+  }
+  // 3 qatlam barg: har qatlamda 5..7 gulbarg, yoy bo'ylab nuqtalar
+  const layers = [
+    { k: 5, r: 0.52, y: -0.02, z: 0.40 },
+    { k: 6, r: 0.76, y: 0.04, z: 0.18 },
+    { k: 7, r: 1.00, y: 0.10, z: -0.10 },
+  ];
+  const petalPts = n - buds - Math.floor(n * 0.14) - Math.floor(n * 0.10);
+  let idx = 0;
+  for (const L of layers) {
+    for (let p = 0; p < L.k; p++) {
+      const a0 = (p / L.k) * Math.PI * 2 + (L.k % 2 ? 0.25 : 0);
+      const per = Math.max(8, Math.floor(petalPts / (layers.length * 6)));
+      for (let s = 0; s < per; s++) {
+        const t = s / (per - 1);
+        const a = a0 + (t - 0.5) * (Math.PI * 1.5 / L.k);
+        const rr = R * L.r * (0.72 + 0.28 * Math.sin(Math.PI * t));
+        out.push([Math.cos(a) * rr,
+                  Math.sin(a) * rr * 0.86 + R * L.y + R * 0.08,
+                  R * L.z + Math.sin(Math.PI * t) * R * 0.22,
+                  'petal', rnd(0.85, 1.5)]);
+        idx++;
+      }
+    }
+  }
+  // poya
+  const stem = Math.floor(n * 0.14);
+  const top = R * 0.72;
+  for (let i = 0; i < stem; i++) {
+    const t = i / stem;
+    out.push([Math.sin(t * 2.1) * R * 0.14, top + t * R * 1.35,
+              Math.cos(t * 2.0) * 10, 'stem', rnd(0.9, 1.5)]);
+  }
+  // barglar (ikkita ellips)
+  const leaf = n - out.length;
+  for (let i = 0; i < leaf; i++) {
+    const side = i % 2 ? 1 : -1;
+    const t = (i / Math.max(1, leaf / 2)) * Math.PI;
+    const lr = R * 0.30;
+    out.push([side * (R * 0.20 + Math.sin(t) * lr * 0.9),
+              top + R * 0.62 + Math.cos(t) * lr * 0.35,
+              Math.sin(t) * 8, 'leaf', rnd(0.8, 1.3)]);
+  }
+  return out;
+}
+
+/* ==========================================================================
+   1) ZARRACHALAR TIZIMI (konvert → halqa → atirgul)
+   ========================================================================== */
+const BUCKETS = ['#ff2f8e', '#ff7ab4', '#1fd6b4', '#ffb45e'];  // petal, petal2, cyan, spark
+const N = Math.min(MAX_PARTICLES, N_ROSE);      // doimiy zarrachalar soni (<=800)
+
+function initParticles() {
+  parts.length = 0;
+  for (let i = 0; i < N; i++) {
+    parts.push({
+      x: rnd(-40, 40), y: rnd(-40, 40), z: rnd(-40, 40),
+      tx: 0, ty: 0, tz: 0, vx: 0, vy: 0, vz: 0,
+      b: 0, s: rnd(1.1, 2.4),
+    });
+  }
+}
+
+/* Shakl nuqtalarini zarrachalarga biriktirish (yumshoq o'tish) */
+function setTargets(shape, impulse) {
+  for (let i = 0; i < N; i++) {
+    const p = parts[i];
+    const s = shape[i % shape.length];
+    p.tx = s[0]; p.ty = s[1]; p.tz = s[2] || 0;
+    const type = s[3] || 'petal';
+    p.b = (type === 'stem' || type === 'leaf') ? 2 : (i % 3 === 0 ? 1 : 0);
+    p.s = s[4] || rnd(1.1, 2.4);
+    if (impulse) {                       // portlash impulsi
+      const d = Math.hypot(p.tx, p.ty) || 1;
+      p.vx += (p.tx / d) * impulse + rnd(-2, 2);
+      p.vy += (p.ty / d) * impulse + rnd(-2, 2);
+      p.vz += rnd(-6, 6);
+    }
+  }
+}
+
+/* Vaqtinchalik uchqunlar (portlash payti) */
+const sparks = [];
+function burstSparks(n, power) {
+  for (let i = 0; i < n; i++) {
+    const a = Math.random() * Math.PI * 2;
+    const sp = rnd(1.4, 5.2) * power;
+    sparks.push({ x: 0, y: 0, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp,
+                  life: 1, s: rnd(1, 2.6) });
+  }
+  if (sparks.length > 260) sparks.splice(0, sparks.length - 260);
+}
+
+/* ==========================================================================
+   2) PROYEKSIYA VA CHIZISH (3D → 2D, qo'lda proyeksiya)
+   ========================================================================== */
+const FOV = 620;
+
+function drawFrame(dt) {
+  ctx.globalCompositeOperation = 'source-over';
+  ctx.fillStyle = 'rgba(13,0,16,0.30)';       // trail (iz) effekti
+  ctx.fillRect(0, 0, W, H);
+
+  const cosY = Math.cos(rotY), sinY = Math.sin(rotY);
+  const cosX = Math.cos(rotX), sinX = Math.sin(rotX);
+
+  ctx.globalCompositeOperation = 'lighter';
+  for (let i = 0; i < N; i++) {
+    const p = parts[i];
+    // maqsad nuqtasini aylantirish (barmoq drag + idle spin)
+    const tx = p.tx * cosY - p.tz * sinY;
+    const tz0 = p.tx * sinY + p.tz * cosY;
+    const ty = p.ty * cosX - tz0 * sinX;
+    const tz = p.ty * sinX + tz0 * cosX;
+
+    const k = 0.075, damp = 0.86;              // prujina
+    p.vx = (p.vx + (tx - p.x) * k) * damp;
+    p.vy = (p.vy + (ty - p.y) * k) * damp;
+    p.vz = (p.vz + (tz - p.z) * k) * damp;
+    p.x += p.vx * dt * 60; p.y += p.vy * dt * 60; p.z += p.vz * dt * 60;
+
+    const sc = FOV / (FOV + p.z);
+    const sx = cx + p.x * sc, sy = cy + p.y * sc;
+    if (sx < -24 || sx > W + 24 || sy < -24 || sy > H + 24) continue;
+
+    ctx.globalAlpha = clamp(0.20 + sc * 0.34, 0.10, 0.58);
+    ctx.fillStyle = BUCKETS[p.b];
+    ctx.beginPath();
+    ctx.arc(sx, sy, clamp(p.s * sc, 0.6, 4.2), 0, 6.2832);
+    ctx.fill();
+  }
+
+  for (let i = sparks.length - 1; i >= 0; i--) {
+    const s = sparks[i];
+    s.x += s.vx * dt * 60; s.y += s.vy * dt * 60;
+    s.vx *= 0.965; s.vy *= 0.965; s.life -= dt * 0.9;
+    if (s.life <= 0) { sparks.splice(i, 1); continue; }
+    ctx.globalAlpha = clamp(s.life, 0, 1) * 0.9;
+    ctx.fillStyle = s.life > .6 ? '#ffd9e6' : '#ff9ac6';
+    ctx.beginPath();
+    ctx.arc(cx + s.x, cy + s.y, s.s, 0, 6.2832);
+    ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+  ctx.globalCompositeOperation = 'source-over';
+}
+
+/* ==========================================================================
+   3) TSIKL VA FAZALAR
+   ========================================================================== */
+let last = 0, elapsed = 0;
+
+function tick(ts) {
+  if (!last) last = ts;
+  const dt = Math.min(0.05, (ts - last) / 1000);
+  last = ts;
+  elapsed += dt * 1000;
+
+  if (started && !finished) {
+    const t = elapsed - phaseStart;
+    if (phase === PHASE.BURST && t > T.burst) {
+      phase = PHASE.ROSE; phaseStart = elapsed;
+      setTargets(roseShape(N), 0);
+    } else if (phase === PHASE.ROSE && t > T.rose) {
+      phase = PHASE.IDLE; phaseStart = elapsed;
+      revealName();
+    }
+    if (phase === PHASE.IDLE && !finished && elapsed - phaseStart > 1800) {
+      finished = true;
+      showTools();
+    }
+  }
+
+  rotY += (spin + dragSpin) * dt;              // idle + drag
+  dragSpin *= 0.94;
+  rotX += (targetRotY - rotX) * 0.08;
+
+  drawFrame(dt);
+  requestAnimationFrame(tick);
+}
+
+/* Bosilganda: konvert → portlash → halqa → atirgul */
+function startAnimation() {
+  if (started) return;
+  started = true;
+  phase = PHASE.BURST;
+  phaseStart = elapsed;
+  ui.hint.classList.remove('on');
+  ui.forYou.classList.remove('on');
+  setTargets(ringShape(N), 9);
+  burstSparks(120, 1);
+  if (tg && tg.HapticFeedback) tg.HapticFeedback.impactOccurred('heavy');
+  setTimeout(() => burstSparks(60, .7), T.burst * 0.6);
+}
+
+/* ==========================================================================
+   4) UI: ism, tugmalar, xat matni, ulashish
+   ========================================================================== */
+function nameText() {
+  const n = params.name || (tg && tg.initDataUnsafe && tg.initDataUnsafe.user
+    && tg.initDataUnsafe.user.first_name) || '';
+  return n ? n : 'Sizga';
+}
+
+/* Ismni harf-harf chiqarish (kursiv shrift) */
+function revealName() {
+  const txt = nameText();
+  ui.name.innerHTML = '';
+  [...txt].forEach((ch, i) => {
+    const s = document.createElement('span');
+    s.textContent = ch === ' ' ? '\u00A0' : ch;
+    s.style.animationDelay = (i * 90) + 'ms';
+    ui.name.appendChild(s);
+  });
+  ui.name.classList.add('idle');
+  spin = 0.20;                                   // idle: sekin aylanish
+  if (tg && tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
+}
+
+function showTools() {
+  ui.read.classList.remove('hidden');
+  ui.tools.classList.remove('hidden');
+  ui.read.style.animation = 'letterIn .5s ease both';
+}
+
+/* Xat matni paneli + botga "o'qildi" xabari */
+async function openSheet() {
+  ui.sheetMeta.textContent = params.name ? ('Kimdan: ' + params.name) : 'Sizga yozilgan xat';
+  ui.sheetBody.textContent = params.text || 'Bu xat sizga yozilgan. Uni o\'qing va javob bering ❤️';
+  ui.sheet.classList.add('on');
+  if (tg && tg.HapticFeedback) tg.HapticFeedback.impactOccurred('medium');
+  if (params.letterId) notifySeen();
+}
+
+/* Botga "xat o'qildi" (ixtiyoriy) — initData bo'lsa ishlaydi */
+async function notifySeen() {
+  try {
+    if (!tg || !tg.initData) return;
+    await fetch('/api/app', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ init: tg.initData, action: 'letter_seen',
+                             l: Number(params.letterId) || 0 }),
+    });
+  } catch (e) { /* jim */ }
+}
+
+/* Animatsiyani qaytadan o'ynatish */
+function replay() {
+  started = false; finished = false;
+  phase = PHASE.ENVELOPE; phaseStart = 0;
+  rotY = 0; rotX = 0; spin = 0; dragSpin = 0; targetRotY = 0;
+  sparks.length = 0;
+  ui.name.innerHTML = '';
+  ui.name.classList.remove('idle');
+  ui.read.classList.add('hidden');
+  ui.tools.classList.add('hidden');
+  ui.sheet.classList.remove('on');
+  initParticles();
+  setTargets(envelopeShape(N), 0);
+  rotY = -0.35;
+  ui.forYou.classList.add('on');
+  ui.forYouSub.textContent = params.name ? ('sizga: ' + params.name) : 'sizga yozilgan xat';
+  ui.hint.classList.add('on');
+}
+
+/* Telegram orqali ulashish */
+function shareLetter() {
+  const url = location.href;
+  const text = params.name ? (params.name + ' sizga xat yozdi 💌') : 'Sizga xat bor 💌';
+  if (tg && tg.shareMessage) return tg.shareMessage(url, text);
+  const link = 'https://t.me/share/url?url=' + encodeURIComponent(url) +
+               '&text=' + encodeURIComponent(text);
+  if (tg && tg.openTelegramLink) return tg.openTelegramLink(link);
+  location.href = link;
+}
+
+/* ==========================================================================
+   5) BOSISH / SILJITISH (touch rotate)
+   ========================================================================== */
+function onDown(e) {
+  dragging = true;
+  const p = e.touches ? e.touches[0] : e;
+  lastX = p.clientX; lastY = p.clientY;
+}
+function onMove(e) {
+  if (!dragging) return;
+  const p = e.touches ? e.touches[0] : e;
+  const dx = p.clientX - lastX, dy = p.clientY - lastY;
+  lastX = p.clientX; lastY = p.clientY;
+  rotY += dx * 0.008;                    // gorizontal: atirgulni aylantiradi
+  targetRotY = clamp(targetRotY + dy * 0.004, -0.6, 0.6);
+  dragSpin += dx * 0.0006;
+}
+function onUp() { dragging = false; }
+
+canvas.addEventListener('pointerdown', onDown);
+window.addEventListener('pointermove', onMove);
+window.addEventListener('pointerup', onUp);
+window.addEventListener('touchstart', onDown, { passive: true });
+window.addEventListener('touchmove', onMove, { passive: true });
+window.addEventListener('touchend', onUp);
+
+/* Konvertni bosish → animatsiya boshlanadi */
+canvas.addEventListener('click', () => {
+  if (phase === PHASE.ENVELOPE && !started) startAnimation();
+});
+
+ui.read.onclick = openSheet;
+document.getElementById('closeSheet').onclick = () => ui.sheet.classList.remove('on');
+document.getElementById('replayBtn').onclick = replay;
+document.getElementById('shareBtn').onclick = shareLetter;
+
+/* ==========================================================================
+   6) MUSIQA: telefon xotirasidan tanlash + ichki ohang + tavsiya ro'yxati
+   ========================================================================== */
+const MUSIC = { el: null, url: '', ctx: null, gain: null, timer: null, on: false };
+
+/* Tavsiya ro'yxati — qidiruv so'rovlari (audio faylning o'zi emas:
+   mualliflik huquqi sababli qo'shiq saqlanmaydi, foydalanuvchi o'z
+   telefonidan tanlaydi yoki qidiruvdan topadi) */
+const MUSIC_LIST = {
+  uz: ['Kechir meni', 'Sog‘indim', 'Yonimda bo‘l', 'Yarashamiz', 'Seni sevaman'],
+  ru: ['Прости меня', 'Я скучаю', 'Вернись ко мне', 'Без тебя', 'Люби меня'],
+  en: ['Sorry reconciliation', 'I miss you', 'Come back to me',
+       'Stay with me', 'Love of my life'],
+};
+
+function musicSheet() {
+  const box = document.createElement('div');
+  box.className = 'sheet';
+  box.innerHTML =
+    '<div class="meta">fon musiqasi</div><h3>🎵 Musiqa tanlash</h3>' +
+    '<div class="row" style="margin-bottom:12px">' +
+    '<button class="btn btn-main" id="pickFile">📱 Telefonimdan</button>' +
+    '<button class="btn btn-ghost" id="innerTone">🎼 Ichki ohang</button></div>' +
+    '<div class="row" style="margin-bottom:10px">' +
+    '<button class="btn btn-ghost" data-lang="uz">UZ</button>' +
+    '<button class="btn btn-ghost" data-lang="ru">RU</button>' +
+    '<button class="btn btn-ghost" data-lang="en">EN</button></div>' +
+    '<ul id="mlist" style="list-style:none;margin:0 0 14px;padding:0"></ul>' +
+    '<p class="meta" style="text-transform:none;letter-spacing:0;line-height:1.5">' +
+    'Ro\'yxat — qidiruv tavsiyalari. Qo\'shiqni tanlagach uni telefon ' +
+    'xotirasidan yuklang («Telefonimdan»). Shu tarzda mualliflik huquqi ' +
+    'buzilmaydi va musiqa oflayn ishlaydi.</p>' +
+    '<button class="btn btn-ghost" id="closeMusic">Yopish</button>';
+  document.body.appendChild(box);
+  requestAnimationFrame(() => box.classList.add('on'));
+
+  const list = box.querySelector('#mlist');
+  const render = (lang) => {
+    list.innerHTML = '';
+    MUSIC_LIST[lang].forEach((title) => {
+      const li = document.createElement('li');
+      li.textContent = '🔎 ' + title;
+      li.style.cssText = 'padding:12px 14px;margin-bottom:8px;border-radius:14px;'
+        + 'background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.14);'
+        + 'font:600 14px Nunito;color:var(--ink)';
+      li.onclick = () => {
+        const url = 'https://www.youtube.com/results?search_query='
+          + encodeURIComponent(title + ' song');
+        if (tg && tg.openLink) tg.openLink(url); else window.open(url, '_blank');
+      };
+      list.appendChild(li);
+    });
+  };
+  render('uz');
+  box.querySelectorAll('[data-lang]').forEach((b) => {
+    b.onclick = () => render(b.dataset.lang);
+  });
+  box.querySelector('#closeMusic').onclick = () => {
+    box.classList.remove('on');
+    setTimeout(() => box.remove(), 450);
+  };
+  box.querySelector('#pickFile').onclick = pickAudioFile;
+  box.querySelector('#innerTone').onclick = toggleInnerTone;
+}
+
+/* Telefon xotirasidan audio tanlash */
+function pickAudioFile() {
+  const inp = document.createElement('input');
+  inp.type = 'file';
+  inp.accept = 'audio/*';
+  inp.onchange = () => {
+    const f = inp.files && inp.files[0];
+    if (!f) return;
+    if (MUSIC.url) URL.revokeObjectURL(MUSIC.url);
+    MUSIC.url = URL.createObjectURL(f);
+    if (!MUSIC.el) {
+      MUSIC.el = new Audio();
+      MUSIC.el.loop = true;
+      MUSIC.el.volume = 0.55;
+    }
+    MUSIC.el.src = MUSIC.url;
+    stopInnerTone();
+    MUSIC.el.play().catch(() => {});
+    MUSIC.on = true;
+    updateMusicBtn();
+  };
+  inp.click();
+}
+
+/* Ichki ohang (WebAudio — fayl kerak emas) */
+function toggleInnerTone() {
+  if (MUSIC.on && MUSIC.ctx) { stopInnerTone(); return; }
+  const AC = window.AudioContext || window.webkitAudioContext;
+  if (!AC) return;
+  if (MUSIC.el) MUSIC.el.pause();
+  MUSIC.ctx = new AC();
+  MUSIC.gain = MUSIC.ctx.createGain();
+  MUSIC.gain.gain.value = 0.05;
+  MUSIC.gain.connect(MUSIC.ctx.destination);
+  const notes = [523.25, 659.25, 783.99, 659.25, 587.33, 698.46, 880.0, 698.46];
+  let i = 0;
+  const play = () => {
+    const o = MUSIC.ctx.createOscillator();
+    const g = MUSIC.ctx.createGain();
+    o.type = 'sine';
+    o.frequency.value = notes[i % notes.length];
+    g.gain.setValueAtTime(0.0001, MUSIC.ctx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.9, MUSIC.ctx.currentTime + 0.15);
+    g.gain.exponentialRampToValueAtTime(0.0001, MUSIC.ctx.currentTime + 1.6);
+    o.connect(g); g.connect(MUSIC.gain);
+    o.start(); o.stop(MUSIC.ctx.currentTime + 1.7);
+    i++;
+  };
+  play();
+  MUSIC.timer = setInterval(play, 900);
+  MUSIC.on = true;
+  updateMusicBtn();
+}
+
+function stopInnerTone() {
+  if (MUSIC.timer) clearInterval(MUSIC.timer);
+  MUSIC.timer = null;
+  if (MUSIC.ctx) { try { MUSIC.ctx.close(); } catch (e) { /* jim */ } }
+  MUSIC.ctx = null;
+  MUSIC.on = false;
+  updateMusicBtn();
+}
+
+function updateMusicBtn() {
+  const b = document.getElementById('musicBtn');
+  if (b) b.textContent = MUSIC.on ? '🔇 Musiqa' : '🎵 Musiqa';
+}
+/* ==========================================================================
+   7) TAYMER (ochilish sanasi) VA SHAXSIY FORMA
+   ========================================================================== */
+function startCountdown(atSec) {
+  const box = ui.hint;
+  box.classList.add('on');
+  const tickCd = () => {
+    const left = atSec - Math.floor(Date.now() / 1000);
+    if (left <= 0) {
+      box.classList.remove('on');
+      ui.forYou.classList.add('on');
+      return false;
+    }
+    const d = Math.floor(left / 86400), h = Math.floor((left % 86400) / 3600);
+    box.textContent = '⏳ Bu xat ' + (d > 0 ? d + ' kun ' : '') + h + ' soatdan keyin ochiladi';
+    return true;
+  };
+  if (tickCd()) setInterval(() => { tickCd(); }, 30000);
+}
+
+/* Shaxsiy forma: foydalanuvchi ism va matnni o'zi kiritadi (params bo'lmasa) */
+function showForm() {
+  const box = document.createElement('div');
+  box.className = 'sheet';
+  box.innerHTML =
+    '<div class="meta">o\'zingiz uchun</div><h3>💌 Xat yaratish</h3>' +
+    '<input id="fName" placeholder="Kimga (ism)" maxlength="40" ' +
+    'style="width:100%;margin-bottom:10px;padding:14px;border-radius:14px;' +
+    'border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.08);' +
+    'color:#fff3f7;font:600 15px Nunito">' +
+    '<textarea id="fText" placeholder="Xat matni (ixtiyoriy)" maxlength="1000" ' +
+    'rows="4" style="width:100%;margin-bottom:12px;padding:14px;border-radius:14px;' +
+    'border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.08);' +
+    'color:#fff3f7;font:400 15px Nunito;resize:none"></textarea>' +
+    '<div class="row"><button class="btn btn-main" id="fGo">Boshlash</button></div>';
+  document.body.appendChild(box);
+  requestAnimationFrame(() => box.classList.add('on'));
+  box.querySelector('#fGo').onclick = () => {
+    params.name = box.querySelector('#fName').value.trim().slice(0, 40);
+    params.text = box.querySelector('#fText').value.trim().slice(0, 1000);
+    box.classList.remove('on');
+    setTimeout(() => box.remove(), 450);
+    replay();
+  };
+}
+
+/* ==========================================================================
+   8) ISHGA TUSHIRISH
+   ========================================================================== */
+function resize() {
+  DPR = Math.min(window.devicePixelRatio || 1, 2);   // 2x dan oshmaymiz (tezlik)
+  W = window.innerWidth;
+  H = window.innerHeight;
+  canvas.width = Math.floor(W * DPR);
+  canvas.height = Math.floor(H * DPR);
+  canvas.style.width = W + 'px';
+  canvas.style.height = H + 'px';
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  cx = W / 2;
+  cy = H * 0.44;
+}
+
+function boot() {
+  resize();
+  initParticles();
+  setTargets(envelopeShape(N), 0);
+  rotY = -0.35;
+  ui.forYou.classList.add('on');
+  ui.forYouSub.textContent = params.name ? ('sizga: ' + params.name) : 'sizga yozilgan xat';
+  ui.hint.classList.add('on');
+  document.getElementById('musicBtn').onclick = musicSheet;
+
+  if (tg) {
+    try { tg.ready(); tg.expand(); } catch (e) { /* jim */ }
+    try {
+      if (tg.setHeaderColor) tg.setHeaderColor('#0d0010');
+      if (tg.setBackgroundColor) tg.setBackgroundColor('#0d0010');
+    } catch (e) { /* jim */ }
+  }
+
+  requestAnimationFrame(tick);
+
+  if (params.at && params.at > Date.now() / 1000) startCountdown(params.at);
+  if (!params.text && !params.letterId) showForm();
+
+  if (reduced) {                     // harakatni kamaytirish rejimi
+    started = true; phase = PHASE.IDLE;
+    setTargets(roseShape(N), 0);
+    revealName();
+    showTools();
+  }
+}
+
+window.addEventListener('resize', resize);
+window.addEventListener('orientationchange', () => setTimeout(resize, 200));
+boot();
+
+/* Test va avtomatlashtirish uchun kichik debug interfeys */
+window.__letter = {
+  particles: N,                     // 800 dan oshmasligi kerak
+  start: startAnimation,
+  replay,
+  phase: () => phase,
+  name: nameText,
+  text: () => params.text,
+  music: () => MUSIC.on,
+};
+</script>
+</body>
+</html>

@@ -1404,8 +1404,25 @@ async function viewMemory(v) {
     d.appendChild(h('div', 't', '«' + x.text.slice(0, 120) + (x.text.length > 120 ? '…' : '') + '»'));
     const dt = new Date(x.ts * 1000).toLocaleDateString('uz');
     d.appendChild(h('div', 'm', (x.mine ? 'siz →' : '→ siz') + ' · ' + dt + ' · ' + (THEME_NAMES[x.theme] || 'Klassik')));
+    const ab = h('button', 'btn btn-ghost btn-sm', '✨ Animatsiya bilan ochish');
+    ab.style.marginTop = '8px';
+    ab.style.width = '100%';
+    ab.onclick = () => openLetterAnim(x);
+    d.appendChild(ab);
     v.appendChild(d);
   });
+}
+
+/* Xatni animatsion sahifada ochish (konvert → atirgul → ism) */
+function openLetterAnim(x) {
+  haptic();
+  const q = new URLSearchParams({
+    name: (ME && ME.partner) || '',
+    text: x.text || '',
+    theme: x.theme || 'classic',
+    l: String(x.id),
+  });
+  window.location.href = 'letter.html?' + q.toString();
 }
 
 /* ================= 5. BOG'IM ================= */
