@@ -6,9 +6,11 @@ postni kanalga yuboradi. Dushanba — haftalik post.
 Xavfsizlik: `Authorization: Bearer $CRON_SECRET` yoki `?s=CRON_SECRET`.
 """
 import datetime as dt
+import hashlib
 import json
 import os
 import sys
+import time
 import urllib.parse
 import urllib.request
 from http.server import BaseHTTPRequestHandler
@@ -73,19 +75,63 @@ def _run(force=False):
     if not BOT_TOKEN or not CHANNEL_ID:
         return {"ok": False, "error": "BOT_TOKEN/CHANNEL_ID yo'q"}
     item, kind, idx, day = _pick()
-    key = f"ch:last:{day}"
+    text = str(item.get("text") or "").strip()
+    h = hashlib.sha1(text.lower().encode()).hexdigest()[:16]
+    key = f"ch:last:{day}"         # kunlik qulf (bir kunda bir marta)
+    seen = f"ch:sent:{h}"          # shu matn oxirgi 30 kunda yuborilganmi
+    rc = None
     try:
         import redis as _r
         rc = _r.from_url(os.environ.get("REDIS_URL") or "", socket_timeout=4,
                          decode_responses=True)
-        if not force and not rc.set(key, f"{kind}:{idx}", nx=True, ex=2 * 86400):
-            return {"ok": True, "skipped": True, "day": day}
+        if not force:
+            if not rc.set(key, f"{kind}:{idx}", nx=True, ex=2 * 86400):
+                return {"ok": True, "skipped": True, "reason": "bugun yuborilgan",
+                        "day": day}
+        # matn dublikati har doim bloklanadi (force ham uni chetlab o'tmaydi)
+        if not rc.set(seen, day, nx=True, ex=30 * 86400):
+            if not force:
+                rc.delete(key)
+            return {"ok": True, "skipped": True, "reason": "matn dublikat",
+                    "day": day, "index": idx}
     except Exception:  # noqa: BLE001
-        pass
+        rc = None
     res = _post(item)
-    return {"ok": bool(res.get("ok")), "kind": kind, "index": idx, "day": day,
-            "message_id": (res.get("result") or {}).get("message_id"),
-            "error": res.get("description")}
+    ok = bool(res.get("ok"))
+    mid = (res.get("result") or {}).get("message_id")
+    if rc is not None:
+        try:
+            if not ok:                      # yuborilmadi — qulfni bo'shatamiz
+                rc.delete(key)
+                rc.delete(seen)
+            else:
+                rc.rpush("ch:log", json.dumps(
+                    {"day": day, "kind": kind, "idx": idx, "id": mid,
+                     "ts": int(time.time()), "text": text[:120]},
+                    ensure_ascii=False))
+                rc.ltrim("ch:log", -100, -1)
+        except Exception:  # noqa: BLE001
+            pass
+    return {"ok": ok, "kind": kind, "index": idx, "day": day,
+            "message_id": mid, "error": res.get("description")}
+
+
+def _log(limit=10):
+    """Oxirgi yuborilgan postlar (diagnostika: /api/channel?log=1)."""
+    try:
+        import redis as _r
+        rc = _r.from_url(os.environ.get("REDIS_URL") or "", socket_timeout=4,
+                         decode_responses=True)
+        rows = []
+        for raw in rc.lrange("ch:log", -limit, -1):
+            try:
+                rows.append(json.loads(raw))
+            except Exception:  # noqa: BLE001
+                continue
+        rows.reverse()
+        return {"ok": True, "count": len(rows), "posts": rows}
+    except Exception as e:  # noqa: BLE001
+        return {"ok": False, "error": repr(e)}
 
 
 def _key_ok(path, headers):
@@ -110,6 +156,8 @@ class handler(BaseHTTPRequestHandler):
         path = self.path or ""
         if not _key_ok(path, self.headers):
             return self._json(401, {"ok": False, "err": "unauthorized"})
+        if "log=1" in path:
+            return self._json(200, _log())
         force = "force=1" in path
         try:
             return self._json(200, _run(force=force))
