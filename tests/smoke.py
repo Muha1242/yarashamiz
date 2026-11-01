@@ -927,7 +927,7 @@ check("JS: xat va kapsula sahnalari", js.count("showStage(") >= 3, js.count("sho
 check("CSS: sahna uslublari",
       ".lstage" in css and ".lpaper" in css and "paperIn" in css)
 check("CSS: portlash animatsiyasi", ".burst" in css and "burstFly" in css)
-check("cache-busting v12", "app.js?v=12" in idx_html)
+check("cache-busting v12", "app.js?v=13" in idx_html)
 
 # ------------------- 30. XAT SAHNASI 2.0 (ovoz/parallaks) ----------------
 check("JS: ochilish ovozi", "playOpenSound" in js and "AudioContext" in js)
@@ -937,7 +937,7 @@ check("JS: 'ochildi' muhr", "lstamp" in js and "OCHILDI" in js)
 check("CSS: zarralar va muhr",
       ".lparts" in css and ".lstamp" in css and "stampIn" in css)
 check("CSS: parallaks (translate)", "--px" in css and "--py" in css)
-check("cache-busting v12 (splash)", "app.js?v=12" in idx_html)
+check("cache-busting v12 (splash)", "app.js?v=13" in idx_html)
 check("bot: xat havolasida ism", '"n": st.r.get' in bot_src)
 check("api: kapsula fromName", "fromName" in open(os.path.join(ROOT, "api/app.py"),
                                                    encoding="utf-8").read())
@@ -1227,6 +1227,47 @@ check("bot: /start da demo animatsiya",
       "04_xat_ochilishi.gif" in bot_src and "send_animation" in bot_src)
 check("assets: GIF 2+ frame",
       open(os.path.join(_assets, "04_xat_ochilishi.gif"), "rb").read(6)[:3] == b"GIF")
+check("assets: haqiqiy ekran yozuvi (05_demo.mp4)",
+      1_000_000 < os.path.getsize(os.path.join(_assets, "05_demo.mp4")) < 4_500_000,
+      os.path.getsize(os.path.join(_assets, "05_demo.mp4")))
+check("assets: video public nusxasi sinxron",
+      open(os.path.join(_assets, "05_demo.mp4"), "rb").read()
+      == open(os.path.join(ROOT, "public/mini_app/assets/05_demo.mp4"), "rb").read())
+check("UI: brand logotipi (emoji o'rniga rasm)",
+      "brand-mark" in idx_html and ".brand-mark" in css and "logo.jpg" in idx_html)
+check("kontent: video generatori mavjud",
+      os.path.exists(os.path.join(ROOT, "content/make_video.py")))
+
+# ------------------- 37. KANAL: DUBLIKAT HIMOYASI ----------------------
+_ch_bt, _ch_ch = ch.BOT_TOKEN, ch.CHANNEL_ID
+_orig_post, _orig_pick = ch._post, ch._pick
+_sent = []
+ch.BOT_TOKEN, ch.CHANNEL_ID = "1:x", "-100test"
+ch._post = lambda item: (_sent.append(item),
+                         {"ok": True, "result": {"message_id": 777}})[1]
+_r1 = ch._run()
+check("kanal: birinchi post yuboriladi", _r1["ok"] and _r1["message_id"] == 777, _r1)
+_r2 = ch._run()
+check("kanal: kunlik dublikat bloklanadi",
+      bool(_r2.get("skipped")) and len(_sent) == 1, _r2)
+_r3 = ch._run(force=True)
+check("kanal: force ham bir xil matnni takrorlamaydi",
+      bool(_r3.get("skipped")) and len(_sent) == 1, _r3)
+ch._pick = lambda now=None: ({"type": "text", "text": "Sinov matni 2"},
+                             "daily", 0, "2027-03-15")
+ch._post = lambda item: {"ok": False, "description": "boom"}
+_rf = ch._run()
+check("kanal: xatoda kunlik qulf bo'shaydi",
+      _rf["ok"] is False and st.r.get("ch:last:2027-03-15") is None,
+      (_rf, st.r.get("ch:last:2027-03-15")))
+ch._post = lambda item: {"ok": True, "result": {"message_id": 42}}
+_rok = ch._run()
+check("kanal: qayta urinishda yuboriladi", _rok["ok"] and _rok["message_id"] == 42, _rok)
+_log = ch._log(5)
+check("kanal: log yoziladi (yangi -> eski)",
+      _log["ok"] and _log["posts"] and _log["posts"][0]["id"] == 42, _log)
+ch._post, ch._pick = _orig_post, _orig_pick
+ch.BOT_TOKEN, ch.CHANNEL_ID = _ch_bt, _ch_ch
 
 print()
 if FAILS:
