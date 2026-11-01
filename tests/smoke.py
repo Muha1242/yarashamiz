@@ -927,7 +927,7 @@ check("JS: xat va kapsula sahnalari", js.count("showStage(") >= 3, js.count("sho
 check("CSS: sahna uslublari",
       ".lstage" in css and ".lpaper" in css and "paperIn" in css)
 check("CSS: portlash animatsiyasi", ".burst" in css and "burstFly" in css)
-check("cache-busting v12", "app.js?v=13" in idx_html)
+check("cache-busting v12", "app.js?v=14" in idx_html)
 
 # ------------------- 30. XAT SAHNASI 2.0 (ovoz/parallaks) ----------------
 check("JS: ochilish ovozi", "playOpenSound" in js and "AudioContext" in js)
@@ -937,7 +937,7 @@ check("JS: 'ochildi' muhr", "lstamp" in js and "OCHILDI" in js)
 check("CSS: zarralar va muhr",
       ".lparts" in css and ".lstamp" in css and "stampIn" in css)
 check("CSS: parallaks (translate)", "--px" in css and "--py" in css)
-check("cache-busting v12 (splash)", "app.js?v=13" in idx_html)
+check("cache-busting v12 (splash)", "app.js?v=14" in idx_html)
 check("bot: xat havolasida ism", '"n": st.r.get' in bot_src)
 check("api: kapsula fromName", "fromName" in open(os.path.join(ROOT, "api/app.py"),
                                                    encoding="utf-8").read())
@@ -1207,6 +1207,55 @@ check("README: trial hujjatlashtirilgan", "TRIAL_DAYS" in _readme)
 _setup_src = open(os.path.join(ROOT, "api/setup.py"), encoding="utf-8").read()
 check("setup: /promo menyuda", 'command="promo"' in _setup_src)
 check("bot: /feedbacks buyrug'i", 'Command("feedbacks"' in bot_src)
+
+# ---------------- 38. ANIMATSION XAT SAHIFASI (letter.html) -------------
+_letter = open(os.path.join(ROOT, "mini_app/letter.html"), encoding="utf-8").read()
+check("letter.html: mavjud va nusxasi sinxron",
+      _letter == open(os.path.join(ROOT, "public/mini_app/letter.html"),
+                      encoding="utf-8").read())
+check("letter: FOR YOU + Telegram SDK",
+      "FOR YOU" in _letter and "telegram-web-app.js" in _letter
+      and "Telegram.WebApp" in _letter)
+check("letter: zarrachalar chegarasi 800",
+      "MAX_PARTICLES = 800" in _letter and "Math.min(MAX_PARTICLES" in _letter)
+check("letter: konvert → halqa → atirgul",
+      "envelopeShape" in _letter and "ringShape" in _letter
+      and "roseShape" in _letter)
+check("letter: ism harf-harf + script shrift",
+      "revealName" in _letter and "Caveat+Brush" in _letter)
+check("letter: barmoq bilan aylantirish",
+      "pointermove" in _letter and "touchmove" in _letter
+      and "rotY +=" in _letter)
+check("letter: xatni o'qish + qayta + ulashish",
+      'id="readBtn"' in _letter and "function replay" in _letter
+      and "shareMessage" in _letter)
+check("letter: musiqa (telefon + ichki + UZ/RU/EN)",
+      "pickAudioFile" in _letter and "toggleInnerTone" in _letter
+      and "MUSIC_LIST" in _letter and "uz:" in _letter and "ru:" in _letter
+      and "en:" in _letter)
+check("letter: taymer va shaxsiy forma",
+      "startCountdown" in _letter and "showForm" in _letter)
+check("letter: reduced-motion hurmat qilinadi", "prefers-reduced-motion" in _letter)
+check("app: xotiradan animatsiya bilan ochish",
+      "openLetterAnim" in js and "letter.html?" in js)
+check("api: letter_seen action", "letter_seen" in api_app.ACTIONS)
+
+# letter_seen: yuboruvchiga bir marta xabar
+_l_seen = st.add_letter(9701, "Animatsion xat matni", ["Kino"], "love")
+SENT.clear()
+_r_seen = api_app.ACTIONS["letter_seen"](9702, {}, {"l": _l_seen})
+check("letter_seen: ok + birinchi marta xabar",
+      _r_seen.get("ok") and _r_seen.get("notified") is True, _r_seen)
+SENT.clear()
+_r_seen2 = api_app.ACTIONS["letter_seen"](9702, {}, {"l": _l_seen})
+check("letter_seen: takroriy xabar yo'q",
+      _r_seen2.get("notified") is False and SENT == [], (_r_seen2, SENT))
+check("letter_seen: o'z xati jim",
+      api_app.ACTIONS["letter_seen"](9701, {}, {"l": _l_seen}).get("mine") is True)
+check("letter_seen: yo'q xat",
+      api_app.ACTIONS["letter_seen"](9703, {}, {"l": 999999}).get("err") == "none")
+check("letter_seen: buzuq id",
+      api_app.ACTIONS["letter_seen"](9703, {}, {"l": "x"}).get("err") == "bad_id")
 
 # ------------------- 36. KANAL VIZUAL KONTENTI (rasm/GIF) ---------------
 _assets = os.path.join(ROOT, "mini_app/assets")
