@@ -1236,12 +1236,26 @@ check("letter: musiqa (telefon + ichki + UZ/RU/EN)",
 check("letter: taymer va shaxsiy forma",
       "startCountdown" in _letter and "showForm" in _letter)
 check("letter: reduced-motion hurmat qilinadi", "prefers-reduced-motion" in _letter)
+check("letter: bot havolasi (?d=) qo'llab-quvvatlanadi",
+      "decodeBotPayload" in _letter and "P.get('d')" in _letter)
+check("letter: faqat ?l= bo'lsa serverdan yuklaydi",
+      "loadFromServer" in _letter and "action: 'letter'" in _letter)
+check("letter: wow effektlar (yulduz, oltin ramka, chaqnash, ovoz)",
+      "drawStars" in _letter and "drawGoldFrame" in _letter
+      and "flashScreen" in _letter and "openChime" in _letter
+      and "heartsTick" in _letter)
+check("bot: xat havolasi letter.html ga ochiladi",
+      "letter.html?d=" in bot_src)
+_seen_letter_id = st.add_letter(9701, "Animatsion xat matni", ["Kino"], "love")
+_letter_api = api_app._letter(9701, {"l": _seen_letter_id})
+check("api: letter javobida fromName",
+      "fromName" in _letter_api, list(_letter_api.keys()))
 check("app: xotiradan animatsiya bilan ochish",
       "openLetterAnim" in js and "letter.html?" in js)
 check("api: letter_seen action", "letter_seen" in api_app.ACTIONS)
 
 # letter_seen: yuboruvchiga bir marta xabar
-_l_seen = st.add_letter(9701, "Animatsion xat matni", ["Kino"], "love")
+_l_seen = st.add_letter(9701, "Animatsion xat matni 2", ["Kino"], "love")
 SENT.clear()
 _r_seen = api_app.ACTIONS["letter_seen"](9702, {}, {"l": _l_seen})
 check("letter_seen: ok + birinchi marta xabar",

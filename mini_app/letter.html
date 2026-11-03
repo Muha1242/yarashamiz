@@ -36,17 +36,17 @@ body{
 .wrap{position:fixed;inset:0;display:flex;flex-direction:column;
   align-items:center;justify-content:center;pointer-events:none;z-index:2}
 
-/* --- konvert ustidagi "FOR YOU" --- */
+/* --- konvert ichidagi "FOR YOU" (oltin ramka markazida) --- */
 .foryou{
-  position:absolute;top:calc(50% - 130px);left:50%;transform:translate(-50%,-50%);
-  font:700 clamp(26px,7vw,38px)/1 Nunito,sans-serif;letter-spacing:.28em;
-  color:#fff;text-transform:uppercase;text-align:center;
-  text-shadow:0 0 18px rgba(255,111,174,.95),0 0 46px rgba(255,111,174,.6);
+  position:absolute;top:calc(50% - 34px);left:50%;transform:translate(-50%,-50%);
+  font:700 clamp(22px,6vw,32px)/1 Nunito,sans-serif;letter-spacing:.30em;
+  color:#fff8ee;text-transform:uppercase;text-align:center;
+  text-shadow:0 0 14px rgba(255,190,120,.95),0 0 40px rgba(255,111,174,.55);
   opacity:0;transition:opacity .5s ease;white-space:nowrap;
 }
-.foryou.on{opacity:1;animation:forYouPulse 1.5s ease-in-out infinite}
-.foryou small{display:block;margin-top:12px;font:600 10px Nunito;letter-spacing:.34em;
-  color:var(--pink-soft);text-transform:uppercase;opacity:.9;text-shadow:none}
+.foryou.on{opacity:1;animation:forYouPulse 1.9s ease-in-out infinite}
+.foryou small{display:block;margin-top:14px;font:600 9.5px Nunito;letter-spacing:.36em;
+  color:rgba(255,232,214,.75);text-transform:uppercase;text-shadow:none}
 @keyframes forYouPulse{0%,100%{transform:translate(-50%,-50%) scale(1)}
   50%{transform:translate(-50%,-50%) scale(1.045)}}
 
@@ -93,6 +93,13 @@ body{
 .row{display:flex;gap:8px;width:100%;max-width:344px}
 .row .btn{flex:1;min-height:46px;font-size:13px;padding:0 6px}
 .hidden{display:none!important}
+
+/* portlash paytidagi ekran chaqnashi */
+.flash{position:fixed;inset:0;z-index:4;pointer-events:none;
+  background:radial-gradient(circle at 50% 42%,rgba(255,214,240,.95),
+    rgba(255,111,174,.55) 42%,transparent 72%);
+  animation:flashOut .6s ease-out forwards}
+@keyframes flashOut{0%{opacity:0}18%{opacity:.92}100%{opacity:0}}
 
 /* --- xat matni (pastdan chiqadigan panel) --- */
 .sheet{
@@ -159,6 +166,19 @@ const params = {
   at: Number(P.get('at') || 0),          // ochilish vaqti (unix sekund)
 };
 
+/* Bot havolasi `?d=<base64url JSON {t,o,theme,n}>` bilan ham ishlaydi */
+(function decodeBotPayload() {
+  const raw = P.get('d');
+  if (!raw) return;
+  try {
+    const b64 = raw.replace(/-/g, '+').replace(/_/g, '/');
+    const d = JSON.parse(atob(b64));
+    if (d.t) params.text = String(d.t).slice(0, 1000);
+    if (d.theme) params.theme = String(d.theme).slice(0, 20);
+    if (d.n) params.name = String(d.n).slice(0, 40);
+  } catch (e) { /* jim */ }
+})();
+
 const canvas = document.getElementById('stage');
 const ctx = canvas.getContext('2d', { alpha: false });
 const ui = {
@@ -218,59 +238,60 @@ function ringShape(n) {
   return out;
 }
 
-/* Atirgul: qatlamli gulbarglar (pushti) + kurtak + poya/barg (cyan) */
+/* Atirgul: 4 qatlam gulbarg (yoylar) + markazdagi kurtak + poya/barg */
 function roseShape(n) {
   const out = [];
-  const R = Math.min(W * 0.24, 122);
-  const buds = Math.floor(n * 0.20);          // markazdagi kurtak (spiral)
+  const R = Math.min(W * 0.235, 118);
+  // markaziy kurtak — zich spiral
+  const buds = Math.floor(n * 0.18);
   for (let i = 0; i < buds; i++) {
     const u = i / buds;
-    const th = u * Math.PI * 2 * 2.6;
-    const rr = (0.10 + u * 0.34) * R;
-    out.push([Math.cos(th) * rr, Math.sin(th) * rr * 0.9 - R * 0.16,
-              (1 - u) * R * 0.28, 'petal', rnd(1.0, 1.7)]);
+    const th = u * Math.PI * 2 * 2.4;
+    const rr = (0.08 + u * 0.30) * R;
+    out.push([Math.cos(th) * rr, Math.sin(th) * rr * 0.92 - R * 0.20,
+              (1 - u) * R * 0.22, 'petal', rnd(1.0, 1.6)]);
   }
-  // 3 qatlam barg: har qatlamda 5..7 gulbarg, yoy bo'ylab nuqtalar
+  // 4 qatlam: har qatlamda gulbarg yoylari (simmetrik, toza shakl)
   const layers = [
-    { k: 5, r: 0.52, y: -0.02, z: 0.40 },
-    { k: 6, r: 0.76, y: 0.04, z: 0.18 },
-    { k: 7, r: 1.00, y: 0.10, z: -0.10 },
+    { k: 5, r: 0.46, z: 0.34, dy: -0.10 },
+    { k: 7, r: 0.66, z: 0.16, dy: -0.02 },
+    { k: 9, r: 0.86, z: -0.02, dy: 0.06 },
+    { k: 11, r: 1.00, z: -0.20, dy: 0.14 },
   ];
-  const petalPts = n - buds - Math.floor(n * 0.14) - Math.floor(n * 0.10);
-  let idx = 0;
+  const petalPts = n - buds - Math.floor(n * 0.12) - Math.floor(n * 0.10);
+  const perLayer = Math.floor(petalPts / layers.length);
   for (const L of layers) {
+    const per = Math.max(6, Math.floor(perLayer / L.k));
     for (let p = 0; p < L.k; p++) {
-      const a0 = (p / L.k) * Math.PI * 2 + (L.k % 2 ? 0.25 : 0);
-      const per = Math.max(8, Math.floor(petalPts / (layers.length * 6)));
+      const a0 = (p / L.k) * Math.PI * 2 + L.k * 0.13;
       for (let s = 0; s < per; s++) {
-        const t = s / (per - 1);
-        const a = a0 + (t - 0.5) * (Math.PI * 1.5 / L.k);
-        const rr = R * L.r * (0.72 + 0.28 * Math.sin(Math.PI * t));
+        const t = per > 1 ? s / (per - 1) : 0.5;
+        const a = a0 + (t - 0.5) * (Math.PI * 1.35 / L.k);
+        const rr = R * L.r * (0.80 + 0.20 * Math.sin(Math.PI * t));
         out.push([Math.cos(a) * rr,
-                  Math.sin(a) * rr * 0.86 + R * L.y + R * 0.08,
-                  R * L.z + Math.sin(Math.PI * t) * R * 0.22,
-                  'petal', rnd(0.85, 1.5)]);
-        idx++;
+                  Math.sin(a) * rr * 0.88 + R * L.dy,
+                  R * L.z + Math.sin(Math.PI * t) * R * 0.16,
+                  'petal', rnd(0.9, 1.5)]);
       }
     }
   }
-  // poya
-  const stem = Math.floor(n * 0.14);
-  const top = R * 0.72;
+  // poya (cyan)
+  const stem = Math.floor(n * 0.12);
+  const top = R * 0.98;
   for (let i = 0; i < stem; i++) {
     const t = i / stem;
-    out.push([Math.sin(t * 2.1) * R * 0.14, top + t * R * 1.35,
-              Math.cos(t * 2.0) * 10, 'stem', rnd(0.9, 1.5)]);
+    out.push([Math.sin(t * 2.1) * R * 0.12, top + t * R * 1.20,
+              Math.cos(t * 2.0) * 8, 'stem', rnd(0.9, 1.4)]);
   }
-  // barglar (ikkita ellips)
+  // barglar (cyan, ikkita)
   const leaf = n - out.length;
   for (let i = 0; i < leaf; i++) {
     const side = i % 2 ? 1 : -1;
     const t = (i / Math.max(1, leaf / 2)) * Math.PI;
-    const lr = R * 0.30;
-    out.push([side * (R * 0.20 + Math.sin(t) * lr * 0.9),
-              top + R * 0.62 + Math.cos(t) * lr * 0.35,
-              Math.sin(t) * 8, 'leaf', rnd(0.8, 1.3)]);
+    const lr = R * 0.28;
+    out.push([side * (R * 0.18 + Math.sin(t) * lr * 0.95),
+              top + R * 0.45 + Math.cos(t) * lr * 0.30,
+              Math.sin(t) * 6, 'leaf', rnd(0.8, 1.2)]);
   }
   return out;
 }
@@ -299,6 +320,7 @@ function setTargets(shape, impulse) {
     const s = shape[i % shape.length];
     p.tx = s[0]; p.ty = s[1]; p.tz = s[2] || 0;
     const type = s[3] || 'petal';
+    p.hidden = false;
     p.b = (type === 'stem' || type === 'leaf') ? 2 : (i % 3 === 0 ? 1 : 0);
     p.s = s[4] || rnd(1.1, 2.4);
     if (impulse) {                       // portlash impulsi
@@ -310,7 +332,114 @@ function setTargets(shape, impulse) {
   }
 }
 
-/* Vaqtinchalik uchqunlar (portlash payti) */
+/* Yulduzli fon (juda yengil: 120 nuqta) + oltin ramka "wow" effekti */
+const stars = [];
+function initStars() {
+  stars.length = 0;
+  for (let i = 0; i < 120; i++) {
+    stars.push({ x: Math.random(), y: Math.random(),
+                 r: rnd(0.4, 1.5), p: Math.random() * Math.PI * 2 });
+  }
+}
+
+function drawStars(t) {
+  for (let i = 0; i < stars.length; i++) {
+    const s = stars[i];
+    const tw = 0.35 + 0.65 * Math.abs(Math.sin(t * 0.0012 + s.p));
+    ctx.globalAlpha = tw * 0.7;
+    ctx.fillStyle = i % 9 === 0 ? '#ffd9e6' : '#ffffff';
+    ctx.beginPath();
+    ctx.arc(s.x * W, s.y * H, s.r, 0, 6.2832);
+    ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+}
+
+/* Oltin konvert ramkasi (fon effekti) — faqat konvert fazasida */
+function drawGoldFrame(t) {
+  const bw = Math.min(W * 0.62, 300), bh = bw * 0.66;
+  const x = cx - bw / 2, y = cy - bh / 2;
+  const puls = 0.55 + 0.45 * Math.sin(t * 0.003);
+  ctx.save();
+  ctx.lineWidth = 1.4;
+  ctx.strokeStyle = 'rgba(255,214,150,' + (0.35 + 0.35 * puls) + ')';
+  ctx.shadowColor = 'rgba(255,190,120,.9)';
+  ctx.shadowBlur = 18 + 10 * puls;
+  ctx.beginPath();
+  ctx.moveTo(x, y); ctx.lineTo(x + bw, y);
+  ctx.lineTo(x + bw, y + bh); ctx.lineTo(x, y + bh); ctx.closePath();
+  ctx.moveTo(x, y); ctx.lineTo(cx, y + bh * 0.42);
+  ctx.lineTo(x + bw, y);
+  ctx.stroke();
+  ctx.restore();
+  ctx.globalAlpha = 1;
+}
+
+/* Konvertni bosganda qisqa "shimgir" ovozi (WebAudio, fayl kerak emas) */
+function openChime() {
+  try {
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return;
+    const ac = new AC();
+    const notes = [659.25, 880.0, 1174.66];
+    notes.forEach((f, i) => {
+      const o = ac.createOscillator(), g = ac.createGain();
+      o.type = 'triangle'; o.frequency.value = f;
+      const t0 = ac.currentTime + i * 0.09;
+      g.gain.setValueAtTime(0.0001, t0);
+      g.gain.exponentialRampToValueAtTime(0.16, t0 + 0.03);
+      g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.6);
+      o.connect(g); g.connect(ac.destination);
+      o.start(t0); o.stop(t0 + 0.65);
+    });
+    setTimeout(() => { try { ac.close(); } catch (e) { /* jim */ } }, 1400);
+  } catch (e) { /* jim */ }
+}
+
+/* Yurak portlashi va halqa to'lqini (portlash "wow" effekti) */
+const fx = { heart: 0, ring: 0 };
+function drawFx() {
+  if (fx.heart > 0) {
+    const k = 1 - fx.heart / 1.1;
+    const s = 40 + k * 120;
+    const a = Math.max(0, 1 - k) * 0.85;
+    const g = ctx.createRadialGradient(cx, cy - 10, 0, cx, cy - 10, s * 1.6);
+    g.addColorStop(0, 'rgba(255,120,180,' + a + ')');
+    g.addColorStop(.45, 'rgba(255,60,140,' + (a * .55) + ')');
+    g.addColorStop(1, 'rgba(255,0,90,0)');
+    ctx.fillStyle = g;
+    ctx.beginPath(); ctx.arc(cx, cy - 10, s * 1.6, 0, 6.2832); ctx.fill();
+  }
+  if (fx.ring > 0) {
+    const k = 1 - fx.ring / 1.5;
+    const r = 30 + k * 190;
+    ctx.strokeStyle = 'rgba(255,90,160,' + Math.max(0, 1 - k) * .85 + ')';
+    ctx.lineWidth = Math.max(1.2, 6 * (1 - k));
+    ctx.beginPath(); ctx.arc(cx, cy, r, 0, 6.2832); ctx.stroke();
+  }
+}
+
+/* Konvert fazasida faqat ~300 zarracha ko'rinadi (kamroq "nuqta" — chiroyli) */
+function hideDust(from) {
+  for (let i = from; i < N; i++) parts[i].hidden = true;
+}
+
+/* Ekran chaqnashi (portlash paytida) */
+function flashScreen() {
+  const f = document.createElement('div');
+  f.className = 'flash';
+  document.body.appendChild(f);
+  setTimeout(() => f.remove(), 620);
+}
+
+/* Atirgul fazasida sekin yuqoriga suzuvchi yuraklar */
+function heartsTick(dt) {
+  if (Math.random() < dt * 6) {
+    sparks.push({ x: rnd(-W * 0.32, W * 0.32), y: rnd(40, 160),
+                  vx: rnd(-0.25, 0.25), vy: rnd(-1.1, -0.55), life: 1.4,
+                  s: rnd(1.6, 3.1) });
+  }
+}
 const sparks = [];
 function burstSparks(n, power) {
   for (let i = 0; i < n; i++) {
@@ -331,6 +460,9 @@ function drawFrame(dt) {
   ctx.globalCompositeOperation = 'source-over';
   ctx.fillStyle = 'rgba(13,0,16,0.30)';       // trail (iz) effekti
   ctx.fillRect(0, 0, W, H);
+  drawStars(elapsed);                          // yulduzli fon
+  if (phase === PHASE.ENVELOPE) drawGoldFrame(elapsed);   // oltin ramka
+  drawFx();                                    // yurak portlashi + halqa
 
   const cosY = Math.cos(rotY), sinY = Math.sin(rotY);
   const cosX = Math.cos(rotX), sinX = Math.sin(rotX);
@@ -338,7 +470,7 @@ function drawFrame(dt) {
   ctx.globalCompositeOperation = 'lighter';
   for (let i = 0; i < N; i++) {
     const p = parts[i];
-    // maqsad nuqtasini aylantirish (barmoq drag + idle spin)
+    if (p.hidden) continue;
     const tx = p.tx * cosY - p.tz * sinY;
     const tz0 = p.tx * sinY + p.tz * cosY;
     const ty = p.ty * cosX - tz0 * sinX;
@@ -405,6 +537,9 @@ function tick(ts) {
   rotY += (spin + dragSpin) * dt;              // idle + drag
   dragSpin *= 0.94;
   rotX += (targetRotY - rotX) * 0.08;
+  if (fx.heart > 0) fx.heart -= dt;
+  if (fx.ring > 0) fx.ring -= dt;
+  if (phase === PHASE.ROSE || phase === PHASE.IDLE) heartsTick(dt);
 
   drawFrame(dt);
   requestAnimationFrame(tick);
@@ -420,6 +555,10 @@ function startAnimation() {
   ui.forYou.classList.remove('on');
   setTargets(ringShape(N), 9);
   burstSparks(120, 1);
+  fx.heart = 1.1;                              // yurak portlashi
+  fx.ring = 1.5;                               // halqa to'lqini
+  openChime();                                 // "shimgir" ovozi
+  flashScreen();                               // ekran chaqnashi
   if (tg && tg.HapticFeedback) tg.HapticFeedback.impactOccurred('heavy');
   setTimeout(() => burstSparks(60, .7), T.burst * 0.6);
 }
@@ -488,6 +627,7 @@ function replay() {
   ui.sheet.classList.remove('on');
   initParticles();
   setTargets(envelopeShape(N), 0);
+  hideDust(300);            // konvert: yengil 'chang' effekti
   rotY = -0.35;
   ui.forYou.classList.add('on');
   ui.forYouSub.textContent = params.name ? ('sizga: ' + params.name) : 'sizga yozilgan xat';
@@ -735,10 +875,31 @@ function resize() {
   cy = H * 0.44;
 }
 
+/* Agar faqat `?l=<id>` bo'lsa — xatni serverdan yuklaymiz (initData bilan) */
+async function loadFromServer() {
+  if (!params.letterId || params.text || !tg || !tg.initData) return;
+  try {
+    const r = await fetch('/api/app', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ init: tg.initData, action: 'letter',
+                             l: Number(params.letterId) }),
+    });
+    const j = await r.json();
+    if (j && j.ok) {
+      params.text = (j.text || '').slice(0, 1000);
+      params.theme = j.theme || params.theme;
+      if (!params.name) params.name = j.mine ? '' : (j.fromName || '');
+      ui.forYouSub.textContent = params.name ? ('sizga: ' + params.name)
+        : 'sizga yozilgan xat';
+    }
+  } catch (e) { /* jim */ }
+}
+
 function boot() {
   resize();
   initParticles();
   setTargets(envelopeShape(N), 0);
+  hideDust(300);            // konvert: yengil 'chang' effekti
   rotY = -0.35;
   ui.forYou.classList.add('on');
   ui.forYouSub.textContent = params.name ? ('sizga: ' + params.name) : 'sizga yozilgan xat';
@@ -755,6 +916,7 @@ function boot() {
 
   requestAnimationFrame(tick);
 
+  loadFromServer();                  // faqat ?l= bo'lsa xatni serverdan yuklaydi
   if (params.at && params.at > Date.now() / 1000) startCountdown(params.at);
   if (!params.text && !params.letterId) showForm();
 

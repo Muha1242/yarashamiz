@@ -425,8 +425,9 @@ def theme_kb(u):
 
 
 def open_letter_kb(lid, link):
+    # qabul qiluvchi "wow" animatsion sahifani ko'radi (konvert → atirgul → ism)
     btn = KeyboardButton(text="💌 Xatni ochish",
-                         web_app=WebAppInfo(url=f"{URL}/?d={link}&l={lid}"))
+                         web_app=WebAppInfo(url=f"{URL}/letter.html?d={link}&l={lid}"))
     return ReplyKeyboardMarkup(resize_keyboard=True, keyboard=[[btn]])
 
 

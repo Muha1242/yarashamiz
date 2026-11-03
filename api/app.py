@@ -244,6 +244,7 @@ def _letter(u, d):
     return {
         "ok": True, "id": L["id"], "text": L["text"], "offers": L["offers"],
         "theme": L["theme"], "ts": L["ts"], "mine": L["sender"] == u,
+        "fromName": (st.r.get(f"name:{L['sender']}") or ""),
         "changesLeft": max(0, st.THEME_LIMIT - int(L.get("thn") or 0)),
         "themes": [{"id": t, "name": n, "prem": t in core.PREMIUM_THEMES,
                     "ok": t not in core.PREMIUM_THEMES or st.is_prem(u)}
