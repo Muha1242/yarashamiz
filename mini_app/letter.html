@@ -9,81 +9,56 @@
 <link href="https://fonts.googleapis.com/css2?family=Caveat+Brush&family=Caveat:wght@500;700&family=Nunito:wght@400;600;800&display=swap" rel="stylesheet">
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <style>
-/* ==========================================================================
-   XAT OCHILISH ANIMATSIYASI — bitta sahifa (Telegram Mini App)
-   Ketma-ketlik: konvert (zarrachalar) → portlash → halqa → 3D atirgul →
-   ism harf-harf → idle porlash. Zarrachalar soni 800 dan oshmaydi.
+/* =============================================================================
+   QATLAM 0 — DIZAYN TOKENLARI
+   Bitta sahifa (spec talabi), ammo JS qatlamlarga bo'lingan:
+   Config → Math → Shapes → Particles → Renderer → Scene → UI → Boot
    ========================================================================== */
-:root{
-  --bg:#0d0010; --pink:#ff6fae; --pink-soft:#ff9ac6; --gold:#f2b27a;
-  --cyan:#4fe3c1; --ink:#fff2f7; --muted:rgba(255,242,247,.62);
-  --tg-bg:#0d0010;
-}
+:root{--bg:#0d0010;--pink:#ff2f8e;--pink-soft:#ff9ac6;--gold:#ffd696;
+  --cyan:#1fd6b4;--ink:#fff2f7;--muted:rgba(255,242,247,.62)}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-html,body{margin:0;padding:0;height:100%;overflow:hidden;background:var(--bg)}
-body{
-  font-family:Nunito,system-ui,-apple-system,sans-serif;color:var(--ink);
-  /* Telegram WebApp ichida pastki safe-area ham hisobga olinadi */
+html,body{margin:0;height:100%;overflow:hidden;background:var(--bg)}
+body{font-family:Nunito,system-ui,-apple-system,sans-serif;color:var(--ink);
   padding:env(safe-area-inset-top) env(safe-area-inset-right)
           env(safe-area-inset-bottom) env(safe-area-inset-left);
-  background:
-    radial-gradient(120% 70% at 50% 8%,rgba(120,20,90,.55),transparent 62%),
-    radial-gradient(90% 60% at 50% 100%,rgba(70,10,110,.45),transparent 70%),
-    var(--tg-bg);
-  user-select:none;
-}
+  background:radial-gradient(120% 70% at 50% 8%,rgba(120,20,90,.55),transparent 62%),
+    radial-gradient(90% 60% at 50% 100%,rgba(70,10,110,.45),transparent 70%),var(--bg);
+  user-select:none}
 #stage{position:fixed;inset:0;display:block;width:100%;height:100%}
-.wrap{position:fixed;inset:0;display:flex;flex-direction:column;
-  align-items:center;justify-content:center;pointer-events:none;z-index:2}
-
-/* --- konvert ichidagi "FOR YOU" (oltin ramka markazida) --- */
-.foryou{
-  position:absolute;top:calc(50% - 34px);left:50%;transform:translate(-50%,-50%);
-  font:700 clamp(22px,6vw,32px)/1 Nunito,sans-serif;letter-spacing:.30em;
-  color:#fff8ee;text-transform:uppercase;text-align:center;
-  text-shadow:0 0 14px rgba(255,190,120,.95),0 0 40px rgba(255,111,174,.55);
-  opacity:0;transition:opacity .5s ease;white-space:nowrap;
-}
-.foryou.on{opacity:1;animation:forYouPulse 1.9s ease-in-out infinite}
-.foryou small{display:block;margin-top:14px;font:600 9.5px Nunito;letter-spacing:.36em;
-  color:rgba(255,232,214,.75);text-transform:uppercase;text-shadow:none}
-@keyframes forYouPulse{0%,100%{transform:translate(-50%,-50%) scale(1)}
+.ui{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;
+  justify-content:center;pointer-events:none;z-index:2}
+/* ---- matn qatlami: FOR YOU, ism, hint ---- */
+.foryou{position:absolute;top:calc(50% - 34px);left:50%;transform:translate(-50%,-50%);
+  font:700 clamp(22px,6vw,32px)/1 Nunito;letter-spacing:.30em;color:#fff8ee;
+  text-transform:uppercase;text-align:center;white-space:nowrap;opacity:0;
+  transition:opacity .5s ease;
+  text-shadow:0 0 14px rgba(255,190,120,.95),0 0 40px rgba(255,111,174,.55)}
+.foryou.on{opacity:1;animation:pulseText 1.9s ease-in-out infinite}
+.foryou small{display:block;margin-top:14px;font:600 9.5px Nunito;
+  letter-spacing:.36em;color:rgba(255,232,214,.75);text-shadow:none}
+@keyframes pulseText{0%,100%{transform:translate(-50%,-50%) scale(1)}
   50%{transform:translate(-50%,-50%) scale(1.045)}}
-
-/* --- ism (harf-harf) --- */
-.name{
-  position:absolute;bottom:calc(50% - 190px);left:0;right:0;text-align:center;
+.name{position:absolute;bottom:calc(50% - 190px);left:0;right:0;text-align:center;
   font-family:'Caveat Brush',Caveat,cursive;font-size:clamp(34px,11vw,58px);
-  color:#fff;line-height:1.1;padding:0 18px;
-  text-shadow:0 0 20px rgba(255,111,174,.85),0 0 60px rgba(160,107,255,.55);
-}
+  padding:0 18px;line-height:1.1;
+  text-shadow:0 0 20px rgba(255,111,174,.85),0 0 60px rgba(160,107,255,.55)}
 .name span{display:inline-block;opacity:0;transform:translateY(10px) scale(.9);
   animation:letterIn .5s cubic-bezier(.2,.9,.2,1) forwards}
 @keyframes letterIn{to{opacity:1;transform:none}}
 .name.idle{animation:nameGlow 3.4s ease-in-out infinite}
 @keyframes nameGlow{0%,100%{filter:brightness(1)}50%{filter:brightness(1.22)}}
-
-/* --- hint (bosishga chaqiriq) --- */
-.hint{
-  position:absolute;bottom:calc(env(safe-area-inset-bottom) + 112px);left:0;right:0;
-  text-align:center;font:600 13px Nunito;color:var(--muted);letter-spacing:.04em;
-  opacity:0;transition:opacity .6s ease;padding:0 24px;
-}
+.hint{position:absolute;bottom:calc(env(safe-area-inset-bottom) + 112px);left:0;
+  right:0;text-align:center;font:600 13px Nunito;color:var(--muted);
+  letter-spacing:.04em;padding:0 24px;opacity:0;transition:opacity .6s ease}
 .hint.on{opacity:1}
-
-/* --- pastki tugmalar --- */
-.panel{
-  position:fixed;left:0;right:0;bottom:calc(env(safe-area-inset-bottom) + 14px);
+/* ---- tugmalar ---- */
+.panel{position:fixed;left:0;right:0;bottom:calc(env(safe-area-inset-bottom) + 14px);
   z-index:5;display:flex;flex-direction:column;align-items:center;gap:10px;
-  padding:0 18px;pointer-events:auto;
-}
-.btn{
-  -webkit-appearance:none;appearance:none;border:0;cursor:pointer;
-  width:100%;max-width:344px;min-height:52px;border-radius:16px;
-  font:800 16px Nunito;letter-spacing:.02em;
+  padding:0 18px;pointer-events:auto}
+.btn{-webkit-appearance:none;appearance:none;border:0;cursor:pointer;width:100%;
+  max-width:344px;min-height:52px;border-radius:16px;font:800 16px Nunito;
   display:flex;align-items:center;justify-content:center;gap:8px;
-  transition:transform .12s ease,box-shadow .2s ease,opacity .2s ease;
-}
+  transition:transform .12s ease,box-shadow .2s ease,opacity .2s ease}
 .btn:active{transform:scale(.975)}
 .btn-main{color:#2a0016;background:linear-gradient(100deg,#ff8ec0,#ffd08a 55%,#c79bff);
   box-shadow:0 14px 34px rgba(255,111,174,.35)}
@@ -93,43 +68,41 @@ body{
 .row{display:flex;gap:8px;width:100%;max-width:344px}
 .row .btn{flex:1;min-height:46px;font-size:13px;padding:0 6px}
 .hidden{display:none!important}
-
-/* portlash paytidagi ekran chaqnashi */
+/* ---- panellar ---- */
+.sheet{position:fixed;left:0;right:0;bottom:0;z-index:7;max-height:82vh;
+  overflow-y:auto;-webkit-overflow-scrolling:touch;
+  padding:22px 20px calc(env(safe-area-inset-bottom) + 24px);
+  border-radius:26px 26px 0 0;
+  background:linear-gradient(180deg,rgba(40,8,56,.98),rgba(16,4,26,.99));
+  border-top:1px solid rgba(255,255,255,.14);box-shadow:0 -20px 60px rgba(0,0,0,.6);
+  transform:translateY(102%);transition:transform .45s cubic-bezier(.2,.9,.2,1)}
+.sheet.on{transform:none}
+.sheet h3{margin:0 0 14px;font-family:'Caveat Brush',cursive;font-size:26px;
+  color:var(--pink-soft)}
+.sheet .meta{font:600 11px Nunito;letter-spacing:.08em;text-transform:uppercase;
+  color:var(--muted);margin-bottom:14px}
+.letter-text{font-family:Caveat,cursive;font-size:23px;line-height:1.55;
+  white-space:pre-wrap;word-break:break-word;margin:0 0 18px}
+.li{padding:12px 14px;margin-bottom:8px;border-radius:14px;
+  background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.14);
+  font:600 14px Nunito;color:var(--ink);cursor:pointer}
 .flash{position:fixed;inset:0;z-index:4;pointer-events:none;
   background:radial-gradient(circle at 50% 42%,rgba(255,214,240,.95),
     rgba(255,111,174,.55) 42%,transparent 72%);
   animation:flashOut .6s ease-out forwards}
 @keyframes flashOut{0%{opacity:0}18%{opacity:.92}100%{opacity:0}}
-
-/* --- xat matni (pastdan chiqadigan panel) --- */
-.sheet{
-  position:fixed;left:0;right:0;bottom:0;z-index:7;
-  max-height:82vh;overflow-y:auto;-webkit-overflow-scrolling:touch;
-  padding:22px 20px calc(env(safe-area-inset-bottom) + 24px);
-  border-radius:26px 26px 0 0;
-  background:linear-gradient(180deg,rgba(40,8,56,.98),rgba(16,4,26,.99));
-  border-top:1px solid rgba(255,255,255,.14);
-  box-shadow:0 -20px 60px rgba(0,0,0,.6);
-  transform:translateY(102%);transition:transform .45s cubic-bezier(.2,.9,.2,1);
-}
-.sheet.on{transform:none}
-.sheet h3{margin:0 0 14px;font-family:'Caveat Brush',cursive;font-size:26px;
-  color:var(--pink-soft)}
-.letter-text{font-family:Caveat,cursive;font-size:23px;line-height:1.55;
-  white-space:pre-wrap;word-break:break-word;margin:0 0 18px}
-.sheet .meta{font:600 11px Nunito;letter-spacing:.08em;text-transform:uppercase;
-  color:var(--muted);margin-bottom:14px}
+@media (prefers-reduced-motion:reduce){
+  .foryou.on,.name.idle{animation:none}
+  .name span{animation:none;opacity:1;transform:none}}
 </style>
 </head>
 <body>
 <canvas id="stage" aria-hidden="true"></canvas>
-
-<div class="wrap">
+<div class="ui">
   <div class="foryou" id="forYou">FOR YOU<small id="forYouSub">sizga yozilgan xat</small></div>
   <div class="name" id="nameBox" aria-live="polite"></div>
   <div class="hint" id="hint">✨ Konvertni bosing</div>
 </div>
-
 <div class="panel" id="panel">
   <button class="btn btn-main hidden" id="readBtn">💌 Xatni o'qish</button>
   <div class="row hidden" id="toolsRow">
@@ -138,50 +111,163 @@ body{
     <button class="btn btn-ghost" id="shareBtn">📤 Ulashish</button>
   </div>
 </div>
-
 <div class="sheet" id="sheet">
   <div class="meta" id="letterMeta"></div>
-  <h3 id="letterTitle">Xat</h3>
+  <h3>Xat</h3>
   <p class="letter-text" id="letterBody"></p>
   <button class="btn btn-ghost" id="closeSheet">Yopish</button>
 </div>
-
 <script>
-/* ==========================================================================
-   0) SOZLAMALAR VA HOLAT
+'use strict';
+/* =============================================================================
+   QATLAM 1 — CONFIG (barcha "sehrli sonlar" shu yerda)
    ========================================================================== */
-const MAX_PARTICLES = 800;          // past quvvatli telefonlar uchun chegara
-const N_ENVELOPE = 460;             // konvert konturi
-const N_ROSE = 660;                 // atirgul (poyasi va bargi bilan)
-const PHASE = { ENVELOPE: 0, BURST: 1, ROSE: 2, IDLE: 3 };
-const T = { burst: 2000, rose: 3000, name: 9000 };   // ms
+const Config = Object.freeze({
+  MAX_PARTICLES: 800,        // spec: 800 dan oshmasin
+  ENVELOPE_VISIBLE: 300,     // konvert fazasida ko'rinadigan "chang"
+  STARS: 120,                // yulduzli fon
+  FOV: 620,                  // perspektiva masofasi
+  SPRING: 0.075,             // prujina qattiqligi
+  DAMPING: 0.86,
+  DPR_MAX: 2,
+  TIMELINE: Object.freeze({
+    BURST_MS: 2000,          // 4–6 s: portlash → halqa
+    ROSE_MS: 3000,           // 6–9 s: halqa → atirgul
+    TOOLS_DELAY_MS: 1800,    // atirguldan keyin tugmalar
+  }),
+  COLORS: Object.freeze({
+    petal: '#ff2f8e', petalAlt: '#ff7ab4', cyan: '#1fd6b4', spark: '#ffb45e',
+    bg: 'rgba(13,0,16,0.30)', gold: 'rgba(255,214,150,',
+  }),
+});
+const MAX_PARTICLES = Config.MAX_PARTICLES;   // spec nomi (test bilan mos)
+const PHASE = Object.freeze({ ENVELOPE: 0, BURST: 1, ROSE: 2, IDLE: 3 });
 
-const tg = (window.Telegram && window.Telegram.WebApp) || null;
-const P = new URLSearchParams(location.search);
+/* =============================================================================
+   QATLAM 2 — MATH / UTILS
+   ========================================================================== */
+const MathX = {
+  rnd: (a, b) => a + Math.random() * (b - a),
+  clamp: (v, a, b) => Math.max(a, Math.min(b, v)),
+  lerp: (a, b, t) => a + (b - a) * t,
+  polar: (a, r) => [Math.cos(a) * r, Math.sin(a) * r],
+};
+
+/* =============================================================================
+   QATLAM 3 — SHAKLLAR (shape factory)
+   Har bir metod: [[x, y, z, "tur", o'lcham], ...]
+   ========================================================================== */
+const ShapeFactory = {
+  /** Konvert: 4 chekka + 2 qopqoq diagonali + 2 pastki V */
+  envelope(n) {
+    const bw = Math.min(window.innerWidth * 0.62, 300), bh = bw * 0.66;
+    const pts = [];
+    const line = (x1, y1, x2, y2, k) => {
+      for (let i = 0; i < k; i++) {
+        const t = k > 1 ? i / (k - 1) : 0;
+        pts.push([MathX.lerp(x1, x2, t), MathX.lerp(y1, y2, t), MathX.rnd(-8, 8)]);
+      }
+    };
+    const k = Math.max(20, Math.floor(n / 6.4));
+    line(-bw / 2, -bh / 2, bw / 2, -bh / 2, k);
+    line(-bw / 2, bh / 2, bw / 2, bh / 2, k);
+    line(-bw / 2, -bh / 2, -bw / 2, bh / 2, k);
+    line(bw / 2, -bh / 2, bw / 2, bh / 2, k);
+    line(-bw / 2, -bh / 2, 0, bh * 0.06, Math.floor(k * 0.7));
+    line(bw / 2, -bh / 2, 0, bh * 0.06, Math.floor(k * 0.7));
+    line(-bw / 2, bh / 2, 0, bh * 0.06, Math.floor(k * 0.5));
+    line(bw / 2, bh / 2, 0, bh * 0.06, Math.floor(k * 0.5));
+    return pts.slice(0, n);
+  },
+
+  /** Halqa: yotgan ellips (3D) */
+  ring(n) {
+    const R = Math.min(window.innerWidth * 0.34, 170);
+    return Array.from({ length: n }, (_, i) => {
+      const a = (i / n) * Math.PI * 2;
+      return [Math.cos(a) * R, Math.sin(a) * R * 0.42, Math.sin(a) * 26];
+    });
+  },
+
+  /** Atirgul: kurtak + 4 qatlam gulbarg + cyan poya/barg */
+  rose(n) {
+    const out = [];
+    const R = Math.min(window.innerWidth * 0.235, 118);
+    const buds = Math.floor(n * 0.18);
+    for (let i = 0; i < buds; i++) {
+      const u = i / buds, th = u * Math.PI * 2 * 2.4, rr = (0.08 + u * 0.30) * R;
+      out.push([Math.cos(th) * rr, Math.sin(th) * rr * 0.92 - R * 0.20,
+                (1 - u) * R * 0.22, 'petal', MathX.rnd(1.0, 1.6)]);
+    }
+    const layers = [
+      { k: 5, r: 0.46, z: 0.34, dy: -0.10 }, { k: 7, r: 0.66, z: 0.16, dy: -0.02 },
+      { k: 9, r: 0.86, z: -0.02, dy: 0.06 }, { k: 11, r: 1.00, z: -0.20, dy: 0.14 },
+    ];
+    const petalPts = n - buds - Math.floor(n * 0.12) - Math.floor(n * 0.10);
+    for (const L of layers) {
+      const per = Math.max(6, Math.floor(petalPts / layers.length / L.k));
+      for (let p = 0; p < L.k; p++) {
+        const a0 = (p / L.k) * Math.PI * 2 + L.k * 0.13;
+        for (let s = 0; s < per; s++) {
+          const t = per > 1 ? s / (per - 1) : 0.5;
+          const a = a0 + (t - 0.5) * (Math.PI * 1.35 / L.k);
+          const rr = R * L.r * (0.80 + 0.20 * Math.sin(Math.PI * t));
+          out.push([Math.cos(a) * rr, Math.sin(a) * rr * 0.88 + R * L.dy,
+                    R * L.z + Math.sin(Math.PI * t) * R * 0.16,
+                    'petal', MathX.rnd(0.9, 1.5)]);
+        }
+      }
+    }
+    const top = R * 0.98, stem = Math.floor(n * 0.12);
+    for (let i = 0; i < stem; i++) {
+      const t = i / stem;
+      out.push([Math.sin(t * 2.1) * R * 0.12, top + t * R * 1.20,
+                Math.cos(t * 2.0) * 8, 'stem', MathX.rnd(0.9, 1.4)]);
+    }
+    const leaf = n - out.length;
+    for (let i = 0; i < leaf; i++) {
+      const side = i % 2 ? 1 : -1, t = (i / Math.max(1, leaf / 2)) * Math.PI;
+      const lr = R * 0.28;
+      out.push([side * (R * 0.18 + Math.sin(t) * lr * 0.95),
+                top + R * 0.45 + Math.cos(t) * lr * 0.30,
+                Math.sin(t) * 6, 'leaf', MathX.rnd(0.8, 1.2)]);
+    }
+    return out;
+  },
+};
+const envelopeShape = (n) => ShapeFactory.envelope(n);
+const ringShape = (n) => ShapeFactory.ring(n);
+const roseShape = (n) => ShapeFactory.rose(n);
+/* =============================================================================
+   QATLAM 4 — PARAMETRLAR va TELEGRAM KONTEKSTI
+   ========================================================================== */
+const Q = new URLSearchParams(location.search);
 const params = {
-  name: (P.get('name') || '').trim().slice(0, 40),
-  text: (P.get('text') || '').trim().slice(0, 1000),
-  theme: (P.get('theme') || 'love').slice(0, 20),
-  letterId: P.get('l') || '',
-  at: Number(P.get('at') || 0),          // ochilish vaqti (unix sekund)
+  name: (Q.get('name') || '').trim().slice(0, 40),
+  text: (Q.get('text') || '').trim().slice(0, 1000),
+  theme: (Q.get('theme') || 'love').slice(0, 20),
+  letterId: Q.get('l') || '',
+  at: Number(Q.get('at') || 0),
 };
 
 /* Bot havolasi `?d=<base64url JSON {t,o,theme,n}>` bilan ham ishlaydi */
-(function decodeBotPayload() {
-  const raw = P.get('d');
+function decodeBotPayload() {
+  const raw = Q.get('d');
   if (!raw) return;
   try {
-    const b64 = raw.replace(/-/g, '+').replace(/_/g, '/');
-    const d = JSON.parse(atob(b64));
+    const json = atob(raw.replace(/-/g, '+').replace(/_/g, '/'));
+    const d = JSON.parse(json);
     if (d.t) params.text = String(d.t).slice(0, 1000);
     if (d.theme) params.theme = String(d.theme).slice(0, 20);
     if (d.n) params.name = String(d.n).slice(0, 40);
-  } catch (e) { /* jim */ }
-})();
+  } catch (e) { /* buzilgan payload — jim o'tamiz */ }
+}
+decodeBotPayload();
 
-const canvas = document.getElementById('stage');
-const ctx = canvas.getContext('2d', { alpha: false });
-const ui = {
+const tg = (window.Telegram && window.Telegram.WebApp) || null;
+const CANVAS = document.getElementById('stage');
+const ctx = CANVAS.getContext('2d', { alpha: false });
+const UI = {
   forYou: document.getElementById('forYou'),
   forYouSub: document.getElementById('forYouSub'),
   name: document.getElementById('nameBox'),
@@ -193,196 +279,422 @@ const ui = {
   sheetBody: document.getElementById('letterBody'),
 };
 
-let W = 0, H = 0, DPR = 1, cx = 0, cy = 0;
-let phase = PHASE.ENVELOPE, phaseStart = 0, started = false, finished = false;
-let rotY = 0, rotX = 0, spin = 0, targetRotY = 0;
-let dragging = false, lastX = 0, lastY = 0, dragSpin = 0;
-const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+/* =============================================================================
+   QATLAM 5 — VIEWPORT (o'lcham, DPR, markaz)
+   ========================================================================== */
+const Viewport = {
+  W: 0, H: 0, DPR: 1, cx: 0, cy: 0,
+  resize() {
+    this.DPR = Math.min(window.devicePixelRatio || 1, Config.DPR_MAX);
+    this.W = window.innerWidth; this.H = window.innerHeight;
+    CANVAS.width = Math.floor(this.W * this.DPR);
+    CANVAS.height = Math.floor(this.H * this.DPR);
+    CANVAS.style.width = this.W + 'px';
+    CANVAS.style.height = this.H + 'px';
+    ctx.setTransform(this.DPR, 0, 0, this.DPR, 0, 0);
+    this.cx = this.W / 2;
+    this.cy = this.H * 0.44;
+  },
+};
 
-/* Zarrachalar: bitta massiv, 800 tadan oshmaydi */
-const parts = [];
-
-function rnd(a, b) { return a + Math.random() * (b - a); }
-function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
-
-/* Konvert konturi: to'rtburchak + qopqoq diagonallari (markaz 0,0) */
-function envelopeShape(n) {
-  const bw = Math.min(W * 0.62, 300), bh = bw * 0.66;
-  const out = [];
-  const edge = (x1, y1, x2, y2, k) => {
-    for (let i = 0; i < k; i++) {
-      const t = i / (k - 1);
-      out.push([x1 + (x2 - x1) * t, y1 + (y2 - y1) * t, rnd(-8, 8)]);
+/* =============================================================================
+   QATLAM 6 — YULDUZLI FON (juda yengil: 120 nuqta)
+   ========================================================================== */
+class StarField {
+  constructor(count) {
+    this.stars = Array.from({ length: count }, () => ({
+      x: Math.random(), y: Math.random(),
+      r: MathX.rnd(0.4, 1.5), p: Math.random() * Math.PI * 2,
+    }));
+  }
+  draw(t) {
+    const { W, H } = Viewport;
+    for (let i = 0; i < this.stars.length; i++) {
+      const s = this.stars[i];
+      const tw = 0.35 + 0.65 * Math.abs(Math.sin(t * 0.0012 + s.p));
+      ctx.globalAlpha = tw * 0.7;
+      ctx.fillStyle = i % 9 === 0 ? '#ffd9e6' : '#ffffff';
+      ctx.beginPath(); ctx.arc(s.x * W, s.y * H, s.r, 0, 6.2832); ctx.fill();
     }
-  };
-  const k = Math.max(20, Math.floor(n / 6.4));   // 6 ta chiziq: 4 chekka + 2 V + 2 qopqoq
-  edge(-bw / 2, -bh / 2, bw / 2, -bh / 2, k);          // yuqori
-  edge(-bw / 2, bh / 2, bw / 2, bh / 2, k);            // pastki
-  edge(-bw / 2, -bh / 2, -bw / 2, bh / 2, k);          // chap
-  edge(bw / 2, -bh / 2, bw / 2, bh / 2, k);            // o'ng
-  edge(-bw / 2, -bh / 2, 0, bh * 0.06, Math.floor(k * .7));   // qopqoq chap
-  edge(bw / 2, -bh / 2, 0, bh * 0.06, Math.floor(k * .7));    // qopqoq o'ng
-  edge(-bw / 2, bh / 2, 0, bh * 0.06, Math.floor(k * .5));    // pastki V chap
-  edge(bw / 2, bh / 2, 0, bh * 0.06, Math.floor(k * .5));     // pastki V o'ng
-  return out.slice(0, n);
-}
-
-/* Halqa: yumshoq ellips (3D tekislikda yotgan) */
-function ringShape(n) {
-  const R = Math.min(W * 0.34, 170);
-  const out = [];
-  for (let i = 0; i < n; i++) {
-    const a = (i / n) * Math.PI * 2;
-    out.push([Math.cos(a) * R, Math.sin(a) * R * 0.42, Math.sin(a) * 26]);
+    ctx.globalAlpha = 1;
   }
-  return out;
 }
+const stars = new StarField(Config.STARS);
+const drawStars = (t) => stars.draw(t);
+/* =============================================================================
+   QATLAM 7 — EFFEKTLAR: oltin ramka, yurak portlashi, halqa, chaqnash, ovoz
+   ========================================================================== */
+const Fx = {
+  heart: 0, ring: 0, sparks: [],
 
-/* Atirgul: 4 qatlam gulbarg (yoylar) + markazdagi kurtak + poya/barg */
-function roseShape(n) {
-  const out = [];
-  const R = Math.min(W * 0.235, 118);
-  // markaziy kurtak — zich spiral
-  const buds = Math.floor(n * 0.18);
-  for (let i = 0; i < buds; i++) {
-    const u = i / buds;
-    const th = u * Math.PI * 2 * 2.4;
-    const rr = (0.08 + u * 0.30) * R;
-    out.push([Math.cos(th) * rr, Math.sin(th) * rr * 0.92 - R * 0.20,
-              (1 - u) * R * 0.22, 'petal', rnd(1.0, 1.6)]);
+  goldFrame(t) {
+    const bw = Math.min(Viewport.W * 0.62, 300), bh = bw * 0.66;
+    const x = Viewport.cx - bw / 2, y = Viewport.cy - bh / 2;
+    const pulse = 0.55 + 0.45 * Math.sin(t * 0.003);
+    ctx.save();
+    ctx.lineWidth = 1.4;
+    ctx.strokeStyle = Config.COLORS.gold + (0.35 + 0.35 * pulse) + ')';
+    ctx.shadowColor = 'rgba(255,190,120,.9)';
+    ctx.shadowBlur = 18 + 10 * pulse;
+    ctx.beginPath();
+    ctx.moveTo(x, y); ctx.lineTo(x + bw, y);
+    ctx.lineTo(x + bw, y + bh); ctx.lineTo(x, y + bh); ctx.closePath();
+    ctx.moveTo(x, y); ctx.lineTo(Viewport.cx, y + bh * 0.42);
+    ctx.lineTo(x + bw, y);
+    ctx.stroke();
+    ctx.restore();
+    ctx.globalAlpha = 1;
+  },
+
+  burst(n, power) {
+    for (let i = 0; i < n; i++) {
+      const a = Math.random() * Math.PI * 2;
+      const sp = MathX.rnd(1.4, 5.2) * power;
+      this.sparks.push({ x: 0, y: 0, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp,
+                         life: 1, s: MathX.rnd(1, 2.6) });
+    }
+    if (this.sparks.length > 260) this.sparks.splice(0, this.sparks.length - 260);
+  },
+
+  hearts(dt) {
+    if (Math.random() < dt * 6) {
+      this.sparks.push({ x: MathX.rnd(-Viewport.W * 0.32, Viewport.W * 0.32),
+                         y: MathX.rnd(40, 160), vx: MathX.rnd(-0.25, 0.25),
+                         vy: MathX.rnd(-1.1, -0.55), life: 1.4,
+                         s: MathX.rnd(1.6, 3.1) });
+    }
+  },
+
+  draw(dt) {
+    const cx = Viewport.cx, cy = Viewport.cy;
+    if (this.heart > 0) {
+      const k = 1 - this.heart / 1.1, s = 40 + k * 120;
+      const a = Math.max(0, 1 - k) * 0.85;
+      const g = ctx.createRadialGradient(cx, cy - 10, 0, cx, cy - 10, s * 1.6);
+      g.addColorStop(0, 'rgba(255,120,180,' + a + ')');
+      g.addColorStop(0.45, 'rgba(255,60,140,' + (a * 0.55) + ')');
+      g.addColorStop(1, 'rgba(255,0,90,0)');
+      ctx.fillStyle = g;
+      ctx.beginPath(); ctx.arc(cx, cy - 10, s * 1.6, 0, 6.2832); ctx.fill();
+    }
+    if (this.ring > 0) {
+      const k = 1 - this.ring / 1.5, r = 30 + k * 190;
+      ctx.strokeStyle = 'rgba(255,90,160,' + Math.max(0, 1 - k) * 0.85 + ')';
+      ctx.lineWidth = Math.max(1.2, 6 * (1 - k));
+      ctx.beginPath(); ctx.arc(cx, cy, r, 0, 6.2832); ctx.stroke();
+    }
+    for (let i = this.sparks.length - 1; i >= 0; i--) {
+      const s = this.sparks[i];
+      s.x += s.vx * dt * 60; s.y += s.vy * dt * 60;
+      s.vx *= 0.965; s.vy *= 0.965; s.life -= dt * 0.9;
+      if (s.life <= 0) { this.sparks.splice(i, 1); continue; }
+      ctx.globalAlpha = MathX.clamp(s.life, 0, 1) * 0.9;
+      ctx.fillStyle = s.life > 0.6 ? '#ffd9e6' : '#ff9ac6';
+      ctx.beginPath(); ctx.arc(cx + s.x, cy + s.y, s.s, 0, 6.2832); ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+  },
+
+  flash() {
+    const el = document.createElement('div');
+    el.className = 'flash';
+    document.body.appendChild(el);
+    setTimeout(() => el.remove(), 620);
+  },
+};
+const flashScreen = () => Fx.flash();
+const heartsTick = (dt) => Fx.hearts(dt);
+const drawGoldFrame = (t) => Fx.goldFrame(t);
+const burstSparks = (n, p) => Fx.burst(n, p);
+
+/* WebAudio: konvert bosilganda qisqa "shimgir" (fayl kerak emas) */
+/* =============================================================================
+   QATLAM 8 — ZARRACHALAR TIZIMI (prujina fizikasi, 3D → 2D proyeksiya)
+   ========================================================================== */
+class ParticleSystem {
+  constructor(n) {
+    this.n = Math.min(n, Config.MAX_PARTICLES);
+    this.parts = [];
+    this.reset();
   }
-  // 4 qatlam: har qatlamda gulbarg yoylari (simmetrik, toza shakl)
-  const layers = [
-    { k: 5, r: 0.46, z: 0.34, dy: -0.10 },
-    { k: 7, r: 0.66, z: 0.16, dy: -0.02 },
-    { k: 9, r: 0.86, z: -0.02, dy: 0.06 },
-    { k: 11, r: 1.00, z: -0.20, dy: 0.14 },
-  ];
-  const petalPts = n - buds - Math.floor(n * 0.12) - Math.floor(n * 0.10);
-  const perLayer = Math.floor(petalPts / layers.length);
-  for (const L of layers) {
-    const per = Math.max(6, Math.floor(perLayer / L.k));
-    for (let p = 0; p < L.k; p++) {
-      const a0 = (p / L.k) * Math.PI * 2 + L.k * 0.13;
-      for (let s = 0; s < per; s++) {
-        const t = per > 1 ? s / (per - 1) : 0.5;
-        const a = a0 + (t - 0.5) * (Math.PI * 1.35 / L.k);
-        const rr = R * L.r * (0.80 + 0.20 * Math.sin(Math.PI * t));
-        out.push([Math.cos(a) * rr,
-                  Math.sin(a) * rr * 0.88 + R * L.dy,
-                  R * L.z + Math.sin(Math.PI * t) * R * 0.16,
-                  'petal', rnd(0.9, 1.5)]);
+  reset() {
+    this.parts = Array.from({ length: this.n }, () => ({
+      x: MathX.rnd(-40, 40), y: MathX.rnd(-40, 40), z: MathX.rnd(-40, 40),
+      tx: 0, ty: 0, tz: 0, vx: 0, vy: 0, vz: 0,
+      b: 0, s: MathX.rnd(1.1, 2.4), hidden: false,
+    }));
+  }
+  /** Shaklni biriktirish; `impulse` — portlash kuchi */
+  applyShape(shape, impulse) {
+    for (let i = 0; i < this.n; i++) {
+      const p = this.parts[i];
+      const s = shape[i % shape.length];
+      p.tx = s[0]; p.ty = s[1]; p.tz = s[2] || 0;
+      const type = s[3] || 'petal';
+      p.hidden = false;
+      p.b = (type === 'stem' || type === 'leaf') ? 2 : (i % 3 === 0 ? 1 : 0);
+      p.s = s[4] || MathX.rnd(1.1, 2.4);
+      if (impulse) {
+        const d = Math.hypot(p.tx, p.ty) || 1;
+        p.vx += (p.tx / d) * impulse + MathX.rnd(-2, 2);
+        p.vy += (p.ty / d) * impulse + MathX.rnd(-2, 2);
+        p.vz += MathX.rnd(-6, 6);
       }
     }
   }
-  // poya (cyan)
-  const stem = Math.floor(n * 0.12);
-  const top = R * 0.98;
-  for (let i = 0; i < stem; i++) {
-    const t = i / stem;
-    out.push([Math.sin(t * 2.1) * R * 0.12, top + t * R * 1.20,
-              Math.cos(t * 2.0) * 8, 'stem', rnd(0.9, 1.4)]);
+  /** Konvert fazasida ortiqcha zarrachalarni yashirish (toza ko'rinish) */
+  hideFrom(k) {
+    for (let i = k; i < this.n; i++) this.parts[i].hidden = true;
   }
-  // barglar (cyan, ikkita)
-  const leaf = n - out.length;
-  for (let i = 0; i < leaf; i++) {
-    const side = i % 2 ? 1 : -1;
-    const t = (i / Math.max(1, leaf / 2)) * Math.PI;
-    const lr = R * 0.28;
-    out.push([side * (R * 0.18 + Math.sin(t) * lr * 0.95),
-              top + R * 0.45 + Math.cos(t) * lr * 0.30,
-              Math.sin(t) * 6, 'leaf', rnd(0.8, 1.2)]);
-  }
-  return out;
-}
-
-/* ==========================================================================
-   1) ZARRACHALAR TIZIMI (konvert → halqa → atirgul)
-   ========================================================================== */
-const BUCKETS = ['#ff2f8e', '#ff7ab4', '#1fd6b4', '#ffb45e'];  // petal, petal2, cyan, spark
-const N = Math.min(MAX_PARTICLES, N_ROSE);      // doimiy zarrachalar soni (<=800)
-
-function initParticles() {
-  parts.length = 0;
-  for (let i = 0; i < N; i++) {
-    parts.push({
-      x: rnd(-40, 40), y: rnd(-40, 40), z: rnd(-40, 40),
-      tx: 0, ty: 0, tz: 0, vx: 0, vy: 0, vz: 0,
-      b: 0, s: rnd(1.1, 2.4),
-    });
-  }
-}
-
-/* Shakl nuqtalarini zarrachalarga biriktirish (yumshoq o'tish) */
-function setTargets(shape, impulse) {
-  for (let i = 0; i < N; i++) {
-    const p = parts[i];
-    const s = shape[i % shape.length];
-    p.tx = s[0]; p.ty = s[1]; p.tz = s[2] || 0;
-    const type = s[3] || 'petal';
-    p.hidden = false;
-    p.b = (type === 'stem' || type === 'leaf') ? 2 : (i % 3 === 0 ? 1 : 0);
-    p.s = s[4] || rnd(1.1, 2.4);
-    if (impulse) {                       // portlash impulsi
-      const d = Math.hypot(p.tx, p.ty) || 1;
-      p.vx += (p.tx / d) * impulse + rnd(-2, 2);
-      p.vy += (p.ty / d) * impulse + rnd(-2, 2);
-      p.vz += rnd(-6, 6);
+  /** dt bilan fizika: har bir zarracha o'z maqsadi tomon (3D aylantirilgan) */
+  step(dt, rotY, rotX) {
+    const cosY = Math.cos(rotY), sinY = Math.sin(rotY);
+    const cosX = Math.cos(rotX), sinX = Math.sin(rotX);
+    for (let i = 0; i < this.n; i++) {
+      const p = this.parts[i];
+      if (p.hidden) continue;
+      const tx = p.tx * cosY - p.tz * sinY;
+      const tz0 = p.tx * sinY + p.tz * cosY;
+      const ty = p.ty * cosX - tz0 * sinX;
+      const tz = p.ty * sinX + tz0 * cosX;
+      p.vx = (p.vx + (tx - p.x) * Config.SPRING) * Config.DAMPING;
+      p.vy = (p.vy + (ty - p.y) * Config.SPRING) * Config.DAMPING;
+      p.vz = (p.vz + (tz - p.z) * Config.SPRING) * Config.DAMPING;
+      p.x += p.vx * dt * 60; p.y += p.vy * dt * 60; p.z += p.vz * dt * 60;
     }
   }
 }
 
-/* Yulduzli fon (juda yengil: 120 nuqta) + oltin ramka "wow" effekti */
-const stars = [];
-function initStars() {
-  stars.length = 0;
-  for (let i = 0; i < 120; i++) {
-    stars.push({ x: Math.random(), y: Math.random(),
-                 r: rnd(0.4, 1.5), p: Math.random() * Math.PI * 2 });
+const Particles = new ParticleSystem(Config.MAX_PARTICLES);
+
+/* =============================================================================
+   QATLAM 9 — RENDERER (bir kadr: fon → yulduzlar → ramka → FX → zarrachalar)
+   ========================================================================== */
+class Renderer {
+  draw(dt) {
+    const { W, H, cx, cy } = Viewport;
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.fillStyle = Config.COLORS.bg;
+    ctx.fillRect(0, 0, W, H);
+    drawStars(Director.elapsed);
+    if (Director.phase === PHASE.ENVELOPE) drawGoldFrame(Director.elapsed);
+    Fx.draw(dt);
+
+    ctx.globalCompositeOperation = 'lighter';
+    const fov = Config.FOV;
+    for (const p of Particles.parts) {
+      if (p.hidden) continue;
+      const sc = fov / (fov + p.z);
+      const sx = cx + p.x * sc, sy = cy + p.y * sc;
+      if (sx < -24 || sx > W + 24 || sy < -24 || sy > H + 24) continue;
+      ctx.globalAlpha = MathX.clamp(0.20 + sc * 0.34, 0.10, 0.58);
+      ctx.fillStyle = [Config.COLORS.petal, Config.COLORS.petalAlt,
+                       Config.COLORS.cyan, Config.COLORS.spark][p.b];
+      ctx.beginPath();
+      ctx.arc(sx, sy, MathX.clamp(p.s * sc, 0.6, 4.2), 0, 6.2832);
+      ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+    ctx.globalCompositeOperation = 'source-over';
   }
 }
+const renderer = new Renderer();
 
-function drawStars(t) {
-  for (let i = 0; i < stars.length; i++) {
-    const s = stars[i];
-    const tw = 0.35 + 0.65 * Math.abs(Math.sin(t * 0.0012 + s.p));
-    ctx.globalAlpha = tw * 0.7;
-    ctx.fillStyle = i % 9 === 0 ? '#ffd9e6' : '#ffffff';
-    ctx.beginPath();
-    ctx.arc(s.x * W, s.y * H, s.r, 0, 6.2832);
-    ctx.fill();
-  }
-  ctx.globalAlpha = 1;
+/* =============================================================================
+   QATLAM 10 — SCENE DIRECTOR (holatlar mashinasi va timeline)
+   0–4s konvert → 4–6s portlash/halqa → 6–9s atirgul → 9s+ ism → idle
+   ========================================================================== */
+const Director = {
+  phase: PHASE.ENVELOPE, started: false, finished: false,
+  elapsed: 0, phaseStart: 0, last: 0,
+  rotY: -0.35, rotX: 0, targetRotX: 0, spin: 0, dragSpin: 0,
+  dragging: false, lastX: 0, lastY: 0,
+
+  /** Bosilganda: konvert → portlash → halqa → atirgul */
+  start() {
+    if (this.started) return;
+    this.started = true;
+    this.phase = PHASE.BURST;
+    this.phaseStart = this.elapsed;
+    UI.hint.classList.remove('on');
+    UI.forYou.classList.remove('on');
+    Particles.applyShape(ringShape(Particles.n), 9);
+    Fx.burst(120, 1);
+    Fx.heart = 1.1;
+    Fx.ring = 1.5;
+    openChime();
+    flashScreen();
+    if (tg && tg.HapticFeedback) tg.HapticFeedback.impactOccurred('heavy');
+    setTimeout(() => Fx.burst(60, 0.7), Config.TIMELINE.BURST_MS * 0.6);
+  },
+
+  /** Bitta kadr */
+  frame(ts) {
+    if (!this.last) this.last = ts;
+    const dt = Math.min(0.05, (ts - this.last) / 1000);
+    this.last = ts;
+    this.elapsed += dt * 1000;
+
+    if (this.started && !this.finished) {
+      const t = this.elapsed - this.phaseStart;
+      if (this.phase === PHASE.BURST && t > Config.TIMELINE.BURST_MS) {
+        this.phase = PHASE.ROSE; this.phaseStart = this.elapsed;
+        Particles.applyShape(roseShape(Particles.n), 0);
+      } else if (this.phase === PHASE.ROSE && t > Config.TIMELINE.ROSE_MS) {
+        this.phase = PHASE.IDLE; this.phaseStart = this.elapsed;
+        revealName();
+      }
+      if (this.phase === PHASE.IDLE && !this.finished &&
+          this.elapsed - this.phaseStart > Config.TIMELINE.TOOLS_DELAY_MS) {
+        this.finished = true;
+        showTools();
+      }
+    }
+
+    this.rotY += (this.spin + this.dragSpin) * dt;
+    this.dragSpin *= 0.94;
+    this.rotX += (this.targetRotX - this.rotX) * 0.08;
+    if (Fx.heart > 0) Fx.heart -= dt;
+    if (Fx.ring > 0) Fx.ring -= dt;
+    if (this.phase === PHASE.ROSE || this.phase === PHASE.IDLE) heartsTick(dt);
+
+    Particles.step(dt, this.rotY, this.rotX);
+    renderer.draw(dt);
+    requestAnimationFrame((t) => this.frame(t));
+  },
+};
+
+const startAnimation = () => Director.start();
+
+/* =============================================================================
+   QATLAM 11 — UI: ism, tugmalar, xat paneli, ulashish
+   ========================================================================== */
+function nameText() {
+  const fromTg = (tg && tg.initDataUnsafe && tg.initDataUnsafe.user
+    && tg.initDataUnsafe.user.first_name) || '';
+  return params.name || fromTg || 'Sizga';
 }
 
-/* Oltin konvert ramkasi (fon effekti) — faqat konvert fazasida */
-function drawGoldFrame(t) {
-  const bw = Math.min(W * 0.62, 300), bh = bw * 0.66;
-  const x = cx - bw / 2, y = cy - bh / 2;
-  const puls = 0.55 + 0.45 * Math.sin(t * 0.003);
-  ctx.save();
-  ctx.lineWidth = 1.4;
-  ctx.strokeStyle = 'rgba(255,214,150,' + (0.35 + 0.35 * puls) + ')';
-  ctx.shadowColor = 'rgba(255,190,120,.9)';
-  ctx.shadowBlur = 18 + 10 * puls;
-  ctx.beginPath();
-  ctx.moveTo(x, y); ctx.lineTo(x + bw, y);
-  ctx.lineTo(x + bw, y + bh); ctx.lineTo(x, y + bh); ctx.closePath();
-  ctx.moveTo(x, y); ctx.lineTo(cx, y + bh * 0.42);
-  ctx.lineTo(x + bw, y);
-  ctx.stroke();
-  ctx.restore();
-  ctx.globalAlpha = 1;
+/** Ismni harf-harf chiqarish (kursiv shrift, harflar ketma-ket) */
+function revealName() {
+  const txt = nameText();
+  UI.name.innerHTML = '';
+  Array.from(txt).forEach((ch, i) => {
+    const span = document.createElement('span');
+    span.textContent = ch === ' ' ? '\u00A0' : ch;
+    span.style.animationDelay = (i * 90) + 'ms';
+    UI.name.appendChild(span);
+  });
+  UI.name.classList.add('idle');
+  Director.spin = 0.20;                       // idle: sekin aylanish
+  if (tg && tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
 }
 
-/* Konvertni bosganda qisqa "shimgir" ovozi (WebAudio, fayl kerak emas) */
+function showTools() {
+  UI.read.classList.remove('hidden');
+  UI.tools.classList.remove('hidden');
+  UI.read.style.animation = 'letterIn .5s ease both';
+}
+
+/** Xat matni paneli + botga "o'qildi" xabari */
+async function openSheet() {
+  UI.sheetMeta.textContent = params.name ? ('Kimdan: ' + params.name)
+                                         : 'Sizga yozilgan xat';
+  UI.sheetBody.textContent = params.text ||
+    "Bu xat sizga yozilgan. Uni o'qing va javob bering ❤️";
+  UI.sheet.classList.add('on');
+  if (tg && tg.HapticFeedback) tg.HapticFeedback.impactOccurred('medium');
+  if (params.letterId) notifySeen();
+}
+
+/** Botga "xat o'qildi" (initData bo'lsa) — yuboruvchiga bir marta xabar */
+async function notifySeen() {
+  try {
+    if (!tg || !tg.initData) return;
+    await fetch('/api/app', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ init: tg.initData, action: 'letter_seen',
+                             l: Number(params.letterId) || 0 }),
+    });
+  } catch (e) { /* jim */ }
+}
+
+/** Faqat `?l=` bo'lsa — xatni serverdan yuklaymiz (initData bilan) */
+async function loadFromServer() {
+  if (!params.letterId || params.text || !tg || !tg.initData) return;
+  try {
+    const res = await fetch('/api/app', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ init: tg.initData, action: 'letter',
+                             l: Number(params.letterId) }),
+    });
+    const j = await res.json();
+    if (j && j.ok) {
+      params.text = (j.text || '').slice(0, 1000);
+      params.theme = j.theme || params.theme;
+      if (!params.name) params.name = j.mine ? '' : (j.fromName || '');
+      UI.forYouSub.textContent = params.name ? ('sizga: ' + params.name)
+                                             : 'sizga yozilgan xat';
+    }
+  } catch (e) { /* jim */ }
+}
+
+/** Qayta o'ynatish: holatni nolga qaytaradi */
+function replay() {
+  Object.assign(Director, {
+    started: false, finished: false, phase: PHASE.ENVELOPE, phaseStart: 0,
+    rotY: -0.35, rotX: 0, spin: 0, dragSpin: 0, targetRotX: 0,
+  });
+  Fx.sparks.length = 0; Fx.heart = 0; Fx.ring = 0;
+  Particles.reset();
+  Particles.applyShape(envelopeShape(Particles.n), 0);
+  Particles.hideFrom(Config.ENVELOPE_VISIBLE);
+  UI.name.innerHTML = '';
+  UI.name.classList.remove('idle');
+  UI.read.classList.add('hidden');
+  UI.tools.classList.add('hidden');
+  UI.sheet.classList.remove('on');
+  UI.forYou.classList.add('on');
+  UI.forYouSub.textContent = params.name ? ('sizga: ' + params.name)
+                                         : 'sizga yozilgan xat';
+  UI.hint.classList.add('on');
+}
+
+/** Telegram orqali ulashish */
+function shareLetter() {
+  const url = location.href;
+  const text = params.name ? (params.name + ' sizga xat yozdi 💌') : 'Sizga xat bor 💌';
+  if (tg && tg.shareMessage) return tg.shareMessage(url, text);
+  const link = 'https://t.me/share/url?url=' + encodeURIComponent(url) +
+               '&text=' + encodeURIComponent(text);
+  if (tg && tg.openTelegramLink) return tg.openTelegramLink(link);
+  location.href = link;
+}
+
+/* --- barmoq bilan 3D aylantirish + konvertni bosish --- */
+function pointerDown(e) {
+  Director.dragging = true;
+  const p = e.touches ? e.touches[0] : e;
+  Director.lastX = p.clientX; Director.lastY = p.clientY;
+}
+function pointerMove(e) {
+  if (!Director.dragging) return;
+  const p = e.touches ? e.touches[0] : e;
+  const dx = p.clientX - Director.lastX, dy = p.clientY - Director.lastY;
+  Director.lastX = p.clientX; Director.lastY = p.clientY;
+  Director.rotY += dx * 0.008;
+  Director.targetRotX = MathX.clamp(Director.targetRotX + dy * 0.004, -0.6, 0.6);
+  Director.dragSpin += dx * 0.0006;
+}
+function pointerUp() { Director.dragging = false; }
+
+/* WebAudio: konvert bosilganda qisqa "shimgir" (fayl kerak emas) */
 function openChime() {
   try {
     const AC = window.AudioContext || window.webkitAudioContext;
     if (!AC) return;
     const ac = new AC();
-    const notes = [659.25, 880.0, 1174.66];
-    notes.forEach((f, i) => {
+    [659.25, 880.0, 1174.66].forEach((f, i) => {
       const o = ac.createOscillator(), g = ac.createGain();
       o.type = 'triangle'; o.frequency.value = f;
       const t0 = ac.currentTime + i * 0.09;
@@ -395,300 +707,11 @@ function openChime() {
     setTimeout(() => { try { ac.close(); } catch (e) { /* jim */ } }, 1400);
   } catch (e) { /* jim */ }
 }
-
-/* Yurak portlashi va halqa to'lqini (portlash "wow" effekti) */
-const fx = { heart: 0, ring: 0 };
-function drawFx() {
-  if (fx.heart > 0) {
-    const k = 1 - fx.heart / 1.1;
-    const s = 40 + k * 120;
-    const a = Math.max(0, 1 - k) * 0.85;
-    const g = ctx.createRadialGradient(cx, cy - 10, 0, cx, cy - 10, s * 1.6);
-    g.addColorStop(0, 'rgba(255,120,180,' + a + ')');
-    g.addColorStop(.45, 'rgba(255,60,140,' + (a * .55) + ')');
-    g.addColorStop(1, 'rgba(255,0,90,0)');
-    ctx.fillStyle = g;
-    ctx.beginPath(); ctx.arc(cx, cy - 10, s * 1.6, 0, 6.2832); ctx.fill();
-  }
-  if (fx.ring > 0) {
-    const k = 1 - fx.ring / 1.5;
-    const r = 30 + k * 190;
-    ctx.strokeStyle = 'rgba(255,90,160,' + Math.max(0, 1 - k) * .85 + ')';
-    ctx.lineWidth = Math.max(1.2, 6 * (1 - k));
-    ctx.beginPath(); ctx.arc(cx, cy, r, 0, 6.2832); ctx.stroke();
-  }
-}
-
-/* Konvert fazasida faqat ~300 zarracha ko'rinadi (kamroq "nuqta" — chiroyli) */
-function hideDust(from) {
-  for (let i = from; i < N; i++) parts[i].hidden = true;
-}
-
-/* Ekran chaqnashi (portlash paytida) */
-function flashScreen() {
-  const f = document.createElement('div');
-  f.className = 'flash';
-  document.body.appendChild(f);
-  setTimeout(() => f.remove(), 620);
-}
-
-/* Atirgul fazasida sekin yuqoriga suzuvchi yuraklar */
-function heartsTick(dt) {
-  if (Math.random() < dt * 6) {
-    sparks.push({ x: rnd(-W * 0.32, W * 0.32), y: rnd(40, 160),
-                  vx: rnd(-0.25, 0.25), vy: rnd(-1.1, -0.55), life: 1.4,
-                  s: rnd(1.6, 3.1) });
-  }
-}
-const sparks = [];
-function burstSparks(n, power) {
-  for (let i = 0; i < n; i++) {
-    const a = Math.random() * Math.PI * 2;
-    const sp = rnd(1.4, 5.2) * power;
-    sparks.push({ x: 0, y: 0, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp,
-                  life: 1, s: rnd(1, 2.6) });
-  }
-  if (sparks.length > 260) sparks.splice(0, sparks.length - 260);
-}
-
-/* ==========================================================================
-   2) PROYEKSIYA VA CHIZISH (3D → 2D, qo'lda proyeksiya)
+/* =============================================================================
+   QATLAM 12 — MUSIQA: telefon fayli + ichki ohang + UZ/RU/EN tavsiyalar
+   Izoh: qo'shiq fayli saqlanmaydi (mualliflik huquqi); foydalanuvchi o'z
+   telefonidan tanlaydi yoki ro'yxatdan qidirib topadi.
    ========================================================================== */
-const FOV = 620;
-
-function drawFrame(dt) {
-  ctx.globalCompositeOperation = 'source-over';
-  ctx.fillStyle = 'rgba(13,0,16,0.30)';       // trail (iz) effekti
-  ctx.fillRect(0, 0, W, H);
-  drawStars(elapsed);                          // yulduzli fon
-  if (phase === PHASE.ENVELOPE) drawGoldFrame(elapsed);   // oltin ramka
-  drawFx();                                    // yurak portlashi + halqa
-
-  const cosY = Math.cos(rotY), sinY = Math.sin(rotY);
-  const cosX = Math.cos(rotX), sinX = Math.sin(rotX);
-
-  ctx.globalCompositeOperation = 'lighter';
-  for (let i = 0; i < N; i++) {
-    const p = parts[i];
-    if (p.hidden) continue;
-    const tx = p.tx * cosY - p.tz * sinY;
-    const tz0 = p.tx * sinY + p.tz * cosY;
-    const ty = p.ty * cosX - tz0 * sinX;
-    const tz = p.ty * sinX + tz0 * cosX;
-
-    const k = 0.075, damp = 0.86;              // prujina
-    p.vx = (p.vx + (tx - p.x) * k) * damp;
-    p.vy = (p.vy + (ty - p.y) * k) * damp;
-    p.vz = (p.vz + (tz - p.z) * k) * damp;
-    p.x += p.vx * dt * 60; p.y += p.vy * dt * 60; p.z += p.vz * dt * 60;
-
-    const sc = FOV / (FOV + p.z);
-    const sx = cx + p.x * sc, sy = cy + p.y * sc;
-    if (sx < -24 || sx > W + 24 || sy < -24 || sy > H + 24) continue;
-
-    ctx.globalAlpha = clamp(0.20 + sc * 0.34, 0.10, 0.58);
-    ctx.fillStyle = BUCKETS[p.b];
-    ctx.beginPath();
-    ctx.arc(sx, sy, clamp(p.s * sc, 0.6, 4.2), 0, 6.2832);
-    ctx.fill();
-  }
-
-  for (let i = sparks.length - 1; i >= 0; i--) {
-    const s = sparks[i];
-    s.x += s.vx * dt * 60; s.y += s.vy * dt * 60;
-    s.vx *= 0.965; s.vy *= 0.965; s.life -= dt * 0.9;
-    if (s.life <= 0) { sparks.splice(i, 1); continue; }
-    ctx.globalAlpha = clamp(s.life, 0, 1) * 0.9;
-    ctx.fillStyle = s.life > .6 ? '#ffd9e6' : '#ff9ac6';
-    ctx.beginPath();
-    ctx.arc(cx + s.x, cy + s.y, s.s, 0, 6.2832);
-    ctx.fill();
-  }
-  ctx.globalAlpha = 1;
-  ctx.globalCompositeOperation = 'source-over';
-}
-
-/* ==========================================================================
-   3) TSIKL VA FAZALAR
-   ========================================================================== */
-let last = 0, elapsed = 0;
-
-function tick(ts) {
-  if (!last) last = ts;
-  const dt = Math.min(0.05, (ts - last) / 1000);
-  last = ts;
-  elapsed += dt * 1000;
-
-  if (started && !finished) {
-    const t = elapsed - phaseStart;
-    if (phase === PHASE.BURST && t > T.burst) {
-      phase = PHASE.ROSE; phaseStart = elapsed;
-      setTargets(roseShape(N), 0);
-    } else if (phase === PHASE.ROSE && t > T.rose) {
-      phase = PHASE.IDLE; phaseStart = elapsed;
-      revealName();
-    }
-    if (phase === PHASE.IDLE && !finished && elapsed - phaseStart > 1800) {
-      finished = true;
-      showTools();
-    }
-  }
-
-  rotY += (spin + dragSpin) * dt;              // idle + drag
-  dragSpin *= 0.94;
-  rotX += (targetRotY - rotX) * 0.08;
-  if (fx.heart > 0) fx.heart -= dt;
-  if (fx.ring > 0) fx.ring -= dt;
-  if (phase === PHASE.ROSE || phase === PHASE.IDLE) heartsTick(dt);
-
-  drawFrame(dt);
-  requestAnimationFrame(tick);
-}
-
-/* Bosilganda: konvert → portlash → halqa → atirgul */
-function startAnimation() {
-  if (started) return;
-  started = true;
-  phase = PHASE.BURST;
-  phaseStart = elapsed;
-  ui.hint.classList.remove('on');
-  ui.forYou.classList.remove('on');
-  setTargets(ringShape(N), 9);
-  burstSparks(120, 1);
-  fx.heart = 1.1;                              // yurak portlashi
-  fx.ring = 1.5;                               // halqa to'lqini
-  openChime();                                 // "shimgir" ovozi
-  flashScreen();                               // ekran chaqnashi
-  if (tg && tg.HapticFeedback) tg.HapticFeedback.impactOccurred('heavy');
-  setTimeout(() => burstSparks(60, .7), T.burst * 0.6);
-}
-
-/* ==========================================================================
-   4) UI: ism, tugmalar, xat matni, ulashish
-   ========================================================================== */
-function nameText() {
-  const n = params.name || (tg && tg.initDataUnsafe && tg.initDataUnsafe.user
-    && tg.initDataUnsafe.user.first_name) || '';
-  return n ? n : 'Sizga';
-}
-
-/* Ismni harf-harf chiqarish (kursiv shrift) */
-function revealName() {
-  const txt = nameText();
-  ui.name.innerHTML = '';
-  [...txt].forEach((ch, i) => {
-    const s = document.createElement('span');
-    s.textContent = ch === ' ' ? '\u00A0' : ch;
-    s.style.animationDelay = (i * 90) + 'ms';
-    ui.name.appendChild(s);
-  });
-  ui.name.classList.add('idle');
-  spin = 0.20;                                   // idle: sekin aylanish
-  if (tg && tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
-}
-
-function showTools() {
-  ui.read.classList.remove('hidden');
-  ui.tools.classList.remove('hidden');
-  ui.read.style.animation = 'letterIn .5s ease both';
-}
-
-/* Xat matni paneli + botga "o'qildi" xabari */
-async function openSheet() {
-  ui.sheetMeta.textContent = params.name ? ('Kimdan: ' + params.name) : 'Sizga yozilgan xat';
-  ui.sheetBody.textContent = params.text || 'Bu xat sizga yozilgan. Uni o\'qing va javob bering ❤️';
-  ui.sheet.classList.add('on');
-  if (tg && tg.HapticFeedback) tg.HapticFeedback.impactOccurred('medium');
-  if (params.letterId) notifySeen();
-}
-
-/* Botga "xat o'qildi" (ixtiyoriy) — initData bo'lsa ishlaydi */
-async function notifySeen() {
-  try {
-    if (!tg || !tg.initData) return;
-    await fetch('/api/app', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ init: tg.initData, action: 'letter_seen',
-                             l: Number(params.letterId) || 0 }),
-    });
-  } catch (e) { /* jim */ }
-}
-
-/* Animatsiyani qaytadan o'ynatish */
-function replay() {
-  started = false; finished = false;
-  phase = PHASE.ENVELOPE; phaseStart = 0;
-  rotY = 0; rotX = 0; spin = 0; dragSpin = 0; targetRotY = 0;
-  sparks.length = 0;
-  ui.name.innerHTML = '';
-  ui.name.classList.remove('idle');
-  ui.read.classList.add('hidden');
-  ui.tools.classList.add('hidden');
-  ui.sheet.classList.remove('on');
-  initParticles();
-  setTargets(envelopeShape(N), 0);
-  hideDust(300);            // konvert: yengil 'chang' effekti
-  rotY = -0.35;
-  ui.forYou.classList.add('on');
-  ui.forYouSub.textContent = params.name ? ('sizga: ' + params.name) : 'sizga yozilgan xat';
-  ui.hint.classList.add('on');
-}
-
-/* Telegram orqali ulashish */
-function shareLetter() {
-  const url = location.href;
-  const text = params.name ? (params.name + ' sizga xat yozdi 💌') : 'Sizga xat bor 💌';
-  if (tg && tg.shareMessage) return tg.shareMessage(url, text);
-  const link = 'https://t.me/share/url?url=' + encodeURIComponent(url) +
-               '&text=' + encodeURIComponent(text);
-  if (tg && tg.openTelegramLink) return tg.openTelegramLink(link);
-  location.href = link;
-}
-
-/* ==========================================================================
-   5) BOSISH / SILJITISH (touch rotate)
-   ========================================================================== */
-function onDown(e) {
-  dragging = true;
-  const p = e.touches ? e.touches[0] : e;
-  lastX = p.clientX; lastY = p.clientY;
-}
-function onMove(e) {
-  if (!dragging) return;
-  const p = e.touches ? e.touches[0] : e;
-  const dx = p.clientX - lastX, dy = p.clientY - lastY;
-  lastX = p.clientX; lastY = p.clientY;
-  rotY += dx * 0.008;                    // gorizontal: atirgulni aylantiradi
-  targetRotY = clamp(targetRotY + dy * 0.004, -0.6, 0.6);
-  dragSpin += dx * 0.0006;
-}
-function onUp() { dragging = false; }
-
-canvas.addEventListener('pointerdown', onDown);
-window.addEventListener('pointermove', onMove);
-window.addEventListener('pointerup', onUp);
-window.addEventListener('touchstart', onDown, { passive: true });
-window.addEventListener('touchmove', onMove, { passive: true });
-window.addEventListener('touchend', onUp);
-
-/* Konvertni bosish → animatsiya boshlanadi */
-canvas.addEventListener('click', () => {
-  if (phase === PHASE.ENVELOPE && !started) startAnimation();
-});
-
-ui.read.onclick = openSheet;
-document.getElementById('closeSheet').onclick = () => ui.sheet.classList.remove('on');
-document.getElementById('replayBtn').onclick = replay;
-document.getElementById('shareBtn').onclick = shareLetter;
-
-/* ==========================================================================
-   6) MUSIQA: telefon xotirasidan tanlash + ichki ohang + tavsiya ro'yxati
-   ========================================================================== */
-const MUSIC = { el: null, url: '', ctx: null, gain: null, timer: null, on: false };
-
-/* Tavsiya ro'yxati — qidiruv so'rovlari (audio faylning o'zi emas:
-   mualliflik huquqi sababli qo'shiq saqlanmaydi, foydalanuvchi o'z
-   telefonidan tanlaydi yoki qidiruvdan topadi) */
 const MUSIC_LIST = {
   uz: ['Kechir meni', 'Sog‘indim', 'Yonimda bo‘l', 'Yarashamiz', 'Seni sevaman'],
   ru: ['Прости меня', 'Я скучаю', 'Вернись ко мне', 'Без тебя', 'Люби меня'],
@@ -696,6 +719,74 @@ const MUSIC_LIST = {
        'Stay with me', 'Love of my life'],
 };
 
+class MusicBox {
+  constructor() {
+    this.el = null; this.url = ''; this.ctx = null; this.timer = null; this.on = false;
+  }
+
+  pickFile() {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'audio/*';
+    input.onchange = () => {
+      const file = input.files && input.files[0];
+      if (!file) return;
+      if (this.url) URL.revokeObjectURL(this.url);
+      this.url = URL.createObjectURL(file);
+      if (!this.el) { this.el = new Audio(); this.el.loop = true; this.el.volume = 0.55; }
+      this.el.src = this.url;
+      this.stopInner();
+      this.el.play().catch(() => {});
+      this.on = true; this.updateBtn();
+    };
+    input.click();
+  }
+
+  toggleInner() {
+    if (this.on && this.ctx) { this.stopInner(); return; }
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return;
+    if (this.el) this.el.pause();
+    this.ctx = new AC();
+    const gain = this.ctx.createGain();
+    gain.gain.value = 0.05;
+    gain.connect(this.ctx.destination);
+    const notes = [523.25, 659.25, 783.99, 659.25, 587.33, 698.46, 880.0, 698.46];
+    let i = 0;
+    const play = () => {
+      const o = this.ctx.createOscillator(), g = this.ctx.createGain();
+      o.type = 'sine';
+      o.frequency.value = notes[i % notes.length];
+      g.gain.setValueAtTime(0.0001, this.ctx.currentTime);
+      g.gain.exponentialRampToValueAtTime(0.9, this.ctx.currentTime + 0.15);
+      g.gain.exponentialRampToValueAtTime(0.0001, this.ctx.currentTime + 1.6);
+      o.connect(g); g.connect(gain);
+      o.start(); o.stop(this.ctx.currentTime + 1.7);
+      i++;
+    };
+    play();
+    this.timer = setInterval(play, 900);
+    this.on = true; this.updateBtn();
+  }
+
+  stopInner() {
+    if (this.timer) clearInterval(this.timer);
+    this.timer = null;
+    if (this.ctx) { try { this.ctx.close(); } catch (e) { /* jim */ } }
+    this.ctx = null;
+    this.on = false; this.updateBtn();
+  }
+
+  updateBtn() {
+    const b = document.getElementById('musicBtn');
+    if (b) b.textContent = this.on ? '🔇 Musiqa' : '🎵 Musiqa';
+  }
+}
+const music = new MusicBox();
+const pickAudioFile = () => music.pickFile();
+const toggleInnerTone = () => music.toggleInner();
+
+/** Musiqa paneli: telefon fayli / ichki ohang / til bo'yicha tavsiyalar */
 function musicSheet() {
   const box = document.createElement('div');
   box.className = 'sheet';
@@ -710,9 +801,8 @@ function musicSheet() {
     '<button class="btn btn-ghost" data-lang="en">EN</button></div>' +
     '<ul id="mlist" style="list-style:none;margin:0 0 14px;padding:0"></ul>' +
     '<p class="meta" style="text-transform:none;letter-spacing:0;line-height:1.5">' +
-    'Ro\'yxat — qidiruv tavsiyalari. Qo\'shiqni tanlagach uni telefon ' +
-    'xotirasidan yuklang («Telefonimdan»). Shu tarzda mualliflik huquqi ' +
-    'buzilmaydi va musiqa oflayn ishlaydi.</p>' +
+    'Ro\'yxat — qidiruv tavsiyalari. Qo\'shiqni tanlab, uni telefon ' +
+    'xotirasidan yuklang («Telefonimdan») — musiqa oflayn ishlaydi.</p>' +
     '<button class="btn btn-ghost" id="closeMusic">Yopish</button>';
   document.body.appendChild(box);
   requestAnimationFrame(() => box.classList.add('on'));
@@ -722,13 +812,11 @@ function musicSheet() {
     list.innerHTML = '';
     MUSIC_LIST[lang].forEach((title) => {
       const li = document.createElement('li');
+      li.className = 'li';
       li.textContent = '🔎 ' + title;
-      li.style.cssText = 'padding:12px 14px;margin-bottom:8px;border-radius:14px;'
-        + 'background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.14);'
-        + 'font:600 14px Nunito;color:var(--ink)';
       li.onclick = () => {
-        const url = 'https://www.youtube.com/results?search_query='
-          + encodeURIComponent(title + ' song');
+        const url = 'https://www.youtube.com/results?search_query=' +
+                    encodeURIComponent(title + ' song');
         if (tg && tg.openLink) tg.openLink(url); else window.open(url, '_blank');
       };
       list.appendChild(li);
@@ -746,94 +834,27 @@ function musicSheet() {
   box.querySelector('#innerTone').onclick = toggleInnerTone;
 }
 
-/* Telefon xotirasidan audio tanlash */
-function pickAudioFile() {
-  const inp = document.createElement('input');
-  inp.type = 'file';
-  inp.accept = 'audio/*';
-  inp.onchange = () => {
-    const f = inp.files && inp.files[0];
-    if (!f) return;
-    if (MUSIC.url) URL.revokeObjectURL(MUSIC.url);
-    MUSIC.url = URL.createObjectURL(f);
-    if (!MUSIC.el) {
-      MUSIC.el = new Audio();
-      MUSIC.el.loop = true;
-      MUSIC.el.volume = 0.55;
-    }
-    MUSIC.el.src = MUSIC.url;
-    stopInnerTone();
-    MUSIC.el.play().catch(() => {});
-    MUSIC.on = true;
-    updateMusicBtn();
-  };
-  inp.click();
-}
-
-/* Ichki ohang (WebAudio — fayl kerak emas) */
-function toggleInnerTone() {
-  if (MUSIC.on && MUSIC.ctx) { stopInnerTone(); return; }
-  const AC = window.AudioContext || window.webkitAudioContext;
-  if (!AC) return;
-  if (MUSIC.el) MUSIC.el.pause();
-  MUSIC.ctx = new AC();
-  MUSIC.gain = MUSIC.ctx.createGain();
-  MUSIC.gain.gain.value = 0.05;
-  MUSIC.gain.connect(MUSIC.ctx.destination);
-  const notes = [523.25, 659.25, 783.99, 659.25, 587.33, 698.46, 880.0, 698.46];
-  let i = 0;
-  const play = () => {
-    const o = MUSIC.ctx.createOscillator();
-    const g = MUSIC.ctx.createGain();
-    o.type = 'sine';
-    o.frequency.value = notes[i % notes.length];
-    g.gain.setValueAtTime(0.0001, MUSIC.ctx.currentTime);
-    g.gain.exponentialRampToValueAtTime(0.9, MUSIC.ctx.currentTime + 0.15);
-    g.gain.exponentialRampToValueAtTime(0.0001, MUSIC.ctx.currentTime + 1.6);
-    o.connect(g); g.connect(MUSIC.gain);
-    o.start(); o.stop(MUSIC.ctx.currentTime + 1.7);
-    i++;
-  };
-  play();
-  MUSIC.timer = setInterval(play, 900);
-  MUSIC.on = true;
-  updateMusicBtn();
-}
-
-function stopInnerTone() {
-  if (MUSIC.timer) clearInterval(MUSIC.timer);
-  MUSIC.timer = null;
-  if (MUSIC.ctx) { try { MUSIC.ctx.close(); } catch (e) { /* jim */ } }
-  MUSIC.ctx = null;
-  MUSIC.on = false;
-  updateMusicBtn();
-}
-
-function updateMusicBtn() {
-  const b = document.getElementById('musicBtn');
-  if (b) b.textContent = MUSIC.on ? '🔇 Musiqa' : '🎵 Musiqa';
-}
-/* ==========================================================================
-   7) TAYMER (ochilish sanasi) VA SHAXSIY FORMA
+/* =============================================================================
+   QATLAM 13 — TAYMER (ochilish sanasi) va SHAXSIY FORMA
    ========================================================================== */
 function startCountdown(atSec) {
-  const box = ui.hint;
-  box.classList.add('on');
+  UI.hint.classList.add('on');
   const tickCd = () => {
     const left = atSec - Math.floor(Date.now() / 1000);
     if (left <= 0) {
-      box.classList.remove('on');
-      ui.forYou.classList.add('on');
+      UI.hint.classList.remove('on');
+      UI.forYou.classList.add('on');
       return false;
     }
     const d = Math.floor(left / 86400), h = Math.floor((left % 86400) / 3600);
-    box.textContent = '⏳ Bu xat ' + (d > 0 ? d + ' kun ' : '') + h + ' soatdan keyin ochiladi';
+    UI.hint.textContent = '⏳ Bu xat ' + (d > 0 ? d + ' kun ' : '') + h +
+                          ' soatdan keyin ochiladi';
     return true;
   };
-  if (tickCd()) setInterval(() => { tickCd(); }, 30000);
+  if (tickCd()) setInterval(tickCd, 30000);
 }
 
-/* Shaxsiy forma: foydalanuvchi ism va matnni o'zi kiritadi (params bo'lmasa) */
+/** Ism va matnni o'zi kiritadigan forma (params bo'lmasa) */
 function showForm() {
   const box = document.createElement('div');
   box.className = 'sheet';
@@ -859,52 +880,39 @@ function showForm() {
   };
 }
 
-/* ==========================================================================
-   8) ISHGA TUSHIRISH
+/* =============================================================================
+   QATLAM 14 — BOOT: hodisalar, Telegram init, reduced-motion, debug
    ========================================================================== */
-function resize() {
-  DPR = Math.min(window.devicePixelRatio || 1, 2);   // 2x dan oshmaymiz (tezlik)
-  W = window.innerWidth;
-  H = window.innerHeight;
-  canvas.width = Math.floor(W * DPR);
-  canvas.height = Math.floor(H * DPR);
-  canvas.style.width = W + 'px';
-  canvas.style.height = H + 'px';
-  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
-  cx = W / 2;
-  cy = H * 0.44;
-}
+function bindEvents() {
+  CANVAS.addEventListener('pointerdown', pointerDown);
+  window.addEventListener('pointermove', pointerMove);
+  window.addEventListener('pointerup', pointerUp);
+  window.addEventListener('touchstart', pointerDown, { passive: true });
+  window.addEventListener('touchmove', pointerMove, { passive: true });
+  window.addEventListener('touchend', pointerUp);
+  CANVAS.addEventListener('click', () => {
+    if (Director.phase === PHASE.ENVELOPE && !Director.started) startAnimation();
+  });
+  window.addEventListener('resize', () => Viewport.resize());
+  window.addEventListener('orientationchange',
+    () => setTimeout(() => Viewport.resize(), 200));
 
-/* Agar faqat `?l=<id>` bo'lsa — xatni serverdan yuklaymiz (initData bilan) */
-async function loadFromServer() {
-  if (!params.letterId || params.text || !tg || !tg.initData) return;
-  try {
-    const r = await fetch('/api/app', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ init: tg.initData, action: 'letter',
-                             l: Number(params.letterId) }),
-    });
-    const j = await r.json();
-    if (j && j.ok) {
-      params.text = (j.text || '').slice(0, 1000);
-      params.theme = j.theme || params.theme;
-      if (!params.name) params.name = j.mine ? '' : (j.fromName || '');
-      ui.forYouSub.textContent = params.name ? ('sizga: ' + params.name)
-        : 'sizga yozilgan xat';
-    }
-  } catch (e) { /* jim */ }
+  UI.read.onclick = openSheet;
+  document.getElementById('closeSheet').onclick = () => UI.sheet.classList.remove('on');
+  document.getElementById('replayBtn').onclick = replay;
+  document.getElementById('shareBtn').onclick = shareLetter;
+  document.getElementById('musicBtn').onclick = musicSheet;
 }
 
 function boot() {
-  resize();
-  initParticles();
-  setTargets(envelopeShape(N), 0);
-  hideDust(300);            // konvert: yengil 'chang' effekti
-  rotY = -0.35;
-  ui.forYou.classList.add('on');
-  ui.forYouSub.textContent = params.name ? ('sizga: ' + params.name) : 'sizga yozilgan xat';
-  ui.hint.classList.add('on');
-  document.getElementById('musicBtn').onclick = musicSheet;
+  Viewport.resize();
+  Particles.applyShape(envelopeShape(Particles.n), 0);
+  Particles.hideFrom(Config.ENVELOPE_VISIBLE);
+  UI.forYou.classList.add('on');
+  UI.forYouSub.textContent = params.name ? ('sizga: ' + params.name)
+                                         : 'sizga yozilgan xat';
+  UI.hint.classList.add('on');
+  bindEvents();
 
   if (tg) {
     try { tg.ready(); tg.expand(); } catch (e) { /* jim */ }
@@ -914,34 +922,34 @@ function boot() {
     } catch (e) { /* jim */ }
   }
 
-  requestAnimationFrame(tick);
-
-  loadFromServer();                  // faqat ?l= bo'lsa xatni serverdan yuklaydi
+  loadFromServer();
   if (params.at && params.at > Date.now() / 1000) startCountdown(params.at);
   if (!params.text && !params.letterId) showForm();
 
-  if (reduced) {                     // harakatni kamaytirish rejimi
-    started = true; phase = PHASE.IDLE;
-    setTargets(roseShape(N), 0);
+  const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (reduced) {
+    Director.started = true;
+    Director.phase = PHASE.IDLE;
+    Particles.applyShape(roseShape(Particles.n), 0);
     revealName();
     showTools();
   }
+  requestAnimationFrame((t) => Director.frame(t));
 }
 
-window.addEventListener('resize', resize);
-window.addEventListener('orientationchange', () => setTimeout(resize, 200));
 boot();
 
-/* Test va avtomatlashtirish uchun kichik debug interfeys */
+/* Test/avtomatlashtirish uchun debug interfeys */
 window.__letter = {
-  particles: N,                     // 800 dan oshmasligi kerak
+  particles: Particles.n,
   start: startAnimation,
   replay,
-  phase: () => phase,
+  phase: () => Director.phase,
   name: nameText,
   text: () => params.text,
-  music: () => MUSIC.on,
+  music: () => music.on,
 };
 </script>
 </body>
 </html>
+<!-- PART_END -->

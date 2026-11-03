@@ -1217,7 +1217,7 @@ check("letter: FOR YOU + Telegram SDK",
       "FOR YOU" in _letter and "telegram-web-app.js" in _letter
       and "Telegram.WebApp" in _letter)
 check("letter: zarrachalar chegarasi 800",
-      "MAX_PARTICLES = 800" in _letter and "Math.min(MAX_PARTICLES" in _letter)
+      "MAX_PARTICLES: 800" in _letter and "Math.min(n, Config.MAX_PARTICLES)" in _letter)
 check("letter: konvert → halqa → atirgul",
       "envelopeShape" in _letter and "ringShape" in _letter
       and "roseShape" in _letter)
@@ -1237,7 +1237,7 @@ check("letter: taymer va shaxsiy forma",
       "startCountdown" in _letter and "showForm" in _letter)
 check("letter: reduced-motion hurmat qilinadi", "prefers-reduced-motion" in _letter)
 check("letter: bot havolasi (?d=) qo'llab-quvvatlanadi",
-      "decodeBotPayload" in _letter and "P.get('d')" in _letter)
+      "decodeBotPayload" in _letter and "Q.get('d')" in _letter)
 check("letter: faqat ?l= bo'lsa serverdan yuklaydi",
       "loadFromServer" in _letter and "action: 'letter'" in _letter)
 check("letter: wow effektlar (yulduz, oltin ramka, chaqnash, ovoz)",
@@ -1301,6 +1301,8 @@ check("UI: brand logotipi (emoji o'rniga rasm)",
       "brand-mark" in idx_html and ".brand-mark" in css and "logo.jpg" in idx_html)
 check("kontent: video generatori mavjud",
       os.path.exists(os.path.join(ROOT, "content/make_video.py")))
+check("kontent: letter.html Python tekshiruvchisi",
+      os.path.exists(os.path.join(ROOT, "content/check_letter_page.py")))
 
 # ------------------- 37. KANAL: DUBLIKAT HIMOYASI ----------------------
 _ch_bt, _ch_ch = ch.BOT_TOKEN, ch.CHANNEL_ID
