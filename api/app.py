@@ -358,6 +358,11 @@ def _newletter(u, d):
     if not prem and st.count_today_letters(u, st.day_start_ts()) >= core.DAILY_LIMIT:
         return {"ok": False, "err": "limit", "limit": core.DAILY_LIMIT}
 
+    # janjal paytida ketma-ket xat yuborishni cheklash (spec 6.5)
+    left = st.cooldown_left(u)
+    if left > 0:
+        return {"ok": False, "err": "cooldown", "wait": max(1, left // 60)}
+
     lid = st.add_letter(u, text, offers, theme)
     st.touch(u)
     st.claim_reward(u)              # claim + ball/premium birga (atomar)
@@ -595,6 +600,7 @@ def _letter_seen(u, d):
     if L["sender"] == u:
         return {"ok": True, "mine": True}
     st.seen(lid, u)
+    st.queue_unanswered(lid, u)      # javob bo'lmasa cron eslatadi (bir marta)
     first = st.r.set(f"seen_notify:{lid}:{u}", 1, nx=True, ex=90 * 86400)
     if first:
         _notify(L["sender"], "👀 <b>Xatingiz ochildi!</b>\n"

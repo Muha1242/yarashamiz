@@ -44,6 +44,15 @@ REQUIRED_MARKERS = {
     "bot payload": "decodeBotPayload",
     "serverdan yuklash": "loadFromServer",
     "reduced-motion": "prefers-reduced-motion",
+    "javob tugmalari": "buildAnswers",
+    "sendData": "tg.sendData",
+    "skip (2x bosish)": "skipAnimation",
+    "holat (yuborilmoqda)": "showToast",
+    "javob shablonlari": "REPLY_TEMPLATES",
+    "xat vaqti": "letterMetaText",
+    "media (Meni oching)": "MediaSection",
+    "musiqa havolasi": "applyMusicLink",
+    "ulashish havolasi": "buildShareUrl",
 }
 
 LAYERS = ["QATLAM 1", "QATLAM 3", "QATLAM 8", "QATLAM 10", "QATLAM 11",
