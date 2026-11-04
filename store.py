@@ -6,6 +6,8 @@ v3.1 qo'shimchalari:
 - juftlik/premium hisoblagichlari
 """
 import datetime as dt
+import hashlib
+import hmac
 import json
 import os
 import secrets
@@ -636,6 +638,38 @@ def seen(lid, u):
 
 def has_seen(lid, u):
     return bool(r.sismember(f"seen:{lid}", u))
+
+
+# ---------------------- XAT HAVOLASI: HMAC imzo -------------------------
+# Havola: t.me/<bot>?start=l_<id>_<imzo>. Imzo bo'lmasa yoki buzilgan bo'lsa
+# begona xatni ID taxmin qilib ochib bo'lmaydi (maxfiylik).
+_LINK_KEY = (os.environ.get("LINK_SECRET")
+             or os.environ.get("BOT_TOKEN", "") + "|letter-links")
+
+
+def link_sig(lid):
+    """Xat ID uchun qisqa imzo (16 belgi)."""
+    try:
+        lid = int(lid)
+    except (TypeError, ValueError):
+        return ""
+    return hmac.new(_LINK_KEY.encode(), f"l:{lid}".encode(),
+                    hashlib.sha256).hexdigest()[:16]
+
+
+def link_ok(lid, sig):
+    """Imzo to'g'rimi (vaqt-ga bog'liq bo'lmagan, timing-safe)."""
+    got = str(sig or "").strip()
+    if not got:
+        return False
+    return hmac.compare_digest(link_sig(lid), got)
+
+
+def letter_link(lid, username):
+    """Imzolangan xat havolasi."""
+    if not username:
+        return ""
+    return f"https://t.me/{username}?start=l_{int(lid)}_{link_sig(lid)}"
 
 
 def add_report(lid, by, sender, text=""):
