@@ -1196,6 +1196,7 @@ core.ADMIN_ID = _saved_admin
 
 _chk_src = open(os.path.join(ROOT, "api/check.py"), encoding="utf-8").read()
 check("check: CHANNEL_ID ko'rsatiladi", '"CHANNEL_ID"' in _chk_src)
+check("check: LINK_SECRET ko'rsatiladi", '"LINK_SECRET"' in _chk_src)
 check("check: TRIAL_DAYS ko'rsatiladi", '"TRIAL_DAYS"' in _chk_src)
 check("check: ADMIN_ID qiymati oshkor bo'lmaydi", '"ADMIN_ID": bool(' in _chk_src)
 check("check: maxfiy maydonlar SETUP_KEY ortida", "_key_ok(self.path or \"\")" in _chk_src)
