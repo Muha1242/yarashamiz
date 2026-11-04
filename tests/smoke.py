@@ -644,15 +644,15 @@ check("ikkalasi belgilangach navbatdan chiqadi",
 # -------------------------- 23. SEVGI BILETLARI --------------------------
 st.add_pair(7201, 7202)
 check("juftliksiz bilet yuborilmaydi",
-      api_app._coupon_new(7203, {"title": "💆 Massaj"})["err"] == "no_pair")
+      api_app._coupon_new(7203, {"title": "🌙 Rejasiz kechqurun"})["err"] == "no_pair")
 c_res = api_app._coupon_new(7201, {"title": "🎬 Kino tanlash huquqi"})
 check("bilet yuborildi", c_res["ok"], c_res)
 coupon_id = c_res["id"]
 check("bepul kunlik limit (1 ta)",
-      api_app._coupon_new(7201, {"title": "💆 Massaj"})["err"] == "limit")
+      api_app._coupon_new(7201, {"title": "🌙 Rejasiz kechqurun"})["err"] == "limit")
 st.add_prem(7201, 30)
 check("premium cheksiz bilet",
-      api_app._coupon_new(7201, {"title": "💆 Massaj"})["ok"] is True)
+      api_app._coupon_new(7201, {"title": "🌙 Rejasiz kechqurun"})["ok"] is True)
 check("yuboruvchi ishlata olmaydi",
       api_app._coupon_use(7201, {"id": coupon_id})["err"] == "not_yours")
 check("qabul qiluvchi ishlatadi",
@@ -927,7 +927,7 @@ check("JS: xat va kapsula sahnalari", js.count("showStage(") >= 3, js.count("sho
 check("CSS: sahna uslublari",
       ".lstage" in css and ".lpaper" in css and "paperIn" in css)
 check("CSS: portlash animatsiyasi", ".burst" in css and "burstFly" in css)
-check("cache-busting v12", "app.js?v=14" in idx_html)
+check("cache-busting v12", "app.js?v=15" in idx_html)
 
 # ------------------- 30. XAT SAHNASI 2.0 (ovoz/parallaks) ----------------
 check("JS: ochilish ovozi", "playOpenSound" in js and "AudioContext" in js)
@@ -937,7 +937,7 @@ check("JS: 'ochildi' muhr", "lstamp" in js and "OCHILDI" in js)
 check("CSS: zarralar va muhr",
       ".lparts" in css and ".lstamp" in css and "stampIn" in css)
 check("CSS: parallaks (translate)", "--px" in css and "--py" in css)
-check("cache-busting v12 (splash)", "app.js?v=14" in idx_html)
+check("cache-busting v12 (splash)", "app.js?v=15" in idx_html)
 check("bot: xat havolasida ism", '"n": st.r.get' in bot_src)
 check("api: kapsula fromName", "fromName" in open(os.path.join(ROOT, "api/app.py"),
                                                    encoding="utf-8").read())
