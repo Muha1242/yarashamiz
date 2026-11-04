@@ -135,12 +135,16 @@ def _log(limit=10):
 
 
 def _key_ok(path, headers):
-    if not SECRET:
-        return False
+    """CRON_SECRET yoki SETUP_KEY (admin diagnostikasi) bilan ruxsat."""
     q = urllib.parse.parse_qs(urllib.parse.urlsplit(path or "").query)
-    if (q.get("s") or [""])[0] == SECRET:
-        return True
-    return headers.get("authorization") == "Bearer " + SECRET
+    got = (q.get("s") or [""])[0]
+    auth = headers.get("authorization") if headers else None
+    for secret in (SECRET, os.environ.get("SETUP_KEY", "")):
+        if not secret:
+            continue
+        if got == secret or auth == "Bearer " + secret:
+            return True
+    return False
 
 
 class handler(BaseHTTPRequestHandler):

@@ -1026,6 +1026,12 @@ _it2, _kind2, _idx2, _day2 = ch._pick(dt.datetime(2026, 11, 3, 9, 0))
 check("kanal: seshanba daily", _kind2 == "daily" and _day2 == "2026-11-03")
 check("kanal: kalitsiz rad", ch._key_ok("/api/channel", {}) is False)
 check("kanal: kalit bilan", ch._key_ok("/api/channel?s=test-secret", {}) is True)
+os.environ["SETUP_KEY"] = "setup-test"
+check("kanal: SETUP_KEY bilan ham ochiladi",
+      ch._key_ok("/api/channel?s=setup-test", {}) is True)
+check("kanal: noto'g'ri kalit rad",
+      ch._key_ok("/api/channel?s=nope", {}) is False)
+os.environ.pop("SETUP_KEY", None)
 os.environ.pop("CRON_SECRET", None)
 check("kanal: vercel cron", any(c.get("path") == "/api/channel"
       for c in json.load(open(os.path.join(ROOT, "vercel.json")))["crons"]))
