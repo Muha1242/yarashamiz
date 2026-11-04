@@ -1255,6 +1255,12 @@ async def theme(c: CallbackQuery, state: FSMContext):
         await state.clear()
         return await c.answer("Xat matni topilmadi. Qaytadan boshlang: /menu",
                               show_alert=True)
+    # janjal paytida ketma-ket xat yozishni cheklash (2 soat)
+    left = st.cooldown_left(c.from_user.id)
+    if left > 0:
+        mins = max(1, left // 60)
+        return await c.answer(f"⏳ Yana xat yozish uchun {mins} daqiqa kuting",
+                              show_alert=True)
     lid = st.add_letter(c.from_user.id, d["text"], d["offers"], t)
     await state.clear()
     uname = await me_username()

@@ -9,6 +9,7 @@ import asyncio
 import json
 import os
 import sys
+import time
 import traceback
 from http.server import BaseHTTPRequestHandler
 
@@ -38,6 +39,40 @@ class _Rate:
                 await asyncio.sleep(self.next_at - now)
                 now = self.next_at
             self.next_at = now + 1.0 / self.rate
+
+
+async def send_unanswered_reminders(core, rate, limit=40):
+    """Xat ochilgan, lekin javob berilmagan — yozuvchiga BIR MARTA, bosimsiz.
+
+    Faqat 20 soatdan oshgan holatlar; `seen_wait` ro'yxatidan olinadi.
+    """
+    import store as st
+    sent = 0
+    now = int(time.time())
+    for row in st.pending_unanswered(limit):
+        lid, u = int(row["l"]), int(row["u"])
+        L = st.letter(lid)
+        if not L or L["receiver"]:          # javob berilgan / xat yo'q
+            st.drop_unanswered(lid, u)
+            continue
+        if now - int(row.get("ts") or 0) < 20 * 3600:
+            continue                        # hali erta
+        if not st.claim_reminded(lid, u):
+            st.drop_unanswered(lid, u)
+            continue
+        await rate.wait()
+        try:
+            await core.bot.send_message(
+                L["sender"],
+                "📭 Xatingiz ochildi, lekin hali javob yo'q.\n"
+                "Xafa bo'lmang — ba'zan odam o'ylashga vaqt kerak. "
+                "Sabr uchun rahmat ❤️",
+                disable_notification=True)  # bosimsiz (spec 6.4)
+            sent += 1
+        except Exception:  # noqa: BLE001
+            pass
+        st.drop_unanswered(lid, u)
+    return sent
 
 
 def _run() -> dict:
@@ -89,11 +124,17 @@ def _run() -> dict:
             weekly = await core.send_weekly_report()
         except Exception:  # noqa: BLE001
             pass
-        return sent, failed, len(pairs), capped, weekly
+        quiet = 0
+        try:
+            quiet = await send_unanswered_reminders(core, rate)
+        except Exception:  # noqa: BLE001
+            pass
+        return sent, failed, len(pairs), capped, weekly, quiet
 
-    sent, failed, total, capped, weekly = asyncio.run(go())
+    sent, failed, total, capped, weekly, quiet = asyncio.run(go())
     return {"ok": True, "job": "reminders", "sent": sent, "failed": failed,
-            "total": total, "capped": capped, "weekly": weekly}
+            "total": total, "capped": capped, "weekly": weekly,
+            "quiet": quiet}
 
 
 class handler(BaseHTTPRequestHandler):

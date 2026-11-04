@@ -1235,6 +1235,19 @@ check("letter: musiqa (telefon + ichki + UZ/RU/EN)",
       and "en:" in _letter)
 check("letter: taymer va shaxsiy forma",
       "startCountdown" in _letter and "showForm" in _letter)
+check("letter: javob tugmalari (yes/later/stop/reply)",
+      "function buildAnswers" in _letter and "'yes'" in _letter
+      and "'later'" in _letter and "'stop'" in _letter and "'reply'" in _letter)
+check("letter: skip (ikki marta bosish)",
+      "function skipAnimation" in _letter and "dblclick" in _letter)
+check("letter: holat xabari (yuborilmoqda)",
+      "function showToast" in _letter and "Yuborilmoqda" in _letter)
+check("letter: tayyor shablonlar", "REPLY_TEMPLATES" in _letter)
+check("letter: xat vaqti (N kun oldin)",
+      "function letterMetaText" in _letter and "yozilgan" in _letter)
+check("letter: yuboruvchi media + musiqa havolasi",
+      "MediaSection" in _letter and "applyMusicLink" in _letter
+      and "buildShareUrl" in _letter)
 check("letter: reduced-motion hurmat qilinadi", "prefers-reduced-motion" in _letter)
 check("letter: bot havolasi (?d=) qo'llab-quvvatlanadi",
       "decodeBotPayload" in _letter and "Q.get('d')" in _letter)
@@ -1270,6 +1283,32 @@ check("letter_seen: yo'q xat",
       api_app.ACTIONS["letter_seen"](9703, {}, {"l": 999999}).get("err") == "none")
 check("letter_seen: buzuq id",
       api_app.ACTIONS["letter_seen"](9703, {}, {"l": "x"}).get("err") == "bad_id")
+
+# ------------------- 39. COOLDOWN va JAVOBSIZ ESLATMA -------------------
+st.r.delete("lts:9801", "seen_wait", "remind_seen:9801:9802")
+check("cooldown: xat yozilmagan — ruxsat", st.cooldown_left(9801) == 0)
+_l_cd = st.add_letter(9801, "Cooldown sinovi", ["Kino"], "classic")
+check("cooldown: add_letter vaqtni yozadi", st.last_letter_ts(9801) > 0)
+check("cooldown: darhol qayta yozib bo'lmaydi", st.cooldown_left(9801) > 0)
+_new_cd = api_app._newletter(9801, {"text": "Yana xat", "offers": ["Kino"],
+                                    "theme": "classic"})
+check("cooldown: api newletter rad etadi",
+      _new_cd.get("err") == "cooldown" and _new_cd.get("wait", 0) >= 1, _new_cd)
+st.r.delete(f"lts:9801")
+check("cooldown: vaqt o'tsa ruxsat", st.cooldown_left(9801) == 0)
+
+st.r.delete("seen_wait")
+_l_wait = st.add_letter(9901, "Javobsiz xat", ["Kino"], "love")
+api_app.ACTIONS["letter_seen"](9902, {}, {"l": _l_wait})
+_wait_rows = st.pending_unanswered(10)
+check("eslatma: navbatga tushdi",
+      any(int(x["l"]) == int(_l_wait) and int(x["u"]) == 9902 for x in _wait_rows),
+      _wait_rows)
+check("eslatma: bir marta (claim)", st.claim_reminded(_l_wait, 9902) is True
+      and st.claim_reminded(_l_wait, 9902) is False)
+st.drop_unanswered(_l_wait, 9902)
+check("eslatma: navbatdan chiqdi",
+      not any(int(x["l"]) == int(_l_wait) for x in st.pending_unanswered(10)))
 
 # ------------------- 36. KANAL VIZUAL KONTENTI (rasm/GIF) ---------------
 _assets = os.path.join(ROOT, "mini_app/assets")

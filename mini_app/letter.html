@@ -91,9 +91,64 @@ body{font-family:Nunito,system-ui,-apple-system,sans-serif;color:var(--ink);
     rgba(255,111,174,.55) 42%,transparent 72%);
   animation:flashOut .6s ease-out forwards}
 @keyframes flashOut{0%{opacity:0}18%{opacity:.92}100%{opacity:0}}
+/* ---- javob tugmalari (xat ostida) ---- */
+.answers{display:flex;flex-direction:column;gap:9px;margin:14px 0 8px}
+.answers .opt{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:4px}
+.answers .opt button{border:1px solid rgba(255,255,255,.2);
+  background:rgba(255,255,255,.07);color:var(--ink);border-radius:999px;
+  padding:8px 14px;font:700 13px Nunito;cursor:pointer}
+.answers .opt button.sel{background:linear-gradient(100deg,#ff8ec0,#ffd08a);
+  color:#2a0016;border-color:transparent}
+.answers textarea{width:100%;min-height:96px;border-radius:14px;
+  border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.08);
+  color:#fff3f7;padding:12px;font:400 15px Nunito;resize:none;margin-bottom:8px}
+.answers .danger{color:#ff9a9a}
+.tpl-row{display:flex;gap:8px;overflow-x:auto;padding:2px 0 8px}
+.tpl{flex:0 0 auto;padding:8px 12px;border-radius:999px;cursor:pointer;
+  border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.06);
+  font:600 12px Nunito;color:var(--ink);white-space:nowrap}
+
+/* ---- holat toast (yuborilmoqda / xato) ---- */
+.toast{position:fixed;left:50%;bottom:calc(env(safe-area-inset-bottom) + 96px);
+  transform:translate(-50%,10px);z-index:9;padding:12px 18px;border-radius:14px;
+  font:700 13px Nunito;color:#2a0016;background:linear-gradient(100deg,#ffd08a,#ff9ec9);
+  box-shadow:0 14px 34px rgba(0,0,0,.45);opacity:0;pointer-events:none;
+  transition:opacity .25s ease,transform .25s ease}
+.toast.on{opacity:1;transform:translate(-50%,0)}
+.toast.err{background:linear-gradient(100deg,#ff9a9a,#ff6f88);color:#2a0016}
+
 @media (prefers-reduced-motion:reduce){
   .foryou.on,.name.idle{animation:none}
   .name span{animation:none;opacity:1;transform:none}}
+
+/* ---- yuboruvchi qoldirgan syurpriz: "Meni oching" kartasi ---- */
+.media-card{
+  position:fixed;left:50%;transform:translate(-50%,14px);bottom:calc(env(safe-area-inset-bottom) + 190px);
+  z-index:6;width:min(340px,92vw);padding:16px 18px;border-radius:22px;text-align:center;
+  background:linear-gradient(160deg,rgba(255,120,180,.22),rgba(160,107,255,.18));
+  border:1px solid rgba(255,255,255,.22);
+  box-shadow:0 18px 50px rgba(0,0,0,.55),0 0 34px rgba(255,111,174,.35);
+  opacity:0;pointer-events:none;transition:opacity .5s ease,transform .5s cubic-bezier(.2,.9,.2,1)}
+.media-card.on{opacity:1;transform:translate(-50%,0);pointer-events:auto;
+  animation:cardGlow 3s ease-in-out infinite}
+@keyframes cardGlow{0%,100%{box-shadow:0 18px 50px rgba(0,0,0,.55),0 0 24px rgba(255,111,174,.28)}
+  50%{box-shadow:0 18px 50px rgba(0,0,0,.55),0 0 44px rgba(255,111,174,.55)}}
+.media-card h4{margin:0 0 4px;font:800 17px Nunito;letter-spacing:.02em}
+.media-card p{margin:0 0 12px;font:600 11.5px Nunito;color:var(--muted);letter-spacing:.03em}
+.media-open{width:100%;min-height:46px;border:0;border-radius:14px;cursor:pointer;
+  font:800 15px Nunito;color:#2a0016;
+  background:linear-gradient(100deg,#ff9ec9,#ffd08a 60%,#c79bff)}
+.media-card video,.media-card audio{width:100%;border-radius:14px;margin-top:10px;display:block}
+.media-card .m-close{margin-top:8px;background:none;border:0;color:var(--muted);
+  font:600 12px Nunito;cursor:pointer}
+
+/* musiqa tugmasidagi ekvalayzer */
+.eq{display:inline-flex;align-items:flex-end;gap:2px;height:12px;margin-right:2px}
+.eq i{width:2px;background:currentColor;border-radius:2px;animation:eqBounce 1s ease-in-out infinite}
+.eq i:nth-child(1){height:5px;animation-delay:0s}
+.eq i:nth-child(2){height:11px;animation-delay:.15s}
+.eq i:nth-child(3){height:7px;animation-delay:.3s}
+@keyframes eqBounce{0%,100%{transform:scaleY(.5)}50%{transform:scaleY(1)}}
 </style>
 </head>
 <body>
@@ -115,6 +170,7 @@ body{font-family:Nunito,system-ui,-apple-system,sans-serif;color:var(--ink);
   <div class="meta" id="letterMeta"></div>
   <h3>Xat</h3>
   <p class="letter-text" id="letterBody"></p>
+  <div class="answers" id="answers"></div>
   <button class="btn btn-ghost" id="closeSheet">Yopish</button>
 </div>
 <script>
@@ -248,6 +304,12 @@ const params = {
   theme: (Q.get('theme') || 'love').slice(0, 20),
   letterId: Q.get('l') || '',
   at: Number(Q.get('at') || 0),
+  /* yangi: yuboruvchi qo'shgan media */
+  music: (Q.get('m') || '').trim().slice(0, 500),      // musiqa havolasi (mp3/ogg)
+  media: (Q.get('v') || '').trim().slice(0, 500),      // video/syurpriz havolasi
+  mediaTitle: (Q.get('vt') || '').trim().slice(0, 60), // media sarlavhasi
+  offers: [],                                          // xatdagi takliflar
+  ts: Number(Q.get('ts') || 0),                        // yozilgan vaqt (unix)
 };
 
 /* Bot havolasi `?d=<base64url JSON {t,o,theme,n}>` bilan ham ishlaydi */
@@ -260,6 +322,10 @@ function decodeBotPayload() {
     if (d.t) params.text = String(d.t).slice(0, 1000);
     if (d.theme) params.theme = String(d.theme).slice(0, 20);
     if (d.n) params.name = String(d.n).slice(0, 40);
+    if (Array.isArray(d.o)) {
+      params.offers = d.o.map(String).filter(Boolean).slice(0, 9);
+    }
+    if (d.ts) params.ts = Number(d.ts) || 0;
   } catch (e) { /* buzilgan payload — jim o'tamiz */ }
 }
 decodeBotPayload();
@@ -579,6 +645,10 @@ function nameText() {
 function revealName() {
   const txt = nameText();
   UI.name.innerHTML = '';
+  const len = Math.max(1, Array.from(txt).length);
+  UI.name.style.whiteSpace = 'nowrap';
+  UI.name.style.fontSize = Math.max(
+    20, Math.min(58, (window.innerWidth - 36) / (len * 0.55))) + 'px';
   Array.from(txt).forEach((ch, i) => {
     const span = document.createElement('span');
     span.textContent = ch === ' ' ? '\u00A0' : ch;
@@ -594,14 +664,15 @@ function showTools() {
   UI.read.classList.remove('hidden');
   UI.tools.classList.remove('hidden');
   UI.read.style.animation = 'letterIn .5s ease both';
+  mediaSection.mount();            // yuboruvchi syurpriz qoldirgan bo'lsa
 }
 
 /** Xat matni paneli + botga "o'qildi" xabari */
 async function openSheet() {
-  UI.sheetMeta.textContent = params.name ? ('Kimdan: ' + params.name)
-                                         : 'Sizga yozilgan xat';
+  UI.sheetMeta.textContent = letterMetaText();
   UI.sheetBody.textContent = params.text ||
     "Bu xat sizga yozilgan. Uni o'qing va javob bering ❤️";
+  buildAnswers();
   UI.sheet.classList.add('on');
   if (tg && tg.HapticFeedback) tg.HapticFeedback.impactOccurred('medium');
   if (params.letterId) notifySeen();
@@ -632,6 +703,8 @@ async function loadFromServer() {
     if (j && j.ok) {
       params.text = (j.text || '').slice(0, 1000);
       params.theme = j.theme || params.theme;
+      params.ts = Number(j.ts || params.ts) || 0;
+      if (Array.isArray(j.offers)) params.offers = j.offers.map(String).slice(0, 9);
       if (!params.name) params.name = j.mine ? '' : (j.fromName || '');
       UI.forYouSub.textContent = params.name ? ('sizga: ' + params.name)
                                              : 'sizga yozilgan xat';
@@ -639,7 +712,151 @@ async function loadFromServer() {
   } catch (e) { /* jim */ }
 }
 
-/** Qayta o'ynatish: holatni nolga qaytaradi */
+/* =============================================================================
+   QATLAM 11b — JAVOBLAR, HOLAT, TEMPLATELAR, SKIP
+   ========================================================================== */
+
+/** "Kimdan: X · 2 kun oldin yozilgan" */
+function letterMetaText() {
+  const parts = [];
+  if (params.name) parts.push('Kimdan: ' + params.name);
+  else parts.push('Sizga yozilgan xat');
+  if (params.ts) {
+    const diff = Math.max(0, Date.now() / 1000 - params.ts);
+    const d = Math.floor(diff / 86400);
+    const h = Math.floor((diff % 86400) / 3600);
+    const m = Math.floor((diff % 3600) / 60);
+    const ago = d > 0 ? (d + ' kun oldin') : h > 0 ? (h + ' soat oldin')
+                                                   : (m + ' daqiqa oldin');
+    parts.push(ago + ' yozilgan');
+  }
+  return parts.join(' · ');
+}
+
+/** Qisqa holat xabari (yuborilmoqda / xato) */
+function showToast(text, isError) {
+  let el = document.getElementById('toast');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'toast';
+    el.className = 'toast';
+    document.body.appendChild(el);
+  }
+  el.textContent = text;
+  el.classList.toggle('err', !!isError);
+  el.classList.add('on');
+  return el;
+}
+
+/** Botga javob yuborish: {a: yes|later|stop|reply, l: id, o, t} */
+function sendAnswer(a, o, t) {
+  if (!tg || !tg.sendData) {
+    showToast('Faqat Telegram ilovasida ishlaydi', true);
+    return;
+  }
+  const payload = { a: a, l: String(params.letterId || ''), o: o || '' };
+  if (t) payload.t = t.slice(0, 300);
+  try {
+    if (a === 'reply') showToast('Yuborilmoqda…');
+    tg.sendData(JSON.stringify(payload));
+  } catch (e) {
+    showToast('Yuborilmadi. Qayta urinib ko‘ring', true);
+  }
+}
+
+/** Javob tugmalari + tayyor shablonlar (bir bosishda to‘ldirish) */
+function buildAnswers() {
+  const box = document.getElementById('answers');
+  if (!box) return;
+  box.innerHTML = '';
+  if (!tg || !params.letterId) return;         // brauzerda javob yo'q
+  let sel = params.offers[0] || '';
+
+  if (params.offers.length > 1) {
+    const opt = document.createElement('div');
+    opt.className = 'opt';
+    params.offers.forEach((o, i) => {
+      const b = document.createElement('button');
+      b.textContent = o;
+      if (i === 0) b.classList.add('sel');
+      b.onclick = () => {
+        opt.querySelectorAll('button').forEach((x) => x.classList.remove('sel'));
+        b.classList.add('sel');
+        sel = o;
+      };
+      opt.appendChild(b);
+    });
+    box.appendChild(opt);
+  }
+
+  const mk = (label, cls, fn) => {
+    const b = document.createElement('button');
+    b.className = 'btn ' + cls;
+    b.textContent = label;
+    b.onclick = fn;
+    box.appendChild(b);
+    return b;
+  };
+
+  mk('❤️ Yarashamiz', 'btn-main', () => {
+    if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('heavy');
+    showToast('Yuborilmoqda…');
+    sendAnswer('yes', sel);
+  });
+
+  mk('✍️ Javob yozish', 'btn-ghost', () => {
+    box.innerHTML = '';
+    const rows = document.createElement('div');
+    rows.className = 'tpl-row';
+    REPLY_TEMPLATES.forEach((tpl) => {
+      const chip = document.createElement('button');
+      chip.className = 'tpl';
+      chip.textContent = tpl.label;
+      chip.onclick = () => { ta.value = tpl.text; ta.focus(); };
+      rows.appendChild(chip);
+    });
+    box.appendChild(rows);
+    const ta = document.createElement('textarea');
+    ta.placeholder = 'Javobingizni yozing (300 belgigacha)...';
+    ta.maxLength = 300;
+    box.appendChild(ta);
+    mk('Yuborish', 'btn-main', () => {
+      const t = ta.value.trim();
+      if (!t) return showToast('Matn bo‘sh', true);
+      showToast('Yuborilmoqda…');
+      sendAnswer('reply', sel, t);
+    });
+    mk('Orqaga', 'btn-ghost', buildAnswers);
+  });
+
+  mk('⏳ Keyinroq', 'btn-ghost', () => {
+    showToast('Yuborilmoqda…');
+    sendAnswer('later', sel);
+  });
+  mk('🚫 Boshqa xat olmayman', 'btn-ghost danger', () => {
+    if (confirm('Bu odam sizga boshqa xat yozmasinmi?')) sendAnswer('stop', sel);
+  });
+}
+
+/** Tayyor javob shablonlari (bir bosishda matnni to‘ldiradi) */
+const REPLY_TEMPLATES = [
+  { label: 'Kechiraman 🤍', text: 'Kechiraman. Seni tushunaman va birga davom etishni xohlayman.' },
+  { label: 'Sog‘indim', text: 'Seni juda sog‘indim. Gaplashsak bo‘ladimi?' },
+  { label: 'Tushuntiraman', text: 'Keling, xotirjam gaplashamiz — men o‘z fikrimni tushuntirmoqchiman.' },
+  { label: 'Vaqt kerak', text: 'Hozir biroz o‘ylashim kerak. Ertaga javob beraman.' },
+];
+
+/** Animatsiyani o‘tkazib yuborish: to‘g‘ridan-to‘g‘ri atirgul + ism */
+function skipAnimation() {
+  if (Director.finished) return;
+  Director.started = true;
+  Director.phase = PHASE.IDLE;
+  Director.phaseStart = Director.elapsed;
+  Particles.applyShape(roseShape(Particles.n), 0);
+  revealName();
+  showTools();
+  if (tg && tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
+}
 function replay() {
   Object.assign(Director, {
     started: false, finished: false, phase: PHASE.ENVELOPE, phaseStart: 0,
@@ -658,11 +875,16 @@ function replay() {
   UI.forYouSub.textContent = params.name ? ('sizga: ' + params.name)
                                          : 'sizga yozilgan xat';
   UI.hint.classList.add('on');
+  if (mediaSection.card) {
+    mediaSection.card.classList.remove('on');
+    setTimeout(() => { if (mediaSection.card) mediaSection.card.remove(); }, 400);
+    mediaSection.card = null;
+  }
 }
 
 /** Telegram orqali ulashish */
 function shareLetter() {
-  const url = location.href;
+  const url = buildShareUrl();
   const text = params.name ? (params.name + ' sizga xat yozdi 💌') : 'Sizga xat bor 💌';
   if (tg && tg.shareMessage) return tg.shareMessage(url, text);
   const link = 'https://t.me/share/url?url=' + encodeURIComponent(url) +
@@ -786,6 +1008,74 @@ const music = new MusicBox();
 const pickAudioFile = () => music.pickFile();
 const toggleInnerTone = () => music.toggleInner();
 
+/** Yuboruvchi bergan musiqa havolasi (mp3/ogg) — fonda o'ynaydi */
+function applyMusicLink() {
+  if (!params.music) return;
+  if (!music.el) { music.el = new Audio(); music.el.loop = true; music.el.volume = 0.5; }
+  music.el.src = params.music;
+  music.el.play().then(() => { music.on = true; music.updateBtn(); })
+                 .catch(() => { /* autoplay bloklandi — tugma bilan yoqiladi */ });
+}
+
+/** XSS himoyasi: matnni escape qilish */
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, (c) => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+  }[c]));
+}
+
+/* =============================================================================
+   QATLAM 12b — MEDIA: yuboruvchi qoldirgan syurpriz ("Meni oching")
+   Yuboruvchi havola qo'yadi yoki telefonidan fayl tanlaydi; qabul qiluvchi
+   "Ochish" bosganda video/audio inline ochiladi yoki havola Telegramda ochiladi.
+   ========================================================================== */
+const DIRECT_MEDIA = /\.(mp4|webm|ogv|mov|m4v|mp3|m4a|aac|ogg|wav)(\?|#|$)/i;
+const DIRECT_AUDIO = /\.(mp3|m4a|aac|ogg|wav)(\?|#|$)/i;
+
+class MediaSection {
+  constructor() { this.card = null; }
+
+  /** Karta faqat media bo'lsa ko'rsatiladi (animatsiya tugagach) */
+  mount() {
+    if (!params.media || this.card) return;
+    const card = document.createElement('div');
+    card.className = 'media-card';
+    const title = params.mediaTitle || 'Meni oching';
+    const who = params.name ? escapeHtml(params.name) + ' sizga' : 'Sizga';
+    card.innerHTML =
+      '<h4>🎁 ' + escapeHtml(title) + '</h4>' +
+      '<p>' + who + ' syurpriz qoldirdi</p>' +
+      '<button class="media-open" id="mediaOpen">▶ Ochish</button>';
+    document.body.appendChild(card);
+    requestAnimationFrame(() => card.classList.add('on'));
+    card.querySelector('#mediaOpen').onclick = () => this.open(card);
+    this.card = card;
+  }
+
+  open(card) {
+    const url = params.media;
+    if (DIRECT_MEDIA.test(url)) {                   // to'g'ridan-to'g'ri fayl
+      const isAudio = DIRECT_AUDIO.test(url);
+      const el = document.createElement(isAudio ? 'audio' : 'video');
+      el.controls = true; el.autoplay = true; el.playsInline = true;
+      el.src = encodeURI(url);
+      card.appendChild(el);
+      card.querySelector('#mediaOpen').style.display = 'none';
+      const close = document.createElement('button');
+      close.className = 'm-close';
+      close.textContent = 'Yopish';
+      close.onclick = () => card.classList.remove('on');
+      card.appendChild(close);
+      if (tg && tg.HapticFeedback) tg.HapticFeedback.impactOccurred('medium');
+      return;
+    }
+    // YouTube / Instagram / boshqa havola — Telegram ichida ochamiz
+    if (tg && tg.openLink) tg.openLink(url);
+    else window.open(url, '_blank');
+  }
+}
+const mediaSection = new MediaSection();
+
 /** Musiqa paneli: telefon fayli / ichki ohang / til bo'yicha tavsiyalar */
 function musicSheet() {
   const box = document.createElement('div');
@@ -800,6 +1090,12 @@ function musicSheet() {
     '<button class="btn btn-ghost" data-lang="ru">RU</button>' +
     '<button class="btn btn-ghost" data-lang="en">EN</button></div>' +
     '<ul id="mlist" style="list-style:none;margin:0 0 14px;padding:0"></ul>' +
+    '<input id="mUrl" placeholder="Musiqa havolasi (https://… .mp3)" ' +
+    'style="width:100%;margin-bottom:8px;padding:13px;border-radius:14px;' +
+    'border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.08);' +
+    'color:#fff3f7;font:500 13px Nunito">' +
+    '<button class="btn btn-ghost" id="mSet" style="margin-bottom:12px">' +
+    '🔗 Havoladan qo\'yish</button>' +
     '<p class="meta" style="text-transform:none;letter-spacing:0;line-height:1.5">' +
     'Ro\'yxat — qidiruv tavsiyalari. Qo\'shiqni tanlab, uni telefon ' +
     'xotirasidan yuklang («Telefonimdan») — musiqa oflayn ishlaydi.</p>' +
@@ -832,6 +1128,12 @@ function musicSheet() {
   };
   box.querySelector('#pickFile').onclick = pickAudioFile;
   box.querySelector('#innerTone').onclick = toggleInnerTone;
+  box.querySelector('#mSet').onclick = () => {
+    const v = box.querySelector('#mUrl').value.trim();
+    if (!/^https?:\/\//i.test(v)) return;
+    params.music = v.slice(0, 500);
+    applyMusicLink();
+  };
 }
 
 /* =============================================================================
@@ -855,29 +1157,73 @@ function startCountdown(atSec) {
 }
 
 /** Ism va matnni o'zi kiritadigan forma (params bo'lmasa) */
+const FIELD_CSS = 'style="width:100%;margin-bottom:10px;padding:14px;' +
+  'border-radius:14px;border:1px solid rgba(255,255,255,.18);' +
+  'background:rgba(255,255,255,.08);color:#fff3f7;font:600 15px Nunito"';
+
 function showForm() {
   const box = document.createElement('div');
   box.className = 'sheet';
   box.innerHTML =
     '<div class="meta">o\'zingiz uchun</div><h3>💌 Xat yaratish</h3>' +
-    '<input id="fName" placeholder="Kimga (ism)" maxlength="40" ' +
-    'style="width:100%;margin-bottom:10px;padding:14px;border-radius:14px;' +
-    'border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.08);' +
-    'color:#fff3f7;font:600 15px Nunito">' +
+    '<input id="fName" placeholder="Kimga (ism)" maxlength="40" ' + FIELD_CSS + '>' +
     '<textarea id="fText" placeholder="Xat matni (ixtiyoriy)" maxlength="1000" ' +
-    'rows="4" style="width:100%;margin-bottom:12px;padding:14px;border-radius:14px;' +
+    'rows="4" style="width:100%;margin-bottom:10px;padding:14px;border-radius:14px;' +
     'border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.08);' +
     'color:#fff3f7;font:400 15px Nunito;resize:none"></textarea>' +
-    '<div class="row"><button class="btn btn-main" id="fGo">Boshlash</button></div>';
+    '<input id="fMusic" placeholder="Musiqa havolasi (mp3) — ixtiyoriy" ' + FIELD_CSS + '>' +
+    '<input id="fMedia" placeholder="Video/syurpriz havolasi — ixtiyoriy" ' + FIELD_CSS + '>' +
+    '<input id="fMediaTitle" placeholder="Syurpriz nomi (masalan: «Meni oching»)" ' +
+    FIELD_CSS + 'maxlength="60">' +
+    '<div class="row" style="gap:8px"><button class="btn btn-main" id="fGo">Boshlash</button></div>' +
+    '<button class="btn btn-ghost" id="fCopy" style="margin-top:10px">' +
+    '🔗 Tayyor havolani nusxalash</button>' +
+    '<p class="meta" style="text-transform:none;letter-spacing:0;line-height:1.5;margin-top:12px">' +
+    'Havolani juftingizga yuboring: u ochganda animatsiya, musiqa va syurpriz ' +
+    'birga ochiladi. Telefon xotirasidagi musiqa faqat shu qurilmada o\'ynaydi — ' +
+    'qabul qiluvchiga yetib borishi uchun havola (URL) ishlatsangiz bo\'ladi.</p>';
   document.body.appendChild(box);
   requestAnimationFrame(() => box.classList.add('on'));
   box.querySelector('#fGo').onclick = () => {
-    params.name = box.querySelector('#fName').value.trim().slice(0, 40);
-    params.text = box.querySelector('#fText').value.trim().slice(0, 1000);
+    readFormFields(box);
     box.classList.remove('on');
     setTimeout(() => box.remove(), 450);
     replay();
   };
+  box.querySelector('#fCopy').onclick = async () => {
+    readFormFields(box);
+    const url = buildShareUrl();
+    try {
+      await navigator.clipboard.writeText(url);
+      box.querySelector('#fCopy').textContent = '✅ Nusxalandi!';
+    } catch (e) {
+      prompt('Havolani nusxalang:', url);
+    }
+  };
+}
+
+/** Forma maydonlarini params ga o'qish */
+function readFormFields(box) {
+  const get = (id) => (box.querySelector('#' + id) || {}).value || '';
+  params.name = get('fName').trim().slice(0, 40);
+  params.text = get('fText').trim().slice(0, 1000);
+  const m = get('fMusic').trim();
+  params.music = /^https?:\/\//i.test(m) ? m.slice(0, 500) : '';
+  const v = get('fMedia').trim();
+  params.media = /^https?:\/\//i.test(v) ? v.slice(0, 500) : '';
+  params.mediaTitle = get('fMediaTitle').trim().slice(0, 60);
+}
+
+/** Tayyor havola: animatsiya + musiqa + syurpriz birga */
+function buildShareUrl() {
+  const u = new URL(location.href.split('?')[0]);
+  if (params.name) u.searchParams.set('name', params.name);
+  if (params.text) u.searchParams.set('text', params.text.slice(0, 900));
+  if (params.theme) u.searchParams.set('theme', params.theme);
+  if (params.music) u.searchParams.set('m', params.music);
+  if (params.media) u.searchParams.set('v', params.media);
+  if (params.mediaTitle) u.searchParams.set('vt', params.mediaTitle);
+  return u.toString();
 }
 
 /* =============================================================================
@@ -892,6 +1238,14 @@ function bindEvents() {
   window.addEventListener('touchend', pointerUp);
   CANVAS.addEventListener('click', () => {
     if (Director.phase === PHASE.ENVELOPE && !Director.started) startAnimation();
+  });
+  /* ikki marta bosish → animatsiyani o'tkazib yuborish (spec 6.1) */
+  CANVAS.addEventListener('dblclick', skipAnimation);
+  let lastTap = 0;
+  CANVAS.addEventListener('touchend', () => {
+    const now = Date.now();
+    if (now - lastTap < 320) skipAnimation();
+    lastTap = now;
   });
   window.addEventListener('resize', () => Viewport.resize());
   window.addEventListener('orientationchange',
@@ -923,6 +1277,7 @@ function boot() {
   }
 
   loadFromServer();
+  applyMusicLink();                  // yuboruvchi bergan musiqa havolasi
   if (params.at && params.at > Date.now() / 1000) startCountdown(params.at);
   if (!params.text && !params.letterId) showForm();
 

@@ -112,6 +112,10 @@ def add_letter(sender, text, offers, theme):
         "theme": theme, "ts": int(time.time()), "receiver": "", "thn": 0})
     r.sadd(f"mine:{sender}", lid)
     r.incr(f"cnt:letters:{today()}")
+    try:                                 # cooldown uchun oxirgi xat vaqti
+        r.set(f"lts:{sender}", int(time.time()), ex=7 * 86400)
+    except Exception:  # noqa: BLE001
+        pass
     return lid
 
 
@@ -465,6 +469,65 @@ def recent_feedback(limit=10):
             out.append(d)
     out.reverse()
     return out
+
+
+# ---------------- XAT: COOLDOWN (2 soat) va JAVOBSIZ ESLATMA -------------
+COOLDOWN_HOURS = int(os.environ.get("LETTER_COOLDOWN_H", "2"))
+
+
+def last_letter_ts(u):
+    """Foydalanuvchi oxirgi xat yozgan vaqt (epoch)."""
+    try:
+        return int(r.get(f"lts:{u}") or 0)
+    except (TypeError, ValueError):
+        return 0
+
+
+def cooldown_left(u):
+    """Qayta xat yozish uchun qolgan sekund (0 — ruxsat berilgan)."""
+    if COOLDOWN_HOURS <= 0:
+        return 0
+    left = last_letter_ts(u) + COOLDOWN_HOURS * 3600 - int(time.time())
+    return max(0, left)
+
+
+def queue_unanswered(lid, u):
+    """Xat ochildi, lekin javob yo'q — cron orqali bir marta eslatma."""
+    try:
+        r.rpush("seen_wait", json.dumps({"l": int(lid), "u": int(u),
+                                         "ts": int(time.time())}))
+        r.ltrim("seen_wait", -500, -1)
+    except Exception:  # noqa: BLE001
+        pass
+
+
+def pending_unanswered(limit=200):
+    out = []
+    for raw in r.lrange("seen_wait", 0, limit - 1):
+        try:
+            d = json.loads(raw)
+        except Exception:  # noqa: BLE001
+            continue
+        if isinstance(d, dict) and d.get("l") and d.get("u"):
+            out.append(d)
+    return out
+
+
+def drop_unanswered(lid, u):
+    """Ro'yxatdan olib tashlash (xato yoki eslatma yuborilgandan keyin)."""
+    for raw in r.lrange("seen_wait", 0, -1):
+        try:
+            d = json.loads(raw)
+        except Exception:  # noqa: BLE001
+            continue
+        if str(d.get("l")) == str(lid) and str(d.get("u")) == str(u):
+            r.lrem("seen_wait", 1, raw)
+            break
+
+
+def claim_reminded(lid, u):
+    """Eslatma bir marta yuborilishini ta'minlaydi."""
+    return bool(r.set(f"remind_seen:{lid}:{u}", 1, nx=True, ex=90 * 86400))
 
 
 # ------------------------------ ESLATMALAR ------------------------------
