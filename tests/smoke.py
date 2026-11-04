@@ -1310,6 +1310,58 @@ st.drop_unanswered(_l_wait, 9902)
 check("eslatma: navbatdan chiqdi",
       not any(int(x["l"]) == int(_l_wait) for x in st.pending_unanswered(10)))
 
+# ------------------- 40. XAT HAVOLASI: HMAC IMZO ------------------------
+_l_sig = st.add_letter(9951, "Imzo sinovi", ["Kino"], "classic")
+_sig = st.link_sig(_l_sig)
+check("imzo: 16 belgi", isinstance(_sig, str) and len(_sig) == 16, _sig)
+check("imzo: to'g'ri imzo qabul", st.link_ok(_l_sig, _sig) is True)
+check("imzo: buzilgan imzo rad", st.link_ok(_l_sig, _sig[:-1] + "0") is False)
+check("imzo: bo'sh imzo rad", st.link_ok(_l_sig, "") is False)
+check("imzo: buzuq id -> bo'sh", st.link_sig("abc") == "")
+_l_link = st.letter_link(_l_sig, "testbot")
+check("imzo: havola formati",
+      _l_link.startswith(f"https://t.me/testbot?start=l_{_l_sig}_")
+      and len(_l_link.split("_")[-1]) == 16, _l_link)
+check("imzo: username yo'q -> bo'sh", st.letter_link(_l_sig, "") == "")
+
+# bot: imzosiz/buzuq havola begona odamga ochilmaydi
+_m_forge = FakeOut(9952)
+asyncio.run(core.start(
+    _m_forge,
+    CommandObject(prefix="/", command="start", args=f"l_{_l_sig}_deadbeef"),
+    FSMContext(storage=core.dp.storage,
+               key=StorageKey(bot_id=123456, chat_id=9952, user_id=9952))))
+check("bot: buzuq imzo rad etiladi",
+      any("eskirgan" in (a or "") for a in _m_forge.answers), _m_forge.answers)
+
+# to'g'ri imzo bilan ochiladi
+_m_ok_link = FakeOut(9953)
+asyncio.run(core.start(
+    _m_ok_link,
+    CommandObject(prefix="/", command="start",
+                  args=f"l_{_l_sig}_{_sig}"),
+    FSMContext(storage=core.dp.storage,
+               key=StorageKey(bot_id=123456, chat_id=9953, user_id=9953))))
+check("bot: imzolangan havola ishlaydi",
+      any("xat" in (a or "").lower() for a in _m_ok_link.answers),
+      _m_ok_link.answers)
+
+# /link — yuboruvchiga yangi imzolangan havola
+_m_link = FakeOut(9951)
+asyncio.run(core.link_cmd(_m_link))
+check("/link: imzolangan havola beradi",
+      any(f"start=l_{_l_sig}_" in (a or "") for a in _m_link.answers),
+      _m_link.answers)
+
+# api newletter ham imzolangan havola qaytaradi
+st.r.delete("lts:9961")
+_new_link = api_app._newletter(9961, {"text": "API havola", "offers": ["Kino"],
+                                      "theme": "classic"})
+check("api: newletter imzolangan havola",
+      "start=l_" in (_new_link.get("link") or "")
+      and len((_new_link.get("link") or "").split("_")[-1]) == 16,
+      _new_link)
+
 # ------------------- 36. KANAL VIZUAL KONTENTI (rasm/GIF) ---------------
 _assets = os.path.join(ROOT, "mini_app/assets")
 _names = ("01_qanday_ishlaydi.png", "02_imkoniyatlar.png", "03_premium.png",

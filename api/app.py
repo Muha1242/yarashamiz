@@ -370,7 +370,7 @@ def _newletter(u, d):
     left = None if prem else max(0, core.DAILY_LIMIT -
                                  st.count_today_letters(u, st.day_start_ts()))
     return {"ok": True, "id": lid,
-            "link": ("https://t.me/" + uname + "?start=l_" + str(lid)) if uname else "",
+            "link": st.letter_link(lid, uname),
             "left": left}
 
 

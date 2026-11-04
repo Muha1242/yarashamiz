@@ -601,10 +601,20 @@ async def start(m: Message, command: CommandObject, state: FSMContext):
     arg = command.args or ""
 
     if arg.startswith("l_"):
-        lid = arg[2:]
+        parts = arg[2:].split("_")
+        lid = parts[0]
+        sig = parts[1] if len(parts) > 1 else ""
         L = st.letter(lid)
         if not L:
             return await m.answer("Xat topilmadi.")
+        # imzo tekshiruvi: begona odam ID taxmin qilib ocholmaydi
+        # (yuboruvchining o'zi va ilgari ochgan odam uchun ruxsat)
+        if (L["sender"] != m.from_user.id and not st.link_ok(lid, sig)
+                and not st.has_seen(L["id"], m.from_user.id)):
+            return await m.answer(
+                "⏳ Bu havola eskirgan yoki noto'g'ri.\n"
+                "Yuboruvchidan yangi havola so'rang — u /link buyrug'i bilan "
+                "oladi.")
         if L["sender"] == m.from_user.id:
             return await m.answer(
                 "Bu sizning xatingiz 💌\n\nUni Ilovada ko'rishingiz va dizaynini\n"
@@ -913,6 +923,22 @@ async def rem_cb(c: CallbackQuery):
     st.set_reminders(c.from_user.id, on)
     await safe_edit(c.message, rem_text(on), reply_markup=rem_kb(on))
     await c.answer("Yoqildi ✅" if on else "O'chirildi 🔕")
+
+
+@dp.message(Command("link", "havola"))
+async def link_cmd(m: Message):
+    """Oxirgi xat uchun imzolangan havola (eski havolalar ishlamasa)."""
+    u = m.from_user.id
+    L = st.last_mine(u)
+    if not L:
+        return await m.answer("Sizda hali xat yo'q. «✍️ Xat yozish» bilan "
+                              "boshlang.")
+    uname = await me_username()
+    if not uname:
+        return await m.answer("Havola yaratilmadi (BOT_USERNAME sozlanmagan).")
+    await m.answer("🔗 Oxirgi xatingiz uchun yangi (imzolangan) havola:\n"
+                   + st.letter_link(L["id"], uname),
+                   reply_markup=menu_kb(u))
 
 
 @dp.message(Command("app"))
@@ -1266,7 +1292,7 @@ async def theme(c: CallbackQuery, state: FSMContext):
     uname = await me_username()
     st.touch(c.from_user.id)
     await reward_ref(c.from_user.id)
-    link = (f"https://t.me/{uname}?start=l_{lid}" if uname
+    link = (st.letter_link(lid, uname) if uname
             else "havola yaratilmadi (BOT_USERNAME sozlanmagan)")
     await c.message.answer("Xat tayyor. Havolani juftingizga o'zingiz yuboring:\n"
                            + link)
