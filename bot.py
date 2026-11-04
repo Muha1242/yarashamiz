@@ -68,7 +68,7 @@ GIFT_DAYS = int(os.environ.get("GIFT_DAYS", "30"))
 CAPSULE_DAYS = [("1 oy", 30), ("3 oy", 90), ("6 oy", 180), ("1 yil", 365)]
 CAPSULE_LIMIT = 3        # kuniga yaratish mumkin (premium)
 COUPON_TITLES = [
-    "🎬 Kino tanlash huquqi", "🍽 Mazali kechki ovqat", "💆 Massaj",
+    "🎬 Kino tanlash huquqi", "🍽 Mazali kechki ovqat",
     "🚶 Birga sayr", "☕️ Kofe tayyorlash", "🎁 Kutilmagan syurpriz",
     "📞 30 daqiqa suhbat", "🍿 Uyda kino kechasi", "🌙 Rejasiz kechqurun",
     "🤗 Erkin quchoq",

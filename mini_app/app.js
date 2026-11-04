@@ -1157,6 +1157,18 @@ async function couponsSection(v) {
       c.appendChild(row);
     });
   }
+
+  /* qisqa ma'lumot: bilet nima va qanday ishlaydi (bo'lim pastida) */
+  const info = h('div', 'coupon-info');
+  info.appendChild(h('b', '', 'Bu nima?'));
+  info.appendChild(h('p', '',
+    'Bilet — juftingizga beradigan va’dangiz. U «Ishlatish» bosgach, keyin '
+    + 'shu narsani so‘rash huquqiga ega bo‘ladi (masalan, kinoni u tanlaydi).'));
+  info.appendChild(h('p', 'hint',
+    'Bepul: kuniga 1 ta · Premium: cheksiz. Bilet bir marta ishlaydi va faqat '
+    + 'qabul qiluvchi ishlata oladi.'));
+  c.appendChild(info);
+
   v.appendChild(c);
 }
 
