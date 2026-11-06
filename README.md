@@ -14,9 +14,11 @@ Sevishganlarni yarashtirish uchun Telegram boti — **Vercel'da bepul** ishlaydi
 | Bo'lim | Tafsilot |
 |---|---|
 | ✍️ **Xat yozish** | 300 belgigacha, **15 shablon** (5 bepul + 10 premium; yangi «Marmar 🤍», «Neon ✨», «Qog'oz 📜») |
+| 💌 **Animatsion xat** | Konvert → portlash → atirgul → ism; **15 ta mavzu** uchun o'z foni, konverti va teksturasi (marmar qog'oz, neon chiziqlar, qog'oz tolalari…), konvertdan mavzudagi qog'oz chiqadi + yorug'lik nurlari |
+| 🎥 **Video havola** | Xatga Instagram/YouTube havolasi qo'ysa, qabul qiluvchida «🎁 **Meni bos**» tugmasi chiqadi (musiqa tanlash olib tashlandi) |
 | ✨ **AI yordamchi** | Gemini bilan haqiqiy xat: *uzr, sog'inch, sevgi, minnatdorchilik, uchrashuv* |
 | ❤️ **Juftlik** | Mini App'da «Yarashamiz» bosilsa ikkalasi ham xabar oladi |
-| 🎮 **O'yinlar (11 xil)** | Bepul: *A yoki B*, *Kim ko'proq?*, *Kunlik missiya*, *Kunlik savol*, **🙈 Men hech qachon…**, **✍️ Gapni tugat**. Premium: *Sevgi kvizi* 💎, **🤔 Nima bo'lardi?** 💎, **🎭 Haqiqat yoki jasorat** 💎, **💞 Chuqur savollar** 💎, **🧩 Moslik testi** 💎 |
+| 🎮 **O'yinlar (16 xil)** | Bepul: *A yoki B*, *Kim ko'proq?*, *Kunlik missiya*, *Kunlik savol*, **🙈 Men hech qachon…**, **✍️ Gapni tugat**, **🕵️ Ikki haqiqat, bitta yolg'on**, **⏱ 5 soniya qoidasi**. Premium: *Sevgi kvizi* 💎, **🤔 Nima bo'lardi?** 💎, **🎭 Haqiqat yoki jasorat** 💎, **💞 Chuqur savollar** 💎, **🧩 Moslik testi** 💎, **🔥 Qiziqarli fikrlar** 💎, **🗓 Keyingi sana** 💎, **🎯 Orzumiz** 💎 |
 | 💚 **Kayfiyat barometri** | Kuniga 1–5 kayfiyat, juftingiznikini ko‘rish (bepul) |
 | 🎤 **Ovozli xat** 💎 | Botga ovoz yuboring — juftingizga boradi (kuniga 5 ta) |
 | 💞 **AI maslahatchi** 💎 | Suhbatni eslab qoladigan murabbiy: savol bering, davom eting (kuniga 3 ta) |
@@ -136,11 +138,11 @@ Post bir kunda ikki marta ketmasligi uchun Redis'da belgi qo'yiladi.
 | Yillik | **500 ⭐** | 425 kun (1 yil + 2 oy) |
 | Juftlikka sovg'a | **80 ⭐** | 30 kun |
 
-**Premium beradi:** cheksiz xat · AI yordamchi · 10 premium shablon · **11 o‘yin (5 tasi premium)** ·
+**Premium beradi:** cheksiz xat · AI yordamchi · 10 premium shablon · **16 o‘yin (8 tasi premium)** ·
 ⏳ vaqt kapsulasi · cheksiz sevgi biletlari · **🎤 ovozli xat** · **💞 AI murabbiy (chat)** ·
 **📖 Bizning hikoya** · cheksiz xotiralar.
 
-**Bepul:** kuniga 3 xat, 5 shablon, **6 o‘yin**, kuniga 1 sevgi bileti, kayfiyat barometri.
+**Bepul:** kuniga 3 xat, 5 shablon, **8 o‘yin**, kuniga 1 sevgi bileti, kayfiyat barometri.
 **Sinov:** yangi juftlikka **3 kunlik premium** sovg‘a (`TRIAL_DAYS`, bir marta).
 **Promo:** admin `/promo new 7 KOD 100` bilan kod yaratadi, obunachi `/promo KOD` bilan faollashtiradi.
 
