@@ -803,9 +803,15 @@ check("deep: javoblar almashildi",
       and any("Chuqur" in t for _c, t in SENT),
       [(c, t[:30]) for c, t in SENT][-2:])
 
-_q, _a, _b = core.qtext("wyr", 0)
+_q, _opts = core.qtext("wyr", 0)
+_a, _b = _opts
 check("bot: wyr savol matni", "yoki" in _q and _a and _b)
 check("bot: td/deep kunlik savol", bool(core.td_of_day()) and bool(core.deep_of_day()))
+# 3 variantli yangi o'yinlar (tl / hot) — bot ham, ilova ham bittadan ko'proq tugma
+_tlq, _tlo = core.qtext("tl", core.qidx("tl", 0))
+check("bot: tl 3 variant", len(_tlo) == 3 and _tlq)
+_hotq, _hoto = core.qtext("hot", core.qidx("hot", 0))
+check("bot: hot 3 variant", len(_hoto) == 3 and _hotq == core.HOT[core.qidx("hot", 0)])
 
 idx_html = open(os.path.join(ROOT, "mini_app/index.html"), encoding="utf-8").read()
 check("splash logotip (HTML)", 'id="splash"' in idx_html and "splash-logo" in idx_html)
@@ -831,6 +837,38 @@ check("nhi bepul javob",
       api_app._answer(7902, {"g": "nhi", "data": [0, 1, 0, 1, 0]})["waiting"] is True)
 check("comp premium (bepul)",
       api_app._answer(7902, {"g": "comp", "data": [0] * 6})["err"] == "premium")
+
+# --- yangi o'yinlar: bepul va premium alohida ---
+for _g in ("tl", "f5", "hot", "date", "goal"):
+    check(f"yangi o'yin {_g}", _g in core.GAMES)
+check("yangi o'yinlar: bepul/premium ajratilgan",
+      not core.GAMES["tl"].get("prem") and not core.GAMES["f5"].get("prem")
+      and core.GAMES["hot"].get("prem") and core.GAMES["date"].get("prem")
+      and core.GAMES["goal"].get("prem"),
+      {k: core.GAMES[k].get("prem") for k in ("tl", "f5", "hot", "date", "goal")})
+check("tl savollari (5 ta, 3 variant)",
+      len(g3["tl"]["qs"]) == 5 and all(len(x) == 4 for x in g3["tl"]["qs"]),
+      g3["tl"]["qs"][:1])
+check("hot savollari (6 ta, 3 variant)",
+      len(g3["hot"]["qs"]) == 6 and g3["hot"]["opt"] == core.HOT_OPT
+      and len(g3["hot"]["opt"]) == 3, g3["hot"].get("opt"))
+check("f5 / date / goal savollari matni",
+      all(isinstance(g3[k]["qs"][0], str) and len(g3[k]["qs"][0]) > 20
+          for k in ("f5", "date", "goal")),
+      {k: g3[k]["qs"][0][:30] for k in ("f5", "date", "goal")})
+check("td HTML belgilari mini ilovada tozalangan",
+      "<b>" not in g3["td"]["qs"][0] and "Haqiqat" in g3["td"]["qs"][0],
+      g3["td"]["qs"][0][:40])
+check("bepul tl o'ynaydi (3 variantli javob)",
+      api_app._answer(7902, {"g": "tl", "data": [0, 1, 2, 0, 1]})["waiting"] is True)
+check("noto'g'ri variant raqami rad etiladi",
+      api_app._answer(7903, {"g": "tl", "data": [0, 1, 3, 0, 1]})["err"] == "bad_data")
+check("premium hot (bepul o'ynay olmaydi)",
+      api_app._answer(7902, {"g": "hot", "data": [0] * 6})["err"] == "premium")
+check("premium date (bepul o'ynay olmaydi)",
+      api_app._answer(7902, {"g": "date", "data": ["reja"]})["err"] == "premium")
+check("bepul f5 mission",
+      api_app._answer(7903, {"g": "f5", "data": {}})["waiting"] is True)
 
 orig_coach = core.ai_helper.coach_chat
 core.ai_helper.coach_chat = lambda h, q: "1) Hissiyotingizni ayting. 2) Tinch o'tiring."
@@ -954,6 +992,19 @@ check("story: maydonlar", _st["ok"] and {"user", "partner", "days", "pts",
 check("JS: hikoya slaydlari",
       "storySection" in js and "drawStorySlide" in js and "STORY_W" in js)
 check("CSS: hikoya rasmi", ".story-img" in css)
+# "Bizning hikoya" ishlamasligining sababi: bitta await xato butun "Hisobim" ni
+# tushirar edi — endi har bir bo'lim mustaqil + api timeout + xato UI da ko'rsatiladi
+check("Hisobim: bo'limlar mustaqil (bittasi xato boshqasini tushirmaydi)",
+      "const one = async (fn)" in js and "await one(storySection)" in js
+      and "await one(couponsSection)" in js)
+check("hikoya: rasm chizishda xato bo'limni buzmaydi",
+      ("Rasmni yaratib bo‘lmadi" in js) or ("Rasmni yaratib bo'lmadi" in js))
+check("api: timeout (sekin server butun sahifani ushlab turmaydi)",
+      "AbortController" in js and "ac.abort()" in js)
+check("Bog'im: yuklanma + xato holati qayta urinish bilan",
+      "Yuklanmoqda" in js and "setTab('garden')" in js
+      and (("Ma’lumotni yuklab bo‘lmadi" in js)
+           or ("Ma'lumotni yuklab bo'lmadi" in js)))
 check("AI: suhbat funksiyasi", hasattr(core.ai_helper, "coach_chat"))
 
 # ------------------- 32. SPLASH LOGO v3 (bot avatarining o'zi) ----------
@@ -1236,10 +1287,26 @@ check("letter: barmoq bilan aylantirish",
 check("letter: xatni o'qish + qayta + ulashish",
       'id="readBtn"' in _letter and "function replay" in _letter
       and "shareMessage" in _letter)
-check("letter: musiqa (telefon + ichki + UZ/RU/EN)",
-      "pickAudioFile" in _letter and "toggleInnerTone" in _letter
-      and "MUSIC_LIST" in _letter and "uz:" in _letter and "ru:" in _letter
-      and "en:" in _letter)
+check("letter: video havola + «Meni bos» tugmasi",
+      'id="videoBtn"' in _letter and "UI.video" in _letter
+      and "DIRECT_MEDIA" in _letter and "openLink" in _letter)
+check("letter: musiqa tanlash butunlay olib tashlandi",
+      "musicBtn" not in _letter and "MUSIC_LIST" not in _letter
+      and "applyMusicLink" not in _letter and "musicSheet" not in _letter
+      and "pickAudioFile" not in _letter and "params.music" not in _letter)
+check("letter: 15 ta mavzu, har birida o'z foni va teksturasi",
+      _letter.count("bg: [") >= 15 and "const THEMES" in _letter
+      and "tex: 'marble'" in _letter and "tex: 'neon'" in _letter
+      and "tex: 'fiber'" in _letter and "Theme.pick" in _letter,
+      _letter.count("bg: ["))
+check("letter: konvert ochilganda mavzudagi qog'oz chiqadi",
+      "Paper.envelopeFront" in _letter and "Paper.sheet" in _letter
+      and "Paper.draw" in _letter and "Director.phase === PHASE.BURST" in _letter)
+check("letter: yengil mavzular uchun matn rangi", "this.light()" in _letter
+      and "marmar" in _letter and "paper" in _letter)
+check("letter: yozish formasida orqa fon (mavzu) tanlash + jonli ko‘rish",
+      'id="fThemes"' in _letter and "Theme.pick(k)" in _letter
+      and ".chip.on" in _letter)
 check("letter: taymer va shaxsiy forma",
       "startCountdown" in _letter and "showForm" in _letter)
 check("letter: javob tugmalari (yes/later/stop/reply)",
@@ -1252,9 +1319,9 @@ check("letter: holat xabari (yuborilmoqda)",
 check("letter: tayyor shablonlar", "REPLY_TEMPLATES" in _letter)
 check("letter: xat vaqti (N kun oldin)",
       "function letterMetaText" in _letter and "yozilgan" in _letter)
-check("letter: yuboruvchi media + musiqa havolasi",
-      "MediaSection" in _letter and "applyMusicLink" in _letter
-      and "buildShareUrl" in _letter)
+check("letter: yuboruvchi video havolasini qo'yadi",
+      "MediaSection" in _letter and "params.media" in _letter
+      and "buildShareUrl" in _letter and "'v'" in _letter)
 check("letter: reduced-motion hurmat qilinadi", "prefers-reduced-motion" in _letter)
 check("letter: bot havolasi (?d=) qo'llab-quvvatlanadi",
       "decodeBotPayload" in _letter and "Q.get('d')" in _letter)

@@ -11,6 +11,7 @@ import hmac
 import html
 import json
 import os
+import re
 import sys
 import time
 import traceback
@@ -125,6 +126,11 @@ def _library(u):
     return {"ok": True, "letters": out}
 
 
+def _plain(s):
+    """Botdagi <b>...</b> kabi HTML belgilarini mini ilova uchun tozalaydi."""
+    return html.unescape(re.sub(r"<[^>]+>", "", str(s)))
+
+
 def _games(u):
     import bot as core
     import store as st
@@ -158,16 +164,31 @@ def _games(u):
         elif g == "comp":
             item["qs"] = [core.COMP[core.qidx("comp", k)] for k in range(gg["n"])]
             item["opt"] = ["Ha", "Yo'q"]
+        # --- yangi: 3 variantli "ikkita haqiqat, bitta yolg'on" ---
+        elif g == "tl":
+            item["qs"] = [list(core.TL[core.qidx("tl", k)])
+                          for k in range(gg["n"])]
+        # --- yangi: 3 variantli "qiziqarli fikrlar" ---
+        elif g == "hot":
+            item["qs"] = [core.HOT[core.qidx("hot", k)]
+                          for k in range(gg["n"])]
+            item["opt"] = list(core.HOT_OPT)
         elif g == "fin":
             item["qs"] = [core.fin_of_day()]
         elif g == "ms":
-            item["qs"] = [core.mission_of_day()]
+            item["qs"] = [_plain(core.mission_of_day())]
         elif g == "td":
-            item["qs"] = [core.td_of_day()]
+            item["qs"] = [_plain(core.td_of_day())]
         elif g == "kq":
             item["qs"] = [core.dq_of_day()]
         elif g == "deep":
             item["qs"] = [core.deep_of_day()]
+        elif g == "f5":
+            item["qs"] = [core.f5_prompt()]
+        elif g == "date":
+            item["qs"] = [core.date_of_day()]
+        elif g == "goal":
+            item["qs"] = [core.goal_of_day()]
         out.append(item)
     return {"ok": True, "pair": True, "games": out, "pts": st.get_pts(p[0])}
 
@@ -189,8 +210,9 @@ def _answer(u, d):
     # --- validatsiya (o'yin rejimi bo'yicha) ---
     mode = gg["mode"]
     if mode == "match":
+        # 0/1 (ikkita variant) yoki 0/1/2 (uchta variant: tl, hot)
         if not isinstance(data, list) or len(data) != gg["n"] or \
-                any(not isinstance(x, int) or x not in (0, 1) for x in data):
+                any(not isinstance(x, int) or x not in (0, 1, 2) for x in data):
             return {"ok": False, "err": "bad_data"}
     elif mode == "guess":
         if not isinstance(data, list) or len(data) != gg["n"] or \

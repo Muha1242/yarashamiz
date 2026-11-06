@@ -42,18 +42,27 @@ def day_start_ts():
     return int((local_midnight - dt.timedelta(hours=TZ_OFFSET)).timestamp())
 
 GAMES = {
+    # --- bepul ---
     "ab": {"name": "A yoki B", "n": 5, "mode": "guess"},
     "wh": {"name": "Kim ko'proq?", "n": 5, "mode": "match"},
     "ms": {"name": "Kunlik missiya", "n": 1, "mode": "mission"},
     "kq": {"name": "💬 Kunlik savol", "n": 1, "mode": "talk"},
     "nhi": {"name": "🙈 Men hech qachon...", "n": 5, "mode": "match"},
     "fin": {"name": "✍️ Gapni tugat", "n": 1, "mode": "talk"},
+    # yangi bepul o'yinlar
+    "tl": {"name": "🕵️ Ikki haqiqat, bitta yolg'on", "n": 5, "mode": "match"},
+    "f5": {"name": "⏱ 5 soniya qoidasi", "n": 1, "mode": "mission"},
+    # --- premium 💎 ---
     "qz": {"name": "Sevgi kvizi", "n": 6, "mode": "match", "prem": True},
     "wyr": {"name": "🤔 Nima bo'lardi?", "n": 5, "mode": "match", "prem": True},
     "td": {"name": "🎭 Haqiqat yoki jasorat", "n": 1, "mode": "mission",
            "prem": True},
     "deep": {"name": "💞 Chuqur savollar", "n": 1, "mode": "talk", "prem": True},
     "comp": {"name": "🧩 Moslik testi", "n": 6, "mode": "match", "prem": True},
+    # yangi premium o'yinlar
+    "hot": {"name": "🔥 Qiziqarli fikrlar", "n": 6, "mode": "match", "prem": True},
+    "date": {"name": "🗓 Keyingi sana", "n": 1, "mode": "talk", "prem": True},
+    "goal": {"name": "🎯 Orzumiz", "n": 1, "mode": "talk", "prem": True},
 }
 
 

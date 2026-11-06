@@ -6,7 +6,7 @@ Spec talablari bajarilganini kod bo'yicha tekshiradi:
   * zarrachalar chegarasi (<= 800)
   * timeline: konvert → halqa → atirgul → ism → idle
   * interaktivlik: bosish, barmoq bilan aylantirish, "Xatni o'qish"
-  * musiqa: telefon fayli + ichki ohang + UZ/RU/EN ro'yxat
+  * video: yuboruvchi Instagram/YouTube havolasini qo'yadi → "Meni bos" tugmasi
   * qatlamli arxitektura (Config / ShapeFactory / ParticleSystem / ...)
 
 Ishlatish:  python3 content/check_letter_page.py
@@ -36,9 +36,8 @@ REQUIRED_MARKERS = {
     "xatni o'qish": 'id="readBtn"',
     "qayta ko'rish": "function replay",
     "ulashish": "shareMessage",
-    "musiqa: telefon": "pickAudioFile",
-    "musiqa: ichki ohang": "toggleInnerTone",
-    "musiqa: ro'yxat": "MUSIC_LIST",
+    "video havola": "DIRECT_MEDIA",
+    "Meni bos tugmasi": 'id="videoBtn"',
     "taymer": "startCountdown",
     "forma": "showForm",
     "bot payload": "decodeBotPayload",
@@ -50,9 +49,14 @@ REQUIRED_MARKERS = {
     "holat (yuborilmoqda)": "showToast",
     "javob shablonlari": "REPLY_TEMPLATES",
     "xat vaqti": "letterMetaText",
-    "media (Meni oching)": "MediaSection",
-    "musiqa havolasi": "applyMusicLink",
+    "media (Meni bos)": "MediaSection",
+    "video ochish": "mediaSection.open",
     "ulashish havolasi": "buildShareUrl",
+    "15 ta mavzu": "const THEMES",
+    "mavzu teksturasi": "Paper.draw",
+    "konvert ochilishi": "Paper.envelopeFront",
+    "yorug'lik nurlari": "Fx.rays",
+    "mavzu tanlash (forma)": 'id="fThemes"',
 }
 
 LAYERS = ["QATLAM 1", "QATLAM 3", "QATLAM 8", "QATLAM 10", "QATLAM 11",

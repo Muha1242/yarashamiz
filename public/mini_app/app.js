@@ -44,10 +44,15 @@ let ME = null;
 /* ================= API ================= */
 async function api(action, extra) {
   try {
+    /* timeout: sekin server bir bo'limni butun sahifani ushlab turmasin */
+    const ac = (typeof AbortController !== 'undefined') ? new AbortController() : null;
+    const to = ac ? setTimeout(() => ac.abort(), 12000) : null;
     const r = await fetch(API_BASE + '/api/app', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(Object.assign({ init: tg.initData, action }, extra || {})),
+      signal: ac ? ac.signal : undefined,
     });
+    if (to) clearTimeout(to);
     return await r.json();
   } catch (e) { return { ok: false, err: 'net' }; }
 }
@@ -766,7 +771,9 @@ async function viewGames(v) {
     left.appendChild(h('b', '', g.name + (g.prem ? ' 💎' : '')));
     left.appendChild(h('small', '', g.mode === 'guess' ? "O'zingiz + juftingizni toping"
       : g.mode === 'mission' ? 'Kichik vazifa' : g.mode === 'talk' ? 'Erkin javob'
-      : g.opt ? g.opt.join(' / ') : 'Savol-javob'));
+      : g.opt ? g.opt.join(' / ')
+      : (g.qs && Array.isArray(g.qs[0]) && g.qs[0].length > 3
+        ? '3 ta variant' : 'Savol-javob')));
     el.appendChild(left);
     const right = h('div'); right.style.textAlign = 'right';
     const b1 = h('span', 'badge' + (g.done ? ' ok' : ''), g.done ? '✅ siz' : '⏳ siz');
@@ -821,7 +828,7 @@ function playGame(v, g) {
     q.textContent = (idx + 1) + '/' + g.n + '. '
       + (g.mode === 'guess' ? qq[0] : (isPair ? qq[0] : qq));
     const opts = g.mode === 'guess' ? [qq[1], qq[2]]
-      : (isPair ? [qq[1], qq[2]] : g.opt);
+      : (isPair ? qq.slice(1) : g.opt);   // 2 yoki 3 ta variant (tl, hot)
     opts.forEach((o, i) => {
       const b = h('button', '', o);
       b.onclick = () => {
@@ -1024,24 +1031,31 @@ async function storySection(v) {
     btn.textContent = '✨ Hikoyani yaratish';
     if (!r.ok) return alert(mapErr(r.err));
     try { await document.fonts.ready; } catch (e) { /* jim */ }
-    out.style.display = 'block';
-    out.innerHTML = '';
-    out.appendChild(h('h2', '', '🖼 Tayyor!'));
-    for (let i = 0; i < 4; i++) {
-      const url = drawStorySlide(r, i);
-      const img = h('img', 'story-img');
-      img.src = url;
-      out.appendChild(img);
-      const a = h('a', 'btn btn-ghost', '⬇️ ' + (i + 1) + '-slaydni saqlash');
-      a.href = url;
-      a.download = 'yarashamiz-hikoya-' + (i + 1) + '.png';
-      a.style.cssText = 'display:block;text-align:center;text-decoration:none;margin:8px 0 14px';
-      out.appendChild(a);
+    try {
+      out.style.display = 'block';
+      out.innerHTML = '';
+      out.appendChild(h('h2', '', '🖼 Tayyor!'));
+      for (let i = 0; i < 4; i++) {
+        const url = drawStorySlide(r, i);
+        const img = h('img', 'story-img');
+        img.src = url;
+        out.appendChild(img);
+        const a = h('a', 'btn btn-ghost', '⬇️ ' + (i + 1) + '-slaydni saqlash');
+        a.href = url;
+        a.download = 'yarashamiz-hikoya-' + (i + 1) + '.png';
+        a.style.cssText = 'display:block;text-align:center;text-decoration:none;margin:8px 0 14px';
+        out.appendChild(a);
+      }
+      out.appendChild(h('p', 'hint', 'Rasmni uzoq bosib «Saqlash»ni tanlang'));
+      out.scrollIntoView({ behavior: 'smooth' });
+      haptic('medium');
+      confetti();
+    } catch (e) {           /* rasm chizishda xato — bo'limni buzmaymiz */
+      console.warn('hikoya:', e);
+      out.style.display = 'block';
+      out.innerHTML = '';
+      out.appendChild(h('p', 'hint', 'Rasmni yaratib bo‘lmadi. Qayta urinib ko‘ring.'));
     }
-    out.appendChild(h('p', 'hint', 'Rasmni uzoq bosib «Saqlash»ni tanlang'));
-    out.scrollIntoView({ behavior: 'smooth' });
-    haptic('medium');
-    confetti();
   };
   card.appendChild(btn);
   card.appendChild(out);
@@ -1256,8 +1270,11 @@ async function viewMe(v) {
   rf.appendChild(rm);
   v.appendChild(rf);
 
-  await couponsSection(v);
-  await storySection(v);
+  /* Har bir bo'lim mustaqil: bittasi xato bersa qolganlari ishlayveradi
+     (avval bitta await xato butun "Hisobim" + "Bizning hikoya" ni tushirar edi) */
+  const one = async (fn) => { try { await fn(v); } catch (e) { console.warn('bo‘lim:', e); } };
+  await one(couponsSection);
+  await one(storySection);
 
   const tip = h('div', 'card');
   tip.appendChild(h('h2', '', '💡 Bugungi savol'));
@@ -1445,9 +1462,21 @@ const STAGES = [
 ];
 async function viewGarden(v) {
   if (!ME) {
+    v.appendChild(h('div', 'splash', 'Yuklanmoqda…'));
     const r = await api('me');
     if (r.err === 'auth') { authCard(v, r.why); return; }
     if (r.ok) ME = r;
+    else {                     /* tarmoq/ server xatosi — bo‘limni yo‘qotmaymiz */
+      v.innerHTML = '';
+      const c = h('div', 'card');
+      c.appendChild(h('h2', '', "🌱 Bog'im"));
+      c.appendChild(h('p', 'hint', 'Ma’lumotni yuklab bo‘lmadi. Internetni tekshiring.'));
+      const b = h('button', 'btn btn-ghost', '🔄 Qayta urinish');
+      b.onclick = () => setTab('garden');
+      c.appendChild(b);
+      v.appendChild(c);
+      return;
+    }
   }
   v.innerHTML = '';
   const pts = (ME && ME.pts) || 0;
