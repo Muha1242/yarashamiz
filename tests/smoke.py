@@ -1299,14 +1299,18 @@ check("letter: 15 ta mavzu, har birida o'z foni va teksturasi",
       and "tex: 'marble'" in _letter and "tex: 'neon'" in _letter
       and "tex: 'fiber'" in _letter and "Theme.pick" in _letter,
       _letter.count("bg: ["))
-check("letter: konvert ochilganda mavzudagi qog'oz chiqadi",
-      "Paper.envelopeFront" in _letter and "Paper.sheet" in _letter
-      and "Paper.draw" in _letter and "Director.phase === PHASE.BURST" in _letter)
+check("letter: konvert ochilganda mavzudagi qog'oz chiqadi (oq qutichasiz)",
+      "Paper.sheet" in _letter and "Paper.draw" in _letter
+      and "Director.phase === PHASE.BURST" in _letter
+      and "envelopeFront" not in _letter)
+check("letter: serverdagi mavzu ochilganda zudlik bilan qo'llanadi",
+      "Theme.pick(params.theme)" in _letter
+      and "params.theme = j.theme" in _letter)
 check("letter: yengil mavzular uchun matn rangi", "this.light()" in _letter
       and "marmar" in _letter and "paper" in _letter)
-check("letter: yozish formasida orqa fon (mavzu) tanlash + jonli ko‘rish",
-      'id="fThemes"' in _letter and "Theme.pick(k)" in _letter
-      and ".chip.on" in _letter)
+check("mini_app: mavzu tanlash «✍️ Yozish» dagi «🎨 Dizayn» kartasida",
+      "'🎨 Dizayn'" in js and "tgrid" in css and "S.theme" in js
+      and 'id="fThemes"' not in _letter)
 check("letter: taymer va shaxsiy forma",
       "startCountdown" in _letter and "showForm" in _letter)
 check("letter: javob tugmalari (yes/later/stop/reply)",

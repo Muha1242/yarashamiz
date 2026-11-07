@@ -67,15 +67,6 @@ body{font-family:Nunito,system-ui,-apple-system,sans-serif;color:var(--ink);
 .btn[disabled]{opacity:.45;pointer-events:none}
 .row{display:flex;gap:8px;width:100%;max-width:344px}
 .row .btn{flex:1;min-height:46px;font-size:13px;padding:0 6px}
-/* --- mavzu (orqa fon) tanlash chiplari --- */
-.chips{display:flex;flex-wrap:wrap;gap:7px;width:100%;max-width:344px;margin-bottom:12px}
-.chip{-webkit-appearance:none;appearance:none;border:1px solid rgba(255,255,255,.18);
-  cursor:pointer;min-height:36px;padding:7px 12px;border-radius:999px;
-  font:600 12.5px Nunito;color:var(--ink);background:rgba(255,255,255,.08);
-  transition:transform .16s, background .16s, box-shadow .16s}
-.chip:active{transform:scale(.93)}
-.chip.on{background:var(--pink);border-color:transparent;color:#2a0016;
-  box-shadow:0 4px 16px var(--tglow)}
 .hidden{display:none!important}
 /* ---- panellar ---- */
 .sheet{position:fixed;left:0;right:0;bottom:0;z-index:7;max-height:82vh;
@@ -375,13 +366,6 @@ const THEMES = {
     star: '#ffffff', parts: ['#b08a4a', '#d6b878', '#8a6a3a', '#c9a06a'],
     frame: 'rgba(150,120,70,', glow: 'rgba(176,138,74,' },
 };
-const THEME_NAMES = {
-  classic: 'Klassik', love: 'Sevgi', sunset: 'Quyosh', mint: 'Yalpiz',
-  marmar: 'Marmar', night: 'Tun', gold: 'Oltin', ocean: 'Okean',
-  royal: 'Shohona', aurora: 'Shimol yog‘dusi', blossom: 'Gulzor',
-  velvet: 'Baxmal', sky: 'Osmon', neon: 'Neon', paper: 'Qog‘oz',
-};
-
 /** Joriy tema — Config.COLORS shu yerdan to'ldiriladi */
 const Theme = {
   key: 'classic', d: THEMES.classic,
@@ -647,59 +631,30 @@ const Paper = {
     ctx2.restore();
   },
 
-  /** Konvert old yuzasi (ENVELOPE fazasida) — rangli gradient + naqsh
-   *  `t` — paydo bo'lish (0→420ms), `a` — tashqi alfa (o'chish uchun) */
-  envelopeFront(t, a) {
-    const t2 = Theme.d;
-    const bw = Math.min(Viewport.W * 0.62, 300), bh = bw * 0.66;
-    const x = Viewport.cx - bw / 2, y = Viewport.cy - bh / 2;
-    const k = MathX.clamp(t / 420, 0, 1) * (a === undefined ? 1 : a); // 0→420ms yumshoq paydo bo'lish
-    if (k <= 0) return;
-    ctx.save();
-    ctx.globalAlpha = k;
-    const g = ctx.createLinearGradient(x, y, x + bw, y + bh);
-    g.addColorStop(0, t2.env[0]); g.addColorStop(1, t2.env[1]);
-    ctx.fillStyle = g;
-    ctx.beginPath();
-    ctx.moveTo(x, y); ctx.lineTo(x + bw, y);
-    ctx.lineTo(x + bw, y + bh); ctx.lineTo(x, y + bh); ctx.closePath();
-    ctx.fill();
-    ctx.clip();
-    Paper.draw(ctx, x, y, bw, bh, 3);
-    /* old qatlamdagi qatlam-yorug'lik */
-    const sh = ctx.createLinearGradient(x, y, x, y + bh);
-    sh.addColorStop(0, 'rgba(255,255,255,.20)');
-    sh.addColorStop(0.5, 'rgba(255,255,255,0)');
-    sh.addColorStop(1, 'rgba(0,0,0,.22)');
-    ctx.fillStyle = sh;
-    ctx.fillRect(x, y, bw, bh);
-    ctx.restore();
-    ctx.globalAlpha = 1;
-  },
-
-  /** Konvert ochilganda ichidan chiqadigan qog'oz varaq */
-  sheet(t, phase) {
-    /* t: BURST boshidan beri ms. 0–260: o'sadi; 260–1500: ochiq; keyin pasayadi */
-    let a = 1;
-    if (t < 260) a = MathX.clamp(t / 260, 0, 1);
-    else if (t > 1500) a = MathX.clamp(1 - (t - 1500) / 500, 0, 1);
+  /** Konvert ichidan chiqqan qog'oz varaq — "bu xat" deb o'qiladigan qisqa lahza.
+   *  t: BURST boshidan beri ms — 0–260 o'sadi, 260–800 turadi, 800–1200 so'nadi */
+  sheet(t) {
+    if (t <= 0 || t > 1200) return;
+    let a = 1, grow = 1;
+    if (t < 260) a = grow = MathX.clamp(t / 260, 0, 1);
+    else if (t > 800) a = MathX.clamp(1 - (t - 800) / 400, 0, 1);
     if (a <= 0) return;
     const t2 = Theme.d;
-    const grow = t < 260 ? MathX.clamp(t / 260, 0, 1) : 1;
-    const bw = Math.min(Viewport.W * 0.62, 300) * (0.6 + 0.4 * grow);
-    const bh = bw * 0.72;
-    const x = Viewport.cx - bw / 2, y = Viewport.cy - bh / 2 - 14 * grow;
-    const rot = (1 - grow) * 0.22;
+    const bw = Math.min(Viewport.W * 0.62, 300) * (0.62 + 0.30 * grow);
+    const bh = bw * 0.68;
+    const x = Viewport.cx - bw / 2, y = Viewport.cy - bh / 2 - 22 * grow;
+    const rot = (1 - grow) * 0.20;
     ctx.save();
-    ctx.globalAlpha = a * 0.97;
+    ctx.globalAlpha = a * 0.92;
     ctx.translate(Viewport.cx, Viewport.cy);
     ctx.rotate(rot);
     ctx.translate(-Viewport.cx, -Viewport.cy);
-    ctx.shadowColor = 'rgba(0,0,0,.45)';
-    ctx.shadowBlur = 26;
-    ctx.shadowOffsetY = 10;
+    ctx.shadowColor = 'rgba(0,0,0,.26)';   // yengil soya — "quti" emas, "qog'oz"
+    ctx.shadowBlur = 30;
+    ctx.shadowOffsetY = 8;
     const g = ctx.createLinearGradient(x, y, x + bw, y + bh);
-    g.addColorStop(0, '#ffffff'); g.addColorStop(0.4, t2.paper);
+    g.addColorStop(0, '#ffffff');
+    g.addColorStop(0.35, t2.paper);
     g.addColorStop(1, t2.paper);
     ctx.fillStyle = g;
     ctx.beginPath();
@@ -709,12 +664,18 @@ const Paper = {
     ctx.shadowColor = 'transparent';
     ctx.shadowBlur = 0; ctx.shadowOffsetY = 0;
     ctx.clip();
-    Paper.draw(ctx, x, y, bw, bh, 7);
-    /* qatlam-chegara: qog'ozning o'z ramkasi */
+    Paper.draw(ctx, x, y, bw, bh, 7);      // mavzu teksturasi (marmar shtrixlari…)
+    /* yozuv chiziqlari — to'rtburchak emas, xat deb o'qinsin */
     ctx.strokeStyle = t2.line;
-    ctx.lineWidth = 1.2;
-    ctx.globalAlpha = a * 0.75;
-    ctx.strokeRect(x + 10, y + 10, bw - 20, bh - 20);
+    ctx.lineWidth = Math.max(1, bw * 0.008);
+    ctx.globalAlpha = a * 0.5;
+    for (let i = 1; i <= 6; i++) {
+      const ly = y + bh * (0.20 + i * 0.105);
+      ctx.beginPath();
+      ctx.moveTo(x + bw * 0.12, ly);
+      ctx.lineTo(x + bw * (i === 6 ? 0.58 : 0.88), ly);
+      ctx.stroke();
+    }
     ctx.restore();
     ctx.globalAlpha = 1;
   },
@@ -907,17 +868,13 @@ class Renderer {
     ctx.fillRect(0, 0, W, H);
     drawStars(Director.elapsed);
     if (Director.phase === PHASE.ENVELOPE) {
-      Paper.envelopeFront(Director.elapsed);
       drawGoldFrame(Director.elapsed);
     } else if (Director.phase === PHASE.BURST) {
-      /* konvert ochilmoqda: old tomon so'nadi, ichidan mavzudagi qog'oz chiqadi */
+      /* konvert ochilmoqda: ichidan mavzudagi qog'oz varaq chiqadi va
+         zarrachalarga so'nadi (oq quticha emas — xat ko'rinishida) */
       const bt = Director.elapsed - Director.phaseStart;
-      Paper.envelopeFront(999, MathX.clamp(1 - bt / 420, 0, 1));
       Paper.sheet(bt);
       if (bt < 460) drawGoldFrame(Director.elapsed);
-    } else if (Director.phase === PHASE.ROSE && Director.elapsed -
-               Director.phaseStart < 700) {
-      Paper.sheet(Director.elapsed - Director.phaseStart + 1500);
     }
     Fx.draw(dt);
 
@@ -1086,6 +1043,7 @@ async function loadFromServer() {
     if (j && j.ok) {
       params.text = (j.text || '').slice(0, 1000);
       params.theme = j.theme || params.theme;
+      Theme.pick(params.theme);      // serverdagi mavzuni DARHOL qo'llash
       params.ts = Number(j.ts || params.ts) || 0;
       if (Array.isArray(j.offers)) params.offers = j.offers.map(String).slice(0, 9);
       if (!params.name) params.name = j.mine ? '' : (j.fromName || '');
@@ -1408,8 +1366,6 @@ function showForm() {
     '<input id="fMedia" placeholder="Video havola (Instagram/YouTube) — ixtiyoriy" ' + FIELD_CSS + '>' +
     '<input id="fMediaTitle" placeholder="Sarlavha (masalan: «Meni bos»)" ' +
     FIELD_CSS + 'maxlength="60">' +
-    '<div class="meta" style="margin-top:6px">Orqa fon (mavzu) — bosib ko‘ring</div>' +
-    '<div class="chips" id="fThemes"></div>' +
     '<div class="row" style="gap:8px"><button class="btn btn-main" id="fGo">Boshlash</button></div>' +
     '<button class="btn btn-ghost" id="fCopy" style="margin-top:10px">' +
     '🔗 Tayyor havolani nusxalash</button>' +
@@ -1419,25 +1375,6 @@ function showForm() {
   document.body.appendChild(box);
   requestAnimationFrame(() => box.classList.add('on'));
 
-  /* --- mavzu chiplari: bosilganda fon va konvert darhol almashadi --- */
-  const tw = box.querySelector('#fThemes');
-  const paint = () => Object.keys(THEMES).forEach((k) => {
-    const b = document.createElement('button');
-    b.type = 'button';
-    b.className = 'chip' + (k === params.theme ? ' on' : '');
-    b.textContent = THEME_NAMES[k] || k;
-    b.onclick = () => {
-      params.theme = k;
-      Theme.pick(k);                       // jonli oldindan ko‘rish
-      tw.querySelectorAll('.chip').forEach((x) => x.classList.remove('on'));
-      b.classList.add('on');
-      if (tg && tg.HapticFeedback && tg.HapticFeedback.selectionChanged) {
-        tg.HapticFeedback.selectionChanged();
-      }
-    };
-    tw.appendChild(b);
-  });
-  paint();
   box.querySelector('#fGo').onclick = () => {
     readFormFields(box);
     box.classList.remove('on');

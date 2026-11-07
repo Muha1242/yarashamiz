@@ -54,9 +54,9 @@ REQUIRED_MARKERS = {
     "ulashish havolasi": "buildShareUrl",
     "15 ta mavzu": "const THEMES",
     "mavzu teksturasi": "Paper.draw",
-    "konvert ochilishi": "Paper.envelopeFront",
+    "qog'oz varaq": "Paper.sheet",
     "yorug'lik nurlari": "Fx.rays",
-    "mavzu tanlash (forma)": 'id="fThemes"',
+    "mavzu (serverdan)": "Theme.pick(params.theme)",
 }
 
 LAYERS = ["QATLAM 1", "QATLAM 3", "QATLAM 8", "QATLAM 10", "QATLAM 11",
