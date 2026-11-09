@@ -53,8 +53,8 @@ REQUIRED_MARKERS = {
     "video ochish": "mediaSection.open",
     "ulashish havolasi": "buildShareUrl",
     "15 ta mavzu": "const THEMES",
-    "mavzu teksturasi": "Paper.draw",
-    "qog'oz varaq": "Paper.sheet",
+    "mavzu foni (body)": "document.body.style.background",
+    "3D sahna proyekti": "Scene.quad",
     "yorug'lik nurlari": "Fx.rays",
     "mavzu (serverdan)": "Theme.pick(params.theme)",
 }

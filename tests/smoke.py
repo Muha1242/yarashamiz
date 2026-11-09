@@ -1299,10 +1299,10 @@ check("letter: 15 ta mavzu, har birida o'z foni va teksturasi",
       and "tex: 'marble'" in _letter and "tex: 'neon'" in _letter
       and "tex: 'fiber'" in _letter and "Theme.pick" in _letter,
       _letter.count("bg: ["))
-check("letter: konvert ochilganda mavzudagi qog'oz chiqadi (oq qutichasiz)",
-      "Paper.sheet" in _letter and "Paper.draw" in _letter
-      and "Director.phase === PHASE.BURST" in _letter
-      and "envelopeFront" not in _letter)
+check("letter: oq qog'oz varaq butunlay olib tashlangan",
+      "Paper.sheet" not in _letter and "const Paper" not in _letter
+      and "envelopeFront" not in _letter
+      and "Director.phase === PHASE.BURST" in _letter)
 check("letter: serverdagi mavzu ochilganda zudlik bilan qo'llanadi",
       "Theme.pick(params.theme)" in _letter
       and "params.theme = j.theme" in _letter)
