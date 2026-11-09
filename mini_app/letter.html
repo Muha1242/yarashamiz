@@ -631,53 +631,88 @@ const Paper = {
     ctx2.restore();
   },
 
-  /** Konvert ichidan chiqqan qog'oz varaq — "bu xat" deb o'qiladigan qisqa lahza.
-   *  t: BURST boshidan beri ms — 0–260 o'sadi, 260–800 turadi, 800–1200 so'nadi */
+  /** Konvert ichidan chiqqan qog'oz varaq — sahnaning o'z 3D makonida,
+   *  konverddan kichikroq va undan "chiqib" turadi (to'rtburchak emas, xat).
+   *  t: qog'oz boshlanganidan beri ms — 0–320 o'sadi, 320–950 turadi,
+   *     950–1400 so'nadi */
   sheet(t) {
-    if (t <= 0 || t > 1200) return;
+    if (t <= 0 || t > 1400) return;
     let a = 1, grow = 1;
-    if (t < 260) a = grow = MathX.clamp(t / 260, 0, 1);
-    else if (t > 800) a = MathX.clamp(1 - (t - 800) / 400, 0, 1);
+    if (t < 320) a = grow = MathX.clamp(t / 320, 0, 1);
+    else if (t > 950) a = MathX.clamp(1 - (t - 950) / 450, 0, 1);
     if (a <= 0) return;
     const t2 = Theme.d;
-    const bw = Math.min(Viewport.W * 0.62, 300) * (0.62 + 0.30 * grow);
-    const bh = bw * 0.68;
-    const x = Viewport.cx - bw / 2, y = Viewport.cy - bh / 2 - 22 * grow;
-    const rot = (1 - grow) * 0.20;
+    const env = Math.min(Viewport.W * 0.62, 300);
+    const bw = env * (0.54 + 0.22 * grow);       // konverddan sezilarli kichik
+    const bh = bw * 0.74;
+    const rise = 40 * grow;                      // konvertdan chiqib chiqadi
+    const q = Scene.quad(-bw / 2, -bh / 2 - rise, bw, bh, 0);
+    const bb = Scene.box(q);
     ctx.save();
-    ctx.globalAlpha = a * 0.92;
-    ctx.translate(Viewport.cx, Viewport.cy);
-    ctx.rotate(rot);
-    ctx.translate(-Viewport.cx, -Viewport.cy);
-    ctx.shadowColor = 'rgba(0,0,0,.26)';   // yengil soya — "quti" emas, "qog'oz"
-    ctx.shadowBlur = 30;
-    ctx.shadowOffsetY = 8;
-    const g = ctx.createLinearGradient(x, y, x + bw, y + bh);
+    ctx.globalAlpha = a * 0.95;
+    ctx.shadowColor = 'rgba(0,0,0,.30)';   // yengil soya — "quti" emas, "qog'oz"
+    ctx.shadowBlur = 26;
+    ctx.shadowOffsetY = 7;
+    const g = ctx.createLinearGradient(bb.x, bb.y, bb.x + bb.w, bb.y + bb.h);
     g.addColorStop(0, '#ffffff');
     g.addColorStop(0.35, t2.paper);
     g.addColorStop(1, t2.paper);
     ctx.fillStyle = g;
     ctx.beginPath();
-    ctx.moveTo(x, y); ctx.lineTo(x + bw, y);
-    ctx.lineTo(x + bw, y + bh); ctx.lineTo(x, y + bh); ctx.closePath();
+    ctx.moveTo(q[0][0], q[0][1]);
+    for (let i = 1; i < 4; i++) ctx.lineTo(q[i][0], q[i][1]);
+    ctx.closePath();
     ctx.fill();
     ctx.shadowColor = 'transparent';
     ctx.shadowBlur = 0; ctx.shadowOffsetY = 0;
     ctx.clip();
-    Paper.draw(ctx, x, y, bw, bh, 7);      // mavzu teksturasi (marmar shtrixlari…)
-    /* yozuv chiziqlari — to'rtburchak emas, xat deb o'qinsin */
+    Paper.draw(ctx, bb.x, bb.y, bb.w, bb.h, 7);   // mavzu teksturasi (marmar…)
+    /* yozuv chiziqlari — 3D ga mos proyeksiyada, shuning uchun xat deb o'qinadi */
     ctx.strokeStyle = t2.line;
-    ctx.lineWidth = Math.max(1, bw * 0.008);
+    ctx.lineWidth = Math.max(1, bw * 0.009);
     ctx.globalAlpha = a * 0.5;
     for (let i = 1; i <= 6; i++) {
-      const ly = y + bh * (0.20 + i * 0.105);
+      const ly = -bh / 2 - rise + bh * (0.20 + i * 0.105);
+      const p1 = Scene.p(-bw * 0.38, ly, 0);
+      const p2 = Scene.p(bw * (i === 6 ? 0.08 : 0.38), ly, 0);
       ctx.beginPath();
-      ctx.moveTo(x + bw * 0.12, ly);
-      ctx.lineTo(x + bw * (i === 6 ? 0.58 : 0.88), ly);
+      ctx.moveTo(p1[0], p1[1]);
+      ctx.lineTo(p2[0], p2[1]);
       ctx.stroke();
     }
     ctx.restore();
     ctx.globalAlpha = 1;
+  },
+};
+
+/* =============================================================================
+   QATLAM 6b — SAHNA PROYEKTI: ramka va qog'oz ham zarrachalar bilan BIR xil
+   3D makonda chiziladi. Aks holda konvert aylangan, ramka esa tekis qolib
+   konvertdan chetlab ketadi (ko'zga "yiqilgan" effekt berardi).
+   ========================================================================== */
+const Scene = {
+  /** Mahalliy (x, y, z) nuqtani ekran koordinatasiga o'tkazish */
+  p(x, y, z) {
+    z = z || 0;
+    const cosY = Math.cos(Director.rotY), sinY = Math.sin(Director.rotY);
+    const cosX = Math.cos(Director.rotX), sinX = Math.sin(Director.rotX);
+    const tx = x * cosY - z * sinY;
+    const tz0 = x * sinY + z * cosY;
+    const ty = y * cosX - tz0 * sinX;
+    const tz = y * sinX + tz0 * cosX;
+    const sc = Config.FOV / (Config.FOV + tz);   // perspektiva (ParticleSystem bilan bir xil)
+    return [Viewport.cx + tx * sc, Viewport.cy + ty * sc];
+  },
+  /** (x, y) boshlanuvchi w×h to'rtburchakning 4 burchagi */
+  quad(x, y, w, h, z) {
+    return [this.p(x, y, z), this.p(x + w, y, z),
+            this.p(x + w, y + h, z), this.p(x, y + h, z)];
+  },
+  /** 4 burchakdan chegara qutisi — tekstura va gradient uchun */
+  box(q) {
+    const xs = q.map(a => a[0]), ys = q.map(a => a[1]);
+    const x = Math.min.apply(null, xs), y = Math.min.apply(null, ys);
+    return { x, y, w: Math.max.apply(null, xs) - x, h: Math.max.apply(null, ys) - y };
   },
 };
 
@@ -687,20 +722,27 @@ const Paper = {
 const Fx = {
   heart: 0, ring: 0, rays: 0, sparks: [],
 
-  goldFrame(t) {
+  /** Oltin ramka — konvertning o'z 3D makonida; `alpha` bilan asta so'nadi */
+  goldFrame(t, alpha) {
     const bw = Math.min(Viewport.W * 0.62, 300), bh = bw * 0.66;
-    const x = Viewport.cx - bw / 2, y = Viewport.cy - bh / 2;
+    const q = Scene.quad(-bw / 2, -bh / 2, bw, bh, 0);
+    const apex = Scene.p(0, -bh * 0.08, 0);      // qopqoq uchi (konvertning o'zida)
     const pulse = 0.55 + 0.45 * Math.sin(t * 0.003);
     ctx.save();
+    ctx.globalAlpha = MathX.clamp(alpha === undefined ? 1 : alpha, 0, 1);
     ctx.lineWidth = 1.4;
     ctx.strokeStyle = Config.COLORS.gold + (0.35 + 0.35 * pulse) + ')';
     ctx.shadowColor = Config.COLORS.glow + '.9)';
     ctx.shadowBlur = 18 + 10 * pulse;
     ctx.beginPath();
-    ctx.moveTo(x, y); ctx.lineTo(x + bw, y);
-    ctx.lineTo(x + bw, y + bh); ctx.lineTo(x, y + bh); ctx.closePath();
-    ctx.moveTo(x, y); ctx.lineTo(Viewport.cx, y + bh * 0.42);
-    ctx.lineTo(x + bw, y);
+    ctx.moveTo(q[0][0], q[0][1]);
+    ctx.lineTo(q[1][0], q[1][1]);
+    ctx.lineTo(q[2][0], q[2][1]);
+    ctx.lineTo(q[3][0], q[3][1]);
+    ctx.closePath();
+    ctx.moveTo(q[0][0], q[0][1]);               // qopqoq diagonali
+    ctx.lineTo(apex[0], apex[1]);
+    ctx.lineTo(q[1][0], q[1][1]);
     ctx.stroke();
     ctx.restore();
     ctx.globalAlpha = 1;
@@ -761,7 +803,7 @@ const Fx = {
     /* --- yorug'lik nurlari: konvert ochilganda markazdan tarqaladi --- */
     if (this.rays > 0) {
       const k = MathX.clamp(1 - this.rays / 0.95, 0, 1);
-      const a = Math.max(0, 1 - k) * 0.5;
+      const a = Math.max(0, 1 - k) * 0.36;
       const gl = Config.COLORS.glow || 'rgba(255,200,120,';
       ctx.save();
       ctx.globalCompositeOperation = 'lighter';
@@ -794,7 +836,7 @@ const Fx = {
 };
 const flashScreen = () => Fx.flash();
 const heartsTick = (dt) => Fx.hearts(dt);
-const drawGoldFrame = (t) => Fx.goldFrame(t);
+const drawGoldFrame = (t, a) => Fx.goldFrame(t, a);
 const burstSparks = (n, p) => Fx.burst(n, p);
 
 /* WebAudio: konvert bosilganda qisqa "shimgir" (fayl kerak emas) */
@@ -868,13 +910,15 @@ class Renderer {
     ctx.fillRect(0, 0, W, H);
     drawStars(Director.elapsed);
     if (Director.phase === PHASE.ENVELOPE) {
-      drawGoldFrame(Director.elapsed);
+      drawGoldFrame(Director.elapsed, 1);
     } else if (Director.phase === PHASE.BURST) {
-      /* konvert ochilmoqda: ichidan mavzudagi qog'oz varaq chiqadi va
-         zarrachalarga so'nadi (oq quticha emas — xat ko'rinishida) */
+      /* konvert ochilmoqda: avval oltin ramka ASTA so'nadi (keskin emas),
+         keyin ichidan mavzudagi qog'oz varaq chiqadi — ikkala to'rtburchak
+         bir vaqtda turib ko'zni chalg'itmasin */
       const bt = Director.elapsed - Director.phaseStart;
-      Paper.sheet(bt);
-      if (bt < 460) drawGoldFrame(Director.elapsed);
+      const fa = MathX.clamp(1 - bt / 420, 0, 1);
+      if (fa > 0) drawGoldFrame(Director.elapsed, fa);
+      Paper.sheet(bt - 300);
     }
     Fx.draw(dt);
 
