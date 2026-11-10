@@ -432,6 +432,7 @@ const params = {
   /* yangi: yuboruvchi qo'shgan video/syurpriz havola */
   media: (Q.get('v') || '').trim().slice(0, 500),      // video havola (Instagram/YouTube)
   mediaTitle: (Q.get('vt') || '').trim().slice(0, 60), // media sarlavhasi
+  style: (Q.get('style') || 'xat').slice(0, 20),       // xat | gul | shar
   offers: [],                                          // xatdagi takliflar
   ts: Number(Q.get('ts') || 0),                        // yozilgan vaqt (unix)
 };
@@ -450,6 +451,7 @@ function decodeBotPayload() {
       params.offers = d.o.map(String).filter(Boolean).slice(0, 9);
     }
     if (d.ts) params.ts = Number(d.ts) || 0;
+    if (d.style) params.style = String(d.style).slice(0, 20);
   } catch (e) { /* buzilgan payload — jim o'tamiz */ }
 }
 decodeBotPayload();
@@ -848,7 +850,8 @@ function nameText() {
 
 /** Ismni harf-harf chiqarish (kursiv shrift, harflar ketma-ket) */
 function revealName() {
-  const txt = nameText();
+  const s = params.style;
+  const txt = s === 'gul' ? '🌹' : (s === 'shar' ? '⚛️' : nameText());
   UI.name.innerHTML = '';
   const len = Math.max(1, Array.from(txt).length);
   UI.name.style.whiteSpace = 'nowrap';
@@ -869,10 +872,14 @@ function showTools() {
   UI.read.classList.remove('hidden');
   UI.tools.classList.remove('hidden');
   UI.read.style.animation = 'letterIn .5s ease both';
-  /* yuboruvchi video havola qo'ygan bo'lsa — tugmalar ostida "Meni bos" */
+  const s = params.style;
   if (params.media) {
     UI.video.classList.remove('hidden');
     UI.video.textContent = '🎁 ' + (params.mediaTitle || 'Meni bos');
+  }
+  if (s !== 'xat') {
+    UI.read.textContent = s === 'gul' ? '🌹 Bu sizga' : '⚛️ Bu sizga';
+    UI.read.className = 'btn btn-main style-' + s;
   }
 }
 
@@ -912,12 +919,14 @@ async function loadFromServer() {
     if (j && j.ok) {
       params.text = (j.text || '').slice(0, 1000);
       params.theme = j.theme || params.theme;
+      params.style = j.style || params.style;
       Theme.pick(params.theme);      // serverdagi mavzuni DARHOL qo'llash
       params.ts = Number(j.ts || params.ts) || 0;
       if (Array.isArray(j.offers)) params.offers = j.offers.map(String).slice(0, 9);
       if (!params.name) params.name = j.mine ? '' : (j.fromName || '');
       UI.forYouSub.textContent = params.name ? ('sizga: ' + params.name)
-                                             : 'sizga yozilgan xat';
+    : (params.style === 'gul' ? '🌹 sizga gul'
+      : (params.style === 'shar' ? '⚛️ sizga shar' : 'sizga yozilgan xat'));
     }
   } catch (e) { /* jim */ }
 }
@@ -1278,6 +1287,7 @@ function buildShareUrl() {
   if (params.name) u.searchParams.set('name', params.name);
   if (params.text) u.searchParams.set('text', params.text.slice(0, 900));
   if (params.theme) u.searchParams.set('theme', params.theme);
+  if (params.style && params.style !== 'xat') u.searchParams.set('style', params.style);
   if (params.media) u.searchParams.set('v', params.media);
   if (params.mediaTitle) u.searchParams.set('vt', params.mediaTitle);
   return u.toString();
@@ -1361,6 +1371,7 @@ window.__letter = {
   name: nameText,
   text: () => params.text,
   video: () => params.media,
+  style: () => params.style,
 };
 </script>
 </body>

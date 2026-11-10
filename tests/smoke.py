@@ -1290,6 +1290,9 @@ check("letter: xatni o'qish + qayta + ulashish",
 check("letter: video havola + «Meni bos» tugmasi",
       'id="videoBtn"' in _letter and "UI.video" in _letter
       and "DIRECT_MEDIA" in _letter and "openLink" in _letter)
+check("letter: style (xat/gul/shar) parametri",
+      "params.style" in _letter and "'xat'" in _letter and "'gul'" in _letter
+      and "'shar'" in _letter and "⚛️" in _letter and "🌹" in _letter)
 check("letter: musiqa tanlash butunlay olib tashlandi",
       "musicBtn" not in _letter and "MUSIC_LIST" not in _letter
       and "applyMusicLink" not in _letter and "musicSheet" not in _letter

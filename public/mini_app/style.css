@@ -482,6 +482,8 @@ body::after{ /* yumshoq vinyetka */
   animation:splashPulse 1.8s ease-in-out infinite;
 }
 @keyframes splashPulse{50%{opacity:.95}}
+.btn.style-gul{background:linear-gradient(135deg,#e91e63,#ffab91)!important;border-color:transparent;color:#fff}
+.btn.style-shar{background:linear-gradient(135deg,#9c27b0,#3f51b5)!important;border-color:transparent;color:#fff}
 .tabs button:focus-visible,.tbtn:focus-visible,.qopt button:focus-visible,
 .opt button:focus-visible{outline:none;box-shadow:var(--ring)}
 ::-webkit-scrollbar{width:8px}

@@ -52,6 +52,7 @@ REQUIRED_MARKERS = {
     "media (Meni bos)": "MediaSection",
     "video ochish": "mediaSection.open",
     "ulashish havolasi": "buildShareUrl",
+    "style (xat/gul/shar)": "params.style",
     "15 ta mavzu": "const THEMES",
     "mavzu foni (body)": "document.body.style.background",
     "3D sahna proyekti": "Scene.quad",
