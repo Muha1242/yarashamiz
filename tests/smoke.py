@@ -1099,6 +1099,7 @@ check("to'lov: valyuta XTR bo'lishi shart",
 check("to'lov: payload o'qiladi",
       core.pay_kind("prem:month:777") == "month"
       and core.pay_kind("gift:777") == "gift"
+      and core.pay_kind("premium_7902") == "month"
       and core.pay_kind("boshqa") is None)
 
 
@@ -1156,6 +1157,39 @@ _m_gift = FakePayMsg(9103, "gift:9103", core.PRICES["gift"], charge="ch_gift_1")
 asyncio.run(core.paid(_m_gift))
 check("to'lov: sovg'a havolasi beriladi",
       any("gift_" in (a or "") for a in _m_gift.answers), _m_gift.answers)
+
+# --- yangi: Mini App invoysi (premium_<user_id>, 50 XTR) ---
+_p_prem = FakePre("premium_7902", api_app.PREMIUM_STARS)
+asyncio.run(core.pre(_p_prem))
+check("pre_checkout: premium_ invoys qabul qilinadi", _p_prem.ok is True)
+_p_prem_bad = FakePre("premium_7902", 1)
+asyncio.run(core.pre(_p_prem_bad))
+check("pre_checkout: premium_ noto'g'ri summa rad etiladi",
+      _p_prem_bad.ok is False)
+
+async def _fake_invoice_link(*a, **k):
+    return "https://t.me/invoice/fake_premium_7902"
+core.bot.create_invoice_link = _fake_invoice_link
+_r_inv = api_app._invoice(7902, {})
+check("invoice: havola va payload qaytaradi",
+      _r_inv.get("ok") is True
+      and str(_r_inv.get("link", "")).startswith("https://")
+      and _r_inv.get("payload") == "premium_7902")
+
+_m_inv_pay = FakePayMsg(7902, "premium_7902", api_app.PREMIUM_STARS,
+                        charge="ch_inv_1")
+asyncio.run(core.paid(_m_inv_pay))
+check("invoice to'lov: premium faollashadi",
+      st.is_prem(7902) and st.prem_days(7902) >= 29, st.prem_days(7902))
+_days_inv_before = st.prem_days(7902)
+_m_inv_replay = FakePayMsg(7902, "premium_7902", api_app.PREMIUM_STARS,
+                           charge="ch_inv_1")
+asyncio.run(core.paid(_m_inv_replay))
+check("invoice to'lov: replay premium qo'shmaydi",
+      st.prem_days(7902) == _days_inv_before, st.prem_days(7902))
+check("invoice to'lov: replay xabari",
+      any("allaqachon" in (a or "").lower() for a in _m_inv_replay.answers),
+      _m_inv_replay.answers)
 
 check("trial: bir marta beriladi", st.grant_trial(9201, 3) == 3)
 check("trial: premium faol", st.is_prem(9201) and st.prem_days(9201) >= 2,

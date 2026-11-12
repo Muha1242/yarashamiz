@@ -1227,7 +1227,41 @@ async function viewMe(v) {
     const pg = h('div'); pg.appendChild(h('b', '', PR.gift + ' ⭐')); pg.appendChild(h('small', '', 'sovg\'a'));
     pz.appendChild(pm); pz.appendChild(py); pz.appendChild(pg);
     pr.appendChild(pz);
-    pr.appendChild(h('p', 'hint', 'Sotib olish uchun botdagi 💎 Premium tugmasini bosing'));
+
+    const bp = h('button', 'btn btn-main', '💎 Premium olish');
+    bp.style.marginTop = '10px';
+    bp.onclick = async () => {
+      haptic();
+      bp.disabled = true;
+      bp.textContent = 'Invoys yaratilmoqda…';
+      const r = await api('invoice');
+      bp.disabled = false;
+      bp.textContent = '💎 Premium olish';
+      if (!r.ok) {
+        return alert(r.err === 'no_token'
+          ? 'To‘lov tizimi hozircha sozlanmagan.'
+          : 'Invoys yaratib bo‘lmadi, keyinroq urinib ko‘ring.');
+      }
+      try {
+        if (tg && tg.openInvoice) {
+          tg.openInvoice(r.link, (res) => {
+            try {
+              api('me').then((m) => {
+                if (m.ok) { ME = m; setTab('me'); }
+              });
+            } catch (e) { /* jim */ }
+          });
+        } else {
+          alert('Shu Ilova versiyasi invoysni qo‘llab-quvvatlamaydi. '
+            + 'Botdagi «💎 Premium» orqali oling.');
+        }
+      } catch (e) {
+        alert('Xatolik yuz berdi.');
+      }
+    };
+    pr.appendChild(bp);
+    pr.appendChild(h('p', 'hint', 'To‘lov Telegram Stars (XTR) bilan amalga oshiradi. '
+      + 'Premium: cheksiz xat, AI yordamchi, barcha shablonlar va o’yinlar.'));
   }
   v.appendChild(pr);
 

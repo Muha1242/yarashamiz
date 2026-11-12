@@ -1514,6 +1514,9 @@ def pay_kind(payload):
         return parts[1]
     if parts[0] == "gift" and len(parts) >= 2:
         return "gift"
+    # Mini App invoysi: premium_<user_id> -> 1 oy (30 kun, 50 XTR)
+    if payload and payload.startswith("premium_") and len(payload) > 9:
+        return "month"
     return None
 
 

@@ -18,12 +18,15 @@ import traceback
 import urllib.parse
 from http.server import BaseHTTPRequestHandler
 
+from aiogram.types import LabeledPrice
+
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if ROOT not in sys.path:
     sys.path.insert(0, ROOT)
 
 BOT_TOKEN = os.environ.get("BOT_TOKEN", "")
 MAX_AGE = 86400 * 3          # initData 3 kungacha amal qiladi
+PREMIUM_STARS = 50           # konstant: Premium 30 kun uchun to'lov (XTR)
 
 
 def _dcs(fields: dict) -> str:
@@ -396,6 +399,55 @@ def _newletter(u, d):
             "left": left}
 
 
+def _invoice(u, d):
+    """Mini App orqali Premium invoys havolasi (Telegram Stars / XTR).
+
+    Foydalanuvchi ID faqat tekshirilgan initData'dan oladi (so'rov tanasidan emas).
+    Narx 50 XTR (PREMIUM_STARS), muddat 30 kun, payload: premium_<user_id>.
+    """
+    import bot as core
+    import store as st
+    from aiogram.client.session.aiohttp import AiohttpSession
+
+    if not core.TOKEN:
+        return {"ok": False, "err": "no_token"}
+
+    payload = "premium_" + str(u)
+    title = "Yarashamiz Premium 💎"
+    description = (
+        "30 kunlik premium: cheksiz xat, AI yordamchi, barcha shablonlar "
+        "va o'yinlar."
+    )
+    prices = [LabeledPrice(label="Premium 30 kun", amount=PREMIUM_STARS)]
+
+    core.bot.session = AiohttpSession()
+    link = None
+
+    async def go():
+        nonlocal link
+        try:
+            link = await core.bot.create_invoice_link(
+                chat_id=u,
+                title=title,
+                description=description,
+                payload=payload,
+                provider_token="",
+                currency="XTR",
+                prices=prices,
+            )
+        finally:
+            try:
+                await core.bot.session.close()
+            except Exception:  # noqa: BLE001
+                pass
+
+    asyncio.run(go())
+
+    if not link:
+        return {"ok": False, "err": "server"}
+    return {"ok": True, "link": link, "payload": payload}
+
+
 def _story(u):
     """Premium: juftlik statistikasi + iqtiboslar (Mini App slaydlari)."""
     import store as st
@@ -635,6 +687,7 @@ ACTIONS = {"me": lambda u, usr, d: _me(u, usr),
            "letter_seen": lambda u, usr, d: _letter_seen(u, d),
            "games": lambda u, usr, d: _games(u),
            "answer": lambda u, usr, d: _answer(u, d),
+           "invoice": lambda u, usr, d: _invoice(u, d),
            "letter": lambda u, usr, d: _letter(u, d),
            "retheme": lambda u, usr, d: _retheme(u, d),
            "form": lambda u, usr, d: _form(u, d),
