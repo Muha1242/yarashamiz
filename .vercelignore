@@ -1,0 +1,12 @@
+.cline-home
+.git
+.vercel
+__pycache__
+*.pyc
+.env
+.env.local
+node_modules
+npm-debug.log*
+yarn-error.log*
+.DS_Store
+legacy
