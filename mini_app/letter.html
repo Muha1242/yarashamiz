@@ -14,8 +14,12 @@
    Bitta sahifa (spec talabi), ammo JS qatlamlarga bo'lingan:
    Config → Math → Shapes → Particles → Renderer → Scene → UI → Boot
    ========================================================================== */
-:root{--bg:#0d0010;--pink:#ff2f8e;--pink-soft:#ff9ac6;--gold:#ffd696;
-  --cyan:#1fd6b4;--ink:#fff2f7;--muted:rgba(255,242,247,.62)}
+:root{--bg:#12061c;--pink:#ff7aa8;--pink-2:#ff4d8d;--pink-soft:#ff9ac6;
+  --gold:#f7c98b;--gold-2:#e9a15c;--purple:#a06bff;--purple-2:#6d3bd1;
+  --cyan:#1fd6b4;--ink:#fff6fa;--muted:rgba(255,246,250,.66);
+  --glass:rgba(255,255,255,.065);--line:rgba(255,255,255,.14);
+  --line-2:rgba(255,255,255,.24);--ok:#7be0a8;
+  --r-sm:14px;--r-md:20px;--r-lg:26px}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{margin:0;height:100%;overflow:hidden;background:var(--bg)}
 body{font-family:Nunito,system-ui,-apple-system,sans-serif;color:var(--ink);
@@ -56,14 +60,15 @@ body{font-family:Nunito,system-ui,-apple-system,sans-serif;color:var(--ink);
   z-index:5;display:flex;flex-direction:column;align-items:center;gap:10px;
   padding:0 18px;pointer-events:auto}
 .btn{-webkit-appearance:none;appearance:none;border:0;cursor:pointer;width:100%;
-  max-width:344px;min-height:52px;border-radius:16px;font:800 16px Nunito;
+  max-width:344px;min-height:52px;border-radius:var(--r-md);font:800 16px Nunito;
   display:flex;align-items:center;justify-content:center;gap:8px;
   transition:transform .12s ease,box-shadow .2s ease,opacity .2s ease}
 .btn:active{transform:scale(.975)}
-.btn-main{color:#2a0016;background:linear-gradient(100deg,#ff8ec0,#ffd08a 55%,#c79bff);
+.btn-main{color:#2a0016;
+  background:linear-gradient(100deg,var(--pink),var(--gold) 55%,var(--purple));
   box-shadow:0 14px 34px rgba(255,111,174,.35)}
-.btn-ghost{color:var(--ink);background:rgba(255,255,255,.08);
-  border:1px solid rgba(255,255,255,.18)}
+.btn-ghost{color:var(--ink);background:var(--glass);
+  border:1px solid var(--line-2)}
 .btn[disabled]{opacity:.45;pointer-events:none}
 .row{display:flex;gap:8px;width:100%;max-width:344px}
 .row .btn{flex:1;min-height:46px;font-size:13px;padding:0 6px}
@@ -72,9 +77,10 @@ body{font-family:Nunito,system-ui,-apple-system,sans-serif;color:var(--ink);
 .sheet{position:fixed;left:0;right:0;bottom:0;z-index:7;max-height:82vh;
   overflow-y:auto;-webkit-overflow-scrolling:touch;
   padding:22px 20px calc(env(safe-area-inset-bottom) + 24px);
-  border-radius:26px 26px 0 0;
-  background:linear-gradient(180deg,rgba(40,8,56,.98),rgba(16,4,26,.99));
-  border-top:1px solid rgba(255,255,255,.14);box-shadow:0 -20px 60px rgba(0,0,0,.6);
+  border-radius:var(--r-lg) var(--r-lg) 0 0;
+  background:var(--bg);
+  background-image:linear-gradient(180deg,rgba(255,255,255,.07),transparent 45%);
+  border-top:1px solid var(--line-2);box-shadow:0 -20px 60px rgba(0,0,0,.6);
   transform:translateY(102%);transition:transform .45s cubic-bezier(.2,.9,.2,1)}
 .sheet.on{transform:none}
 .sheet h3{margin:0 0 14px;font-family:'Caveat Brush',cursive;font-size:26px;
@@ -83,8 +89,8 @@ body{font-family:Nunito,system-ui,-apple-system,sans-serif;color:var(--ink);
   color:var(--muted);margin-bottom:14px}
 .letter-text{font-family:Caveat,cursive;font-size:23px;line-height:1.55;
   white-space:pre-wrap;word-break:break-word;margin:0 0 18px}
-.li{padding:12px 14px;margin-bottom:8px;border-radius:14px;
-  background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.14);
+.li{padding:12px 14px;margin-bottom:8px;border-radius:var(--r-sm);
+  background:var(--glass);border:1px solid var(--line);
   font:600 14px Nunito;color:var(--ink);cursor:pointer}
 .flash{position:fixed;inset:0;z-index:4;pointer-events:none;
   background:radial-gradient(circle at 50% 42%,rgba(255,214,240,.95),
@@ -94,24 +100,25 @@ body{font-family:Nunito,system-ui,-apple-system,sans-serif;color:var(--ink);
 /* ---- javob tugmalari (xat ostida) ---- */
 .answers{display:flex;flex-direction:column;gap:9px;margin:14px 0 8px}
 .answers .opt{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:4px}
-.answers .opt button{border:1px solid rgba(255,255,255,.2);
-  background:rgba(255,255,255,.07);color:var(--ink);border-radius:999px;
+.answers .opt button{border:1px solid var(--line-2);
+  background:var(--glass);color:var(--ink);border-radius:999px;
   padding:8px 14px;font:700 13px Nunito;cursor:pointer}
 .answers .opt button.sel{background:linear-gradient(100deg,#ff8ec0,#ffd08a);
   color:#2a0016;border-color:transparent}
-.answers textarea{width:100%;min-height:96px;border-radius:14px;
-  border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.08);
+.answers textarea{width:100%;min-height:96px;border-radius:var(--r-sm);
+  border:1px solid var(--line-2);background:var(--glass);
   color:#fff3f7;padding:12px;font:400 15px Nunito;resize:none;margin-bottom:8px}
 .answers .danger{color:#ff9a9a}
 .tpl-row{display:flex;gap:8px;overflow-x:auto;padding:2px 0 8px}
 .tpl{flex:0 0 auto;padding:8px 12px;border-radius:999px;cursor:pointer;
-  border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.06);
+  border:1px solid var(--line-2);background:var(--glass);
   font:600 12px Nunito;color:var(--ink);white-space:nowrap}
 
 /* ---- holat toast (yuborilmoqda / xato) ---- */
 .toast{position:fixed;left:50%;bottom:calc(env(safe-area-inset-bottom) + 96px);
-  transform:translate(-50%,10px);z-index:9;padding:12px 18px;border-radius:14px;
-  font:700 13px Nunito;color:#2a0016;background:linear-gradient(100deg,#ffd08a,#ff9ec9);
+  transform:translate(-50%,10px);z-index:9;padding:12px 18px;border-radius:var(--r-sm);
+  font:700 13px Nunito;color:#2a0016;
+  background:linear-gradient(100deg,var(--gold),var(--pink));
   box-shadow:0 14px 34px rgba(0,0,0,.45);opacity:0;pointer-events:none;
   transition:opacity .25s ease,transform .25s ease}
 .toast.on{opacity:1;transform:translate(-50%,0)}
@@ -124,9 +131,9 @@ body{font-family:Nunito,system-ui,-apple-system,sans-serif;color:var(--ink);
 /* ---- yuboruvchi qoldirgan syurpriz: "Meni oching" kartasi ---- */
 .media-card{
   position:fixed;left:50%;transform:translate(-50%,14px);bottom:calc(env(safe-area-inset-bottom) + 190px);
-  z-index:6;width:min(340px,92vw);padding:16px 18px;border-radius:22px;text-align:center;
+  z-index:6;width:min(340px,92vw);padding:16px 18px;border-radius:var(--r-lg);text-align:center;
   background:linear-gradient(160deg,rgba(255,120,180,.22),rgba(160,107,255,.18));
-  border:1px solid rgba(255,255,255,.22);
+  border:1px solid var(--line-2);
   box-shadow:0 18px 50px rgba(0,0,0,.55),0 0 34px rgba(255,111,174,.35);
   opacity:0;pointer-events:none;transition:opacity .5s ease,transform .5s cubic-bezier(.2,.9,.2,1)}
 .media-card.on{opacity:1;transform:translate(-50%,0);pointer-events:auto;
@@ -135,9 +142,9 @@ body{font-family:Nunito,system-ui,-apple-system,sans-serif;color:var(--ink);
   50%{box-shadow:0 18px 50px rgba(0,0,0,.55),0 0 44px rgba(255,111,174,.55)}}
 .media-card h4{margin:0 0 4px;font:800 17px Nunito;letter-spacing:.02em}
 .media-card p{margin:0 0 12px;font:600 11.5px Nunito;color:var(--muted);letter-spacing:.03em}
-.media-open{width:100%;min-height:46px;border:0;border-radius:14px;cursor:pointer;
-  font:800 15px Nunito;color:#2a0016;
-  background:linear-gradient(100deg,#ff9ec9,#ffd08a 60%,#c79bff)}
+.media-open{width:100%;min-height:46px;border:0;border-radius:var(--r-sm);
+  cursor:pointer;font:800 15px Nunito;color:#2a0016;
+  background:linear-gradient(100deg,var(--pink),var(--gold) 60%,var(--purple))}
 .media-card video,.media-card audio{width:100%;border-radius:14px;margin-top:10px;display:block}
 .media-card .m-close{margin-top:8px;background:none;border:0;color:var(--muted);
   font:600 12px Nunito;cursor:pointer}
@@ -403,8 +410,12 @@ const Theme = {
       s.setProperty('--pink-soft', t.parts[1]);
       s.setProperty('--cyan', t.parts[2]);
       s.setProperty('--gold', t.parts[1]);
-      s.setProperty('--ink', light ? t.ink : '#fff2f7');
-      s.setProperty('--muted', light ? 'rgba(36,48,68,.66)' : 'rgba(255,242,247,.62)');
+      s.setProperty('--ink', light ? t.ink : '#fff6fa');
+      s.setProperty('--muted', light ? 'rgba(36,48,68,.66)' : 'rgba(255,246,250,.66)');
+      /* yengil mavzuda toq shaffof qatlam kerak — aks holda matn ko'rinmaydi */
+      s.setProperty('--glass', light ? 'rgba(255,255,255,.72)' : 'rgba(255,255,255,.065)');
+      s.setProperty('--line', light ? 'rgba(36,48,68,.16)' : 'rgba(255,255,255,.14)');
+      s.setProperty('--line-2', light ? 'rgba(36,48,68,.28)' : 'rgba(255,255,255,.24)');
       document.body.style.background =
         'radial-gradient(120% 70% at 50% 8%, ' + t.bg[0] + 'ee, transparent 62%),' +
         'radial-gradient(90% 60% at 50% 100%, ' + t.bg[1] + 'cc, transparent 70%),' +

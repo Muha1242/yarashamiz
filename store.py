@@ -1016,6 +1016,35 @@ def week_stats(days=7):
             "totals": admin_stats()}
 
 
+def growth_stats(days=30):
+    """Foydalanuvchi o'sishi: jami, yangi (7/30 kun), faol (7/30 kun).
+
+    Ommaga chiqarishdan keyin foydalanuvchi bazasining kengayishini
+    kuzatish uchun (diagnostika: /api/check?stats=1).
+    """
+    try:
+        days = max(1, min(int(days), 365))
+    except (TypeError, ValueError):
+        days = 30
+    base = now().date()
+    pipe = r.pipeline()
+    for i in range(days):
+        d = (base - dt.timedelta(i)).isoformat()
+        pipe.scard(f"new:{d}")
+        pipe.scard(f"active:{d}")
+    rows = pipe.execute()
+    new_7 = sum(int(rows[i * 2] or 0) for i in range(min(7, days)))
+    act_7 = sum(int(rows[i * 2 + 1] or 0) for i in range(min(7, days)))
+    new_30 = sum(int(rows[i * 2] or 0) for i in range(days))
+    act_30 = sum(int(rows[i * 2 + 1] or 0) for i in range(days))
+    return {"users": r.scard("users"), "days": days,
+            "new7": new_7, "new30": new_30,
+            "active7": act_7, "active30": act_30,
+            "pairs": int(r.get("cnt:pairs") or 0),
+            "letters": int(r.get("seq:letters") or 0),
+            "prem_active": admin_stats()["prem_active"]}
+
+
 def admin_stats():
     t = today()
     prem_all = []

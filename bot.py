@@ -53,7 +53,7 @@ def app_url():
 URL = app_url()
 ADMIN_ID = os.environ.get("ADMIN_ID", "")
 _ME = {"username": ""}          # bot username kesh
-DAILY_LIMIT = 3
+DAILY_LIMIT = int(os.environ.get("LETTER_DAILY_LIMIT", "3"))
 # Telegram Stars narxlari (muhit orqali sozlanadi)
 PRICES = {
     "month": int(os.environ.get("PRICE_MONTH", "50")),
@@ -239,6 +239,18 @@ DAILY_Q = [
     "Bugun juftingizni kulg'izadigan hazil yozing.",
     "Bizning eng zo'r odatimiz qaysi deb o'ylaysiz?",
     "Juftingizga bir sovg'a olsangiz, nima olardingiz?",
+    "Sizning sevgi tili nimadan iborat — qanday so'zlar bilan?",
+    "Juftingiz qanday kiyinsa, ko'nglingiz tezlashadi?",
+    "Siz bir-biringizni qachon eng ko'p tanib olgan ekansiz?",
+    "Kelajakda birga qilishimiz kerak bo'lgan 3 narsani yozing.",
+    "Sizning janjalingizni kuchaytiradigan bitta nima?",
+    "Juftingiz qanday ovoz bilan gapirsa, yurigiz tezlashadi?",
+    "Birgalikda ko'rgan eng yaxshi kinoni eslang.",
+    "Sizga nima berishsa, butun dunyoni olsangiz ham xursand bo'lardingiz?",
+    "Juftingizning qaysi qarori sizni eng ko'proq hayratlantirdi?",
+    "Siz bir-biringizga nima deda deb kelganda, nima deda bo'lasiz?",
+    "Birgalikda yoshlanmoqchi bo'lgan narsalarni yozing.",
+    "Bugun juftingizga nima uchun minnatdorman — bitta sabab.",
 ]
 
 MISSIONS = ["Bugun juftingizga 3 ta yaxshi gap ayting.",
@@ -252,7 +264,25 @@ MISSIONS = ["Bugun juftingizga 3 ta yaxshi gap ayting.",
             "Juftingiz uchun kichik xat yozing.",
             "Birga 10 daqiqa jim o'tirib, qo'lingizni ushlab turing.",
             "Juftingizning ishini yengillashtiring: bir ishni o'zingiz qiling.",
-            "Ertangi sanani rejalashtiring va juftingizga ayting."]
+            "Ertangi sanani rejalashtiring va juftingizga ayting.",
+            "Juftingizga 3 ta «sen yana qandasan?» savolini bering.",
+            "Birga 5 daqiqa ko'z yumib, kim birinchi qo'ng'iroq qilishini o'ynang.",
+            "Juftingizga shu kunning eng muhim voqeasi haqida yozing.",
+            "Yuzoringizni ko'rib, bir-biringizga ta'minot qiling.",
+            "Birga 15 daqiqa telefonlarsiz o'tiring.",
+            "O'z oldingizga yuzma-yuz «sen yaxshisan» deb ayting.",
+            "Birgalikda kichik raqsat tayyorlang (raqs yoki shashka).",
+            "Juftingizning kuchli tomonini yozib, o'zingizga ham ayting.",
+            "Bugun bir-biringizga bir narsa so'rang va uni bajoring.",
+            "Xotirangizdagi eng qiziqarli hikoyani ayting.",
+            "Birga 10 daqiqa qo'l ushlab, ko'zingizni yopib o'tiring.",
+            "Juftingizga sevgi haqida 3 qatorli she'r yozing.",
+            "Birga non yoki shirinlik pishirib, bir-biringizga uzatib bering.",
+            "Birga 1 daqiqa jim qilib turishni sinang va keyin mulohaza qiling.",
+            "Sizning eng yaxshi xususiyatingizni jismoniy harakatda ko'rsating.",
+            "Bugun bir-biringizga kechirim so'rang (kichik narsa uchun ham).",
+            "Birgalikda eski xotirangizni eslab, yozib qo'ying.",
+            "Juftingizga bugun qilgan eng yaxshi narsangizni ayting."]
 
 THEMES = [
     # --- bepul ---
@@ -1222,6 +1252,31 @@ async def safe_edit(message, text=None, **kwargs):
         if "not modified" in str(e).lower():
             return
         raise
+
+
+async def admin_alert(text):
+    """Kritik xatoni ADMIN_ID ga yuboradi (10 daqiqada bir marta — spam bo'lmaydi).
+
+    Monitoring: webhook va Mini App API xatolari endi faqat Redis'da emas,
+    adminga ham yetib boradi.
+    """
+    if not ADMIN_ID:
+        return False
+    try:
+        lock = "ybot:alertlock"
+        if not st.r.set(lock, 1, nx=True, ex=600):
+            return False
+        try:
+            await bot.send_message(int(ADMIN_ID), text)
+        except Exception:
+            try:
+                st.r.delete(lock)      # yuborilmagan bo'lsa — keyin urinish mumkin
+            except Exception:  # noqa: BLE001
+                pass
+            raise
+        return True
+    except Exception:  # noqa: BLE001
+        return False
 
 
 def variants(sit, words):

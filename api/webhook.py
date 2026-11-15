@@ -6,6 +6,7 @@ Webhook manzili:  https://<loyiha>.vercel.app/api/webhook
 import asyncio
 import os
 import sys
+import time
 import traceback
 from http.server import BaseHTTPRequestHandler
 
@@ -57,7 +58,16 @@ class handler(BaseHTTPRequestHandler):
                 rc = _r.from_url(os.environ.get("REDIS_URL") or "",
                                  socket_timeout=5, decode_responses=True)
                 rc.set("ybot:lasterror", tb[-1200:])
+                rc.set("ybot:lasterror_at", int(time.time()))
                 rc.set("ybot:lastupdate", body[:400])
+            except Exception:
+                pass
+            # Monitoring: adminga ham xabar beramiz (10 daqiqada bir marta)
+            try:
+                import bot as core
+                asyncio.run(core.admin_alert(
+                    "🚨 <b>Webhook xatosi</b>\n<code>" + tb[-700:].replace("&", "&amp;")
+                    .replace("<", "&lt;").replace(">", "&gt;") + "</code>"))
             except Exception:
                 pass
         self.send_response(200)

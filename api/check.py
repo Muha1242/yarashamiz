@@ -23,7 +23,7 @@ class handler(BaseHTTPRequestHandler):
     def do_GET(self) -> None:
         path = self.path or ""
         if ("bot=1" in path or "ping=1" in path or "err" in path
-                or "clear=1" in path) and not _key_ok(path):
+                or "clear=1" in path or "stats" in path) and not _key_ok(path):
             body = json.dumps({"ok": False, "err": "unauthorized",
                                "hint": "?s=SETUP_KEY qo'shing"}).encode()
             self.send_response(401)
@@ -48,7 +48,10 @@ class handler(BaseHTTPRequestHandler):
             "CRON_SECRET": bool(os.environ.get("CRON_SECRET")),
             "CHANNEL_ID": bool(os.environ.get("CHANNEL_ID")),
             "LINK_SECRET": bool(os.environ.get("LINK_SECRET")),
+            "WEBHOOK_SECRET": bool(os.environ.get("WEBHOOK_SECRET")),
             "TRIAL_DAYS": os.environ.get("TRIAL_DAYS") or "3 (standart)",
+            "LETTER_COOLDOWN_H": os.environ.get("LETTER_COOLDOWN_H") or "2 (standart)",
+            "LETTER_DAILY_LIMIT": os.environ.get("LETTER_DAILY_LIMIT") or "3 (standart)",
             "PRICE_MONTH": os.environ.get("PRICE_MONTH") or "50 (standart)",
             "PRICE_YEAR": os.environ.get("PRICE_YEAR") or "500 (standart)",
             "PRICE_GIFT": os.environ.get("PRICE_GIFT") or "80 (standart)",
@@ -78,8 +81,18 @@ class handler(BaseHTTPRequestHandler):
                         "qiladi -> 'rediss://' qiling ('s' qo'shing)")
         if not info["WEBAPP_URL"] and not info["VERCEL_PROJECT_PRODUCTION_URL"]:
             warn.append("WEBAPP_URL yo'q - Mini App manzili aniqlanmaydi")
+        if not info["SETUP_KEY"]:
+            warn.append("SETUP_KEY yo'q - /api/setup va /api/check himoyalanmagan")
         info["warnings"] = warn
         info["ok"] = not warn
+
+        # Foydalanuvchi o'sishi (ommaga chiqarishdan keyin kuzatish uchun)
+        if "stats" in (self.path or ""):
+            try:
+                import store as _st
+                info["growth"] = _st.growth_stats(30)
+            except Exception as e:  # noqa: BLE001
+                info["growth"] = {"error": repr(e)}
 
         # Oxirgi webhook xatosi (?err=1)
         if "err" in (self.path or ""):
@@ -89,6 +102,13 @@ class handler(BaseHTTPRequestHandler):
                                    socket_timeout=5, decode_responses=True)
                 info["last_error"] = rc2.get("ybot:lasterror")
                 info["last_update"] = rc2.get("ybot:lastupdate")
+                try:
+                    at = int(rc2.get("ybot:lasterror_at") or 0)
+                    if at:
+                        import time as _tt
+                        info["last_error_age_sec"] = int(_tt.time()) - at
+                except Exception:  # noqa: BLE001
+                    pass
             except Exception as e:  # noqa: BLE001
                 info["last_error"] = repr(e)
 

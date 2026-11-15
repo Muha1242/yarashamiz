@@ -1574,9 +1574,37 @@ function confetti() {
   }
 })();
 
+/* ================= TIZIM RANGLARI (Telegram themeParams) ================= */
+/* Telegram'ning foydalanuvchi tanlagan accent/Chrome ranglarini CSS
+   o'zgaruvchilariga yuklaydi. Matn rangi (text_color) atayin almashtirilmaydi —
+   ilova qorong'i dizaynda, Telegram light rejimi matnni o'qib bo'lmaydigan
+   qilib qoldirardi. */
+function applyThemeParams() {
+  const tp = (tg && tg.themeParams) || null;
+  if (!tp) return false;
+  const s = document.documentElement.style;
+  if (tp.button_color) s.setProperty('--tg-btn', tp.button_color);
+  if (tp.button_text_color) s.setProperty('--tg-btn-text', tp.button_text_color);
+  if (tp.link_color) s.setProperty('--tg-link', tp.link_color);
+  if (tp.hint_color) s.setProperty('--tg-hint', tp.hint_color);
+  if (tp.secondary_bg_color) s.setProperty('--tg-secondary-bg', tp.secondary_bg_color);
+  // Telegram interfeysi (header, status bar) ilovaning rejasiga moslashadi
+  try {
+    if (tg.setBackgroundColor && tp.bg_color) tg.setBackgroundColor(tp.bg_color);
+    if (tg.setHeaderColor) tg.setHeaderColor(tp.header_bg_color || tp.secondary_bg_color || '');
+  } catch (e) { /* jim */ }
+  // Meta-ni yangilaymiz (brauzer paneli rangi)
+  try {
+    const mc = document.querySelector('meta[name=theme-color]');
+    if (mc && tp.bg_color) mc.setAttribute('content', tp.bg_color);
+  } catch (e) { /* jim */ }
+  return true;
+}
+
 /* ================= START ================= */
 (async function start() {
   try {
+    applyThemeParams();
     if (CAPSULE_TOKEN) {
       const nav = document.querySelector('.tabs');
       if (nav) nav.style.display = 'none';

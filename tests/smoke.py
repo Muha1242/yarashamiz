@@ -1538,6 +1538,90 @@ check("kanal: log yoziladi (yangi -> eski)",
 ch._post, ch._pick = _orig_post, _orig_pick
 ch.BOT_TOKEN, ch.CHANNEL_ID = _ch_bt, _ch_ch
 
+# ------------- 40. MONITORING, ANALITIKA va DIZAYN (kengaytirilgan) --------
+# monitoring: kritik xato haqida admin xabari (spam bo'lmasligi uchun throttled)
+_old_admin = core.ADMIN_ID
+core.ADMIN_ID = "999"
+st.r.delete("ybot:alertlock")
+_ok1 = asyncio.run(core.admin_alert("sinov xatosi"))
+_ok2 = asyncio.run(core.admin_alert("sinov xatosi 2"))
+check("monitoring: admin xabari yuboriladi", _ok1 is True)
+check("monitoring: admin xabari throttled (spam yo'q)", _ok2 is False)
+check("monitoring: admin xabari matni yuborilgan",
+      any("sinov xatosi" in (t or "") for _, t in SENT), SENT[-2:])
+core.ADMIN_ID = _old_admin
+st.r.delete("ybot:alertlock")
+
+# analitika: foydalanuvchi o'sishi statistikasi
+_g = st.growth_stats(30)
+check("analitika: o'sish statistikasi to'liq",
+      isinstance(_g, dict)
+      and {"users", "new7", "new30", "active7", "active30"} <= set(_g),
+      sorted(_g.keys()) if isinstance(_g, dict) else _g)
+
+# limit: kunlik xat limiti muhit orqali boshqariladi
+_bot_src2 = open(os.path.join(ROOT, "bot.py"), encoding="utf-8").read()
+_store_src2 = open(os.path.join(ROOT, "store.py"), encoding="utf-8").read()
+check("limit: DAILY_LIMIT muhit o'zgaruvchisidan olinadi",
+      "LETTER_DAILY_LIMIT" in _bot_src2 and "LETTER_COOLDOWN_H" in _store_src2)
+
+# diagnostika: /api/check — env o'zgaruvchilari, webhook, o'sish, xato yoshi
+_check_src = open(os.path.join(ROOT, "api/check.py"), encoding="utf-8").read()
+check("diagnostika: env + o'sish + xato yoshi ko'rsatiladi",
+      "WEBHOOK_SECRET" in _check_src and "growth_stats" in _check_src
+      and "last_error_age_sec" in _check_src)
+
+# monitoring: webhook va API xatolarida admin chaqiriladi
+_wh_src = open(os.path.join(ROOT, "api/webhook.py"), encoding="utf-8").read()
+_ap_src = open(os.path.join(ROOT, "api/app.py"), encoding="utf-8").read()
+check("monitoring: webhook/API xatolarida admin xabari bor",
+      "admin_alert" in _wh_src and "admin_alert" in _ap_src
+      and "lasterror_at" in _wh_src and "lasterror_at" in _ap_src)
+
+# dizayn: Telegram themeParams ishlatiladi (matn rangi buzilmaydi)
+_app_js = open(os.path.join(ROOT, "mini_app/app.js"), encoding="utf-8").read()
+check("dizayn: Telegram themeParams ishlatiladi",
+      "themeParams" in _app_js and "applyThemeParams" in _app_js
+      and "--tg-btn" in _app_js and "--tg-btn-text" in _app_js)
+
+# dizayn: radius/padding --r-* o'zgaruvchilarida
+_css = open(os.path.join(ROOT, "mini_app/style.css"), encoding="utf-8").read()
+check("dizayn: radius --r-* o'zgaruvchilarida",
+      "--r-sm" in _css and _css.count("var(--r-") >= 25, _css.count("var(--r-"))
+
+# dizayn: letter.html umumiy tokenlarni ishlatadi
+_letter_now = open(os.path.join(ROOT, "mini_app/letter.html"), encoding="utf-8").read()
+check("dizayn: letter.html umumiy tokenlarni ishlatadi",
+      "--r-sm" in _letter_now and "--r-md" in _letter_now and "--r-lg" in _letter_now
+      and "var(--glass)" in _letter_now and "var(--line-2)" in _letter_now
+      and "var(--purple)" in _letter_now)
+
+# dizayn: yengil mavzuda toq shaffof qatlam (matn o'qilishi uchun)
+check("dizayn: yengil mavzuda --glass teskari qilinadi",
+      "rgba(255,255,255,.72)" in _letter_now
+      and "s.setProperty('--glass'" in _letter_now)
+
+# mini_app va public/mini_app nusxalari sinxron bo'lishi shart
+check("mini_app: public nusxasi sinxron",
+      open(os.path.join(ROOT, "mini_app/app.js"), encoding="utf-8").read()
+      == open(os.path.join(ROOT, "public/mini_app/app.js"), encoding="utf-8").read()
+      and open(os.path.join(ROOT, "mini_app/style.css"), encoding="utf-8").read()
+      == open(os.path.join(ROOT, "public/mini_app/style.css"), encoding="utf-8").read())
+
+# kunlik savol/missiya: 30 kun ichida takrorlanmasin
+check("kunlik savol: 30 ta noyob savol",
+      len(core.DAILY_Q) >= 30 and len(set(core.DAILY_Q)) == len(core.DAILY_Q),
+      len(core.DAILY_Q))
+check("kunlik missiya: 30 ta noyob topshiriq",
+      len(core.MISSIONS) >= 30 and len(set(core.MISSIONS)) == len(core.MISSIONS),
+      len(core.MISSIONS))
+_qs = [core.DAILY_Q[i % len(core.DAILY_Q)] for i in range(30)]
+_ms = [core.MISSIONS[i % len(core.MISSIONS)] for i in range(30)]
+check("kunlik savol: 30 kun ichida birorta ham takrorlanmaydi",
+      len(set(_qs)) == 30, len(set(_qs)))
+check("kunlik missiya: 30 kun ichida birorta ham takrorlanmaydi",
+      len(set(_ms)) == 30, len(set(_ms)))
+
 print()
 if FAILS:
     print(f"❌ {len(FAILS)} ta tekshiruv yiqildi: {FAILS}")
