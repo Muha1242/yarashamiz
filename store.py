@@ -52,6 +52,7 @@ GAMES = {
     # yangi bepul o'yinlar
     "tl": {"name": "🕵️ Ikki haqiqat, bitta yolg'on", "n": 5, "mode": "match"},
     "f5": {"name": "⏱ 5 soniya qoidasi", "n": 1, "mode": "mission"},
+    "hs": {"name": "🎨 Ichki dunyo", "n": 5, "mode": "match"},
     # --- premium 💎 ---
     "qz": {"name": "Sevgi kvizi", "n": 6, "mode": "match", "prem": True},
     "wyr": {"name": "🤔 Nima bo'lardi?", "n": 5, "mode": "match", "prem": True},
@@ -63,6 +64,7 @@ GAMES = {
     "hot": {"name": "🔥 Qiziqarli fikrlar", "n": 6, "mode": "match", "prem": True},
     "date": {"name": "🗓 Keyingi sana", "n": 1, "mode": "talk", "prem": True},
     "goal": {"name": "🎯 Orzumiz", "n": 1, "mode": "talk", "prem": True},
+    "pf": {"name": "💫 Kelajak farqi", "n": 6, "mode": "match", "prem": True},
 }
 
 
@@ -153,6 +155,10 @@ def set_receiver(lid, u):
 
 THEME_LIMIT = 3
 
+# Xotiralar arxivi limiti (premium cheklovi)
+LIBRARY_FREE = 10         # bepul foydalanuvchi uchun saqlanadigan xatlar
+LIBRARY_PREMIUM = 100     # premium — deyarli cheksiz
+
 
 def set_theme(lid, theme):
     """Xat mavzusini o'zgartiradi.
@@ -192,6 +198,11 @@ def count_today_letters(u, since_ts):
 
 def count_letters(u):
     return r.scard(f"mine:{u}")
+
+
+def library_limit(u, cap=LIBRARY_PREMIUM):
+    """Xotiralar (xatlar arxivi) limiti — premium cheksiz, bepul 10 ta."""
+    return cap if is_prem(u) else LIBRARY_FREE
 
 
 def my_library(u, limit=20):

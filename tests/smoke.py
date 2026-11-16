@@ -1626,6 +1626,48 @@ check("kunlik savol: 30 kun ichida birorta ham takrorlanmaydi",
 check("kunlik missiya: 30 kun ichida birorta ham takrorlanmaydi",
       len(set(_ms)) == 30, len(set(_ms)))
 
+# ------------- 41. YANGI O'YINLAR, PREMIUM XOTIRA LIMITI, 3D DIZAYN --------
+check("yangi o'yin: hs (bepul) va pf (premium) qo'shildi",
+      "hs" in st.GAMES and "pf" in st.GAMES
+      and not st.GAMES["hs"].get("prem") and st.GAMES["pf"].get("prem"))
+check("yangi o'yin: savol banklari 3 variantli",
+      len(core.HS) >= 5 and len(core.PF) >= 6
+      and all(len(r) == 4 for r in core.HS) and all(len(r) == 4 for r in core.PF),
+      (len(core.HS), len(core.PF)))
+_hsq, _hso = core.qtext("hs", 0)
+_pfq, _pfo = core.qtext("pf", 0)
+check("yangi o'yin: qtext 3 ta variant beradi",
+      len(_hso) == 3 and len(_pfo) == 3 and str(_hsq) and str(_pfq))
+check("yangi o'yin: QMAP da ro'yxatda (indeks to'g'ri)",
+      core.QMAP.get("hs") is core.HS and core.QMAP.get("pf") is core.PF)
+st.add_pair(9601, 9602)
+_g9601 = {g["id"]: g for g in api_app._games(9601)["games"]}
+check("ilova: yangi o'yin savollari keladi (3 variantli)",
+      len(_g9601["hs"]["qs"]) == 5 and len(_g9601["pf"]["qs"]) == 6
+      and len(_g9601["hs"]["qs"][0]) == 4, _g9601["hs"]["qs"][0])
+check("premium pf: bepul o'ynay olmaydi",
+      api_app._answer(9601, {"g": "pf", "data": [0] * 6})["err"] == "premium")
+check("bepul hs: o'ynaydi",
+      api_app._answer(9601, {"g": "hs", "data": [0] * 5})["ok"])
+
+# premium limit: xotiralar arxivi
+check("premium limit: bepul 10 ta xotira",
+      st.library_limit(9601) == st.LIBRARY_FREE == 10, st.library_limit(9601))
+check("premium limit: API limitni qaytaradi",
+      api_app._library(9601).get("limit") == st.LIBRARY_FREE)
+st.add_prem(9603, 30)
+check("premium limit: premium cheksiz (100)",
+      st.library_limit(9603) == st.LIBRARY_PREMIUM == 100, st.library_limit(9603))
+
+# dizayn 3D
+_css2 = open(os.path.join(ROOT, "mini_app/style.css"), encoding="utf-8").read()
+check("dizayn 3D: perspektiva va 3D kaskad",
+      "perspective:1400px" in _css2 and "rotateX(-10deg)" in _css2
+      and "nth-child(n+9)" in _css2)
+check("dizayn 3D: tugma bosilishi va tab ko'tarilishi",
+      "rotateX(5deg)" in _css2 and "translateY(-3px) scale(1.04)" in _css2
+      and "preserve-3d" in _css2)
+
 print()
 if FAILS:
     print(f"❌ {len(FAILS)} ta tekshiruv yiqildi: {FAILS}")

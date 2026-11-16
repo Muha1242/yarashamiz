@@ -1474,6 +1474,14 @@ async function viewMemory(v) {
     d.appendChild(ab);
     v.appendChild(d);
   });
+  const _shown = (r.letters || []).length;
+  if ((r.total || 0) > _shown) {
+    const c = h('div', 'card');
+    c.appendChild(h('h2', '', '🔒 Yashirilgan xotiralar'));
+    c.appendChild(h('p', 'hint', (r.total || 0) + ' ta xat yozilgan, hozir '
+      + _shown + ' tasi ko‘rsatilmoqda. Premium bilan barchasi ochiqadi 💎'));
+    v.appendChild(c);
+  }
 }
 
 /* Xatni animatsion sahifada ochish (konvert → atirgul → ism) */

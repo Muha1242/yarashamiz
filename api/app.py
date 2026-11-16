@@ -121,12 +121,14 @@ def _me(u, usr):
 
 def _library(u):
     import store as st
-    rows = st.my_library(u, 30)
+    lim = st.library_limit(u)
+    rows = st.my_library(u, lim)
     out = []
     for x in rows:
         out.append({"id": x["id"], "text": x["text"], "theme": x["theme"],
                     "ts": x["ts"], "mine": x["sender"] == u})
-    return {"ok": True, "letters": out}
+    return {"ok": True, "letters": out, "limit": lim,
+            "total": st.count_letters(u), "prem": st.is_prem(u)}
 
 
 def _plain(s):
@@ -176,6 +178,12 @@ def _games(u):
             item["qs"] = [core.HOT[core.qidx("hot", k)]
                           for k in range(gg["n"])]
             item["opt"] = list(core.HOT_OPT)
+        elif g == "hs":
+            item["qs"] = [list(core.HS[core.qidx("hs", k)])
+                          for k in range(gg["n"])]
+        elif g == "pf":
+            item["qs"] = [list(core.PF[core.qidx("pf", k)])
+                          for k in range(gg["n"])]
         elif g == "fin":
             item["qs"] = [core.fin_of_day()]
         elif g == "ms":

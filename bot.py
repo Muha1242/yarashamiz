@@ -220,6 +220,58 @@ HOT = [
 ]
 HOT_OPT = ["Roziman", "Roziman emas", "Bilmasman"]
 
+# "Ichki dunyo" — 3 ta variantli, bepul o'yin (ixtiyoriy javoblar)
+HS = [
+    ("Sizning ichki dunyoingiz qaysi rangda?",
+     "Moviy — chuqur va sokin",
+     "Qizil — jonli va ehtirjam",
+     "Oq — toza va ochiq"),
+    ("Kayfiyatingiz yaxshi bo'lganda qaysi rangni ko'rasiz?",
+     "Yashil — xotirjamlik",
+     "Sariq — quyosh kabi",
+     "Havorang — osmon kabi"),
+    ("Sevgi siz uchun qaysi rang?",
+     "Qizil — issiq va jonli",
+     "Pink — yumshoq va nozik",
+     "Oltin — qimmat va barqaror"),
+    ("Xayol yo'lingiz qaysi rangda?",
+     "Ko'k — osmon va kenglik",
+     "Binafsha — sirli va chuqur",
+     "Havorang — erkinlik"),
+    ("Sizning kayfiyat o'lchovingiz qaysi rangda?",
+     "Qora — jiddiy va chuqur",
+     "Qizil — issiq va shiddatli",
+     "Ko'k — sovuq va mas'ul"),
+]
+
+# "Kelajak farqi" — 3 ta variantli, premium o'yin
+PF = [
+    ("Kelajakda qaysi biri bo'lasiz?",
+     "Yildan-yilga yangi shaharlar ko'rib chiqaman",
+     "Bir shaharda qolib, chuqurroq ildiz tutaman",
+     "Har yili yangi kasbni o'zgartiraman"),
+    ("Sizning kelajakdagi uyinqiz qanday bo'ladi?",
+     "Katta, yorug' va derazadan shahar ko'rinadi",
+     "Kichik, issiq, kitoblar bilan to'lgan",
+     "Bog'li uy — ko'p o'simlik va hovuz"),
+    ("Juftlik hayotida qaysi biri sizni ko'proq xursand qiladi?",
+     "Har kuni kechqurun uzoq gaplashish",
+     "Birga sayohat qilish",
+     "Jimgina, o'z ishimizni qilish"),
+    ("Kelajakda nima qilishni eng ko'p xohlaysiz?",
+     "Yangi ko'nikma o'rganish (til, musiqa, sport)",
+     "Biznes ochish va o'z ishini boshqarish",
+     "Sahifada yashab, tabiatda dam olish"),
+    ("Kichkina farq: kelajakda birga qanday o'tkazasiz?",
+     "Har yili boshqa mamlakatga sayohat",
+     "Har oy bir xil kechqironi takrorlash",
+     "Kundalik vazifalarni birga qilish"),
+    ("Sevgi kelajakda nimaga o'xshaydi?",
+     "Do'stlikdan kelib chiqqan mustahkam do'stlik",
+     "Avvalgi kabi — garchi o'sish bilan",
+     "Yangi, boshqacha va kutilmagan"),
+]
+
 DAILY_Q = [
     "Juftingizga minnatdorlik bildiradigan 3 narsa yozing.",
     "Juftingizning qaysi odati sizga eng yoqadi?",
@@ -574,7 +626,9 @@ def badges_view(u):
 
 
 def library_view(u):
-    rows = st.my_library(u)
+    lim = st.library_limit(u)
+    rows = st.my_library(u, lim)
+    total = st.count_letters(u)
     if not rows:
         return "💌 Xotiralar bo'sh. Birinchi xatingizni yozing!"
     out = ["💌 <b>Xotiralar</b>\n"]
@@ -582,7 +636,11 @@ def library_view(u):
         d = dt.datetime.fromtimestamp(x["ts"] + st.TZ_OFFSET * 3600).strftime("%d.%m")
         who = "siz →" if x["sender"] == u else "→ siz"
         out.append(f"{i+1}. {d} {who} «{html.escape(x['text'][:40])}…»")
-    return "\n".join(out) + "\n\n<b>Premium</b> bilan xotiralar cheksiz saqlanadi 💎"
+    tail = ("\n\n<b>Premium</b> bilan xotiralar cheksiz saqlanadi 💎"
+            if not st.is_prem(u) else f"\n\n💎 Premium: {total} ta xat saqlangan")
+    if total > len(rows) and not st.is_prem(u):
+        tail += f"\n<i>(yana {total - len(rows)} ta yashirilgan)</i>"
+    return "\n".join(out) + tail
 
 
 def premium_view(u):
@@ -645,7 +703,7 @@ def qidx(g, step):
 
 
 QMAP = {"wh": WHO, "qz": QZ, "wyr": WYR, "nhi": NHI, "comp": COMP, "tl": TL,
-        "hot": HOT}
+        "hot": HOT, "hs": HS, "pf": PF}
 
 
 def td_of_day():
@@ -1696,6 +1754,12 @@ def qtext(g, idx):
         return HOT[idx], list(HOT_OPT)
     if g == "tl":
         row = TL[idx]
+        return str(row[0]), [str(x) for x in row[1:]]
+    if g == "hs":
+        row = HS[idx]
+        return str(row[0]), [str(x) for x in row[1:]]
+    if g == "pf":
+        row = PF[idx]
         return str(row[0]), [str(x) for x in row[1:]]
     return str((QMAP.get(g) or AB)[idx]), ["Ha", "Yo'q"]
 
