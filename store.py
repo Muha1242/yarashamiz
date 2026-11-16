@@ -16,8 +16,12 @@ from contextlib import contextmanager
 
 import redis
 
+# REDIS_URL muhitda yo'q bo'lsa ham import vaqtida KeyError chiqmasin —
+# aks holda Vercel build/render butunlay to'xtaydi. Yo'qligi /api/check
+# orqali aniq ko'rsatiladi.
+REDIS_URL = os.environ.get("REDIS_URL", "")
 r = redis.from_url(
-    os.environ["REDIS_URL"], decode_responses=True,
+    REDIS_URL or "redis://127.0.0.1:6379/0", decode_responses=True,
     socket_timeout=5, socket_connect_timeout=5,
     retry_on_timeout=True, health_check_interval=30)
 

@@ -448,9 +448,13 @@ import store as st  # noqa: E402
 from store import GAMES  # noqa: E402
 
 def _aredis():
-    """Redis asyncio klienti — timeout'lar bilan (osilib qolmasligi uchun)."""
+    """Redis asyncio klienti — timeout'lar bilan (osilib qolmasligi uchun).
+
+    REDIS_URL yo'q bo'lsa ham import xatosi chiqmasin (build/render uchun).
+    """
     return ARedis.from_url(
-        os.environ["REDIS_URL"], socket_timeout=5, socket_connect_timeout=5,
+        os.environ.get("REDIS_URL", "") or "redis://127.0.0.1:6379/0",
+        socket_timeout=5, socket_connect_timeout=5,
         retry_on_timeout=True, health_check_interval=30)
 
 

@@ -965,7 +965,8 @@ check("JS: xat va kapsula sahnalari", js.count("showStage(") >= 3, js.count("sho
 check("CSS: sahna uslublari",
       ".lstage" in css and ".lpaper" in css and "paperIn" in css)
 check("CSS: portlash animatsiyasi", ".burst" in css and "burstFly" in css)
-check("cache-busting v12", "app.js?v=15" in idx_html)
+check("cache-busting v16", "app.js?v=16" in idx_html
+      and "style.css?v=16" in idx_html)
 
 # ------------------- 30. XAT SAHNASI 2.0 (ovoz/parallaks) ----------------
 check("JS: ochilish ovozi", "playOpenSound" in js and "AudioContext" in js)
@@ -975,7 +976,7 @@ check("JS: 'ochildi' muhr", "lstamp" in js and "OCHILDI" in js)
 check("CSS: zarralar va muhr",
       ".lparts" in css and ".lstamp" in css and "stampIn" in css)
 check("CSS: parallaks (translate)", "--px" in css and "--py" in css)
-check("cache-busting v12 (splash)", "app.js?v=15" in idx_html)
+check("cache-busting v16 (splash)", "app.js?v=16" in idx_html)
 check("bot: xat havolasida ism", '"n": st.r.get' in bot_src)
 check("api: kapsula fromName", "fromName" in open(os.path.join(ROOT, "api/app.py"),
                                                    encoding="utf-8").read())
@@ -1667,6 +1668,14 @@ check("dizayn 3D: perspektiva va 3D kaskad",
 check("dizayn 3D: tugma bosilishi va tab ko'tarilishi",
       "rotateX(5deg)" in _css2 and "translateY(-3px) scale(1.04)" in _css2
       and "preserve-3d" in _css2)
+
+# build/render: import vaqtida REDIS_URL KeyError bermasligi kerak
+# (aks holda Vercel butun build'ni to'xtaydi)
+check("build: import vaqtida muhit o'zgaruvchisi xatosi yo'q",
+      'os.environ["REDIS_URL"]' not in _store_src2
+      and 'os.environ["REDIS_URL"]' not in _bot_src2
+      and 'os.environ.get("REDIS_URL"' in _store_src2
+      and 'os.environ.get("REDIS_URL"' in _bot_src2)
 
 print()
 if FAILS:
