@@ -59,6 +59,7 @@ class handler(BaseHTTPRequestHandler):
                                  socket_timeout=5, decode_responses=True)
                 rc.set("ybot:lasterror", tb[-1200:])
                 rc.set("ybot:lasterror_at", int(time.time()))
+                rc.incr("ybot:errcount")
                 rc.set("ybot:lastupdate", body[:400])
             except Exception:
                 pass

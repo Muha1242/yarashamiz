@@ -1577,6 +1577,10 @@ _ap_src = open(os.path.join(ROOT, "api/app.py"), encoding="utf-8").read()
 check("monitoring: webhook/API xatolarida admin xabari bor",
       "admin_alert" in _wh_src and "admin_alert" in _ap_src
       and "lasterror_at" in _wh_src and "lasterror_at" in _ap_src)
+check("monitoring: ADMIN_ID siz ham xato sonini ko'ra olasiz",
+      "errcount" in _wh_src and "errcount" in _ap_src
+      and "err_count" in _check_src and "telegram_admin_alerts" in _check_src
+      and '"monitoring"' in _check_src)
 
 # dizayn: Telegram themeParams ishlatiladi (matn rangi buzilmaydi)
 _app_js = open(os.path.join(ROOT, "mini_app/app.js"), encoding="utf-8").read()

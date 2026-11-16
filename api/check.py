@@ -102,6 +102,7 @@ class handler(BaseHTTPRequestHandler):
                                    socket_timeout=5, decode_responses=True)
                 info["last_error"] = rc2.get("ybot:lasterror")
                 info["last_update"] = rc2.get("ybot:lastupdate")
+                info["err_count"] = int(rc2.get("ybot:errcount") or 0)
                 try:
                     at = int(rc2.get("ybot:lasterror_at") or 0)
                     if at:
@@ -149,6 +150,22 @@ class handler(BaseHTTPRequestHandler):
                 info["getMe"] = {"ok": False, "error": repr(e)}
                 info["webhook_ok"] = False
 
+        # Monitoring: xatolar qayerdan keladi va ularni ko'rish mumkinmi
+        info["monitoring"] = {
+            "err_count": 0,
+            "telegram_admin_alerts": bool(os.environ.get("ADMIN_ID")),
+            "where": "/api/check?err=1&s=SETUP_KEY — xato matni, sanasi va soni",
+            "note": ("ADMIN_ID yo'q bo'lsa Telegram xabari yuborilmaydi, "
+                     "lekin xatolar shu sahifada ko'rinadi"),
+        }
+        try:
+            import redis as _r4
+            rc4 = _r4.from_url(os.environ.get("REDIS_URL") or "",
+                               socket_timeout=3, decode_responses=True)
+            info["monitoring"]["err_count"] = int(rc4.get("ybot:errcount") or 0)
+        except Exception:  # noqa: BLE001
+            pass
+
         # Oxirgi xatoni tozalash (?clear=1) — test qilish uchun
         if "clear=1" in (self.path or ""):
             try:
@@ -156,6 +173,8 @@ class handler(BaseHTTPRequestHandler):
                 rc3 = _r3.from_url(os.environ.get("REDIS_URL") or "",
                                    socket_timeout=5, decode_responses=True)
                 rc3.delete("ybot:lasterror")
+                rc3.delete("ybot:lasterror_at")
+                rc3.delete("ybot:errcount")
                 info["cleared"] = True
             except Exception as e:  # noqa: BLE001
                 info["cleared"] = False

@@ -758,6 +758,7 @@ class handler(BaseHTTPRequestHandler):
                                  socket_timeout=3, decode_responses=True)
                 rc.set("ybot:lasterror", (tb or "")[-1500:])
                 rc.set("ybot:lasterror_at", int(time.time()))
+                rc.incr("ybot:errcount")
             except Exception:  # noqa: BLE001
                 pass
             # Monitoring: adminga ham xabar beramiz (10 daqiqada bir marta)
