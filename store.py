@@ -122,11 +122,18 @@ def get_pts(pid):
 
 
 # -------------------------------- XATLAR --------------------------------
-def add_letter(sender, text, offers, theme):
+def add_letter(sender, text, offers, theme, anon=False, media="", media_title=""):
+    """Xat yaratadi.
+
+    anon=True — yashirin xat (yuboruvchi nomi ko'rinmaydi, premium).
+    media/media_title — premium "video xat" havolasi.
+    """
     lid = r.incr("seq:letters")
     r.hset(f"letter:{lid}", mapping={
         "sender": sender, "text": text, "offers": json.dumps(offers),
-        "theme": theme, "ts": int(time.time()), "receiver": "", "thn": 0})
+        "theme": theme, "ts": int(time.time()), "receiver": "", "thn": 0,
+        "anon": 1 if anon else 0,
+        "media": str(media or "")[:500], "media_title": str(media_title or "")[:60]})
     r.sadd(f"mine:{sender}", lid)
     r.incr(f"cnt:letters:{today()}")
     try:                                 # cooldown uchun oxirgi xat vaqti
@@ -149,7 +156,8 @@ def letter(lid):
     return {"id": int(lid), "sender": int(d["sender"]), "text": d.get("text", ""),
             "offers": offers, "theme": d.get("theme") or "classic",
             "ts": int(d.get("ts") or 0), "receiver": int(d.get("receiver") or 0),
-            "thn": int(d.get("thn") or 0)}
+            "thn": int(d.get("thn") or 0), "anon": int(d.get("anon") or 0),
+            "media": d.get("media") or "", "media_title": d.get("media_title") or ""}
 
 
 def set_receiver(lid, u):
@@ -202,6 +210,49 @@ def count_today_letters(u, since_ts):
 
 def count_letters(u):
     return r.scard(f"mine:{u}")
+
+
+def week_pair_stats(u, days=7):
+    """Juftlik bo'yicha haftalik statistika (premium hisobot).
+
+    Qaytaradi: None (juftlik yo'q) yoki dict.
+    """
+    p = pair_of(u)
+    if not p:
+        return None
+    pid, a, b = p
+    base = now().date()
+    since_day = (base - dt.timedelta(days=days - 1)).isoformat()
+    # mahalliy sana -> epoch (day_start_ts() bilan bir xil mantiq)
+    local_midnight = (dt.datetime.combine(base - dt.timedelta(days=days),
+                                         dt.time.min, tzinfo=dt.timezone.utc)
+                     + dt.timedelta(hours=TZ_OFFSET))
+    since_ts = int(local_midnight.timestamp())
+    letters = 0
+    try:
+        got = set(r.smembers(f"mine:{a}")) | set(r.smembers(f"mine:{b}"))
+    except Exception:  # noqa: BLE001
+        got = set()
+    for x in list(got)[:300]:
+        try:
+            L = letter(int(x))
+        except (TypeError, ValueError):
+            continue
+        if L and L["ts"] >= since_ts:
+            letters += 1
+    games = {}
+    try:
+        for key in r.scan_iter(f"ans:{pid}:*", count=600):
+            parts = str(key).split(":")
+            if len(parts) >= 4 and parts[1] >= since_day:
+                games[parts[2]] = games.get(parts[2], 0) + 1
+    except Exception:  # noqa: BLE001
+        pass
+    names = {g: GAMES[g]["name"] for g in games if g in GAMES}
+    return {"days": days, "letters": letters, "games": games,
+            "gamesTotal": sum(games.values()), "gameNames": names,
+            "pts": get_pts(pid), "streak": streak(a),
+            "since": pair_ts(a, b)}
 
 
 def library_limit(u, cap=LIBRARY_PREMIUM):

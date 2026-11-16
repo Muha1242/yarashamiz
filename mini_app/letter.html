@@ -443,6 +443,7 @@ const params = {
   /* yangi: yuboruvchi qo'shgan video/syurpriz havola */
   media: (Q.get('v') || '').trim().slice(0, 500),      // video havola (Instagram/YouTube)
   mediaTitle: (Q.get('vt') || '').trim().slice(0, 60), // media sarlavhasi
+  anon: 0,                                         // 🕶 yashirin xat (premium)
   offers: [],                                          // xatdagi takliflar
   ts: Number(Q.get('ts') || 0),                        // yozilgan vaqt (unix)
 };
@@ -461,6 +462,9 @@ function decodeBotPayload() {
       params.offers = d.o.map(String).filter(Boolean).slice(0, 9);
     }
     if (d.ts) params.ts = Number(d.ts) || 0;
+    if (d.a) params.anon = 1;
+    if (d.v) params.media = String(d.v).slice(0, 500);
+    if (d.vt) params.mediaTitle = String(d.vt).slice(0, 60);
   } catch (e) { /* buzilgan payload — jim o'tamiz */ }
 }
 decodeBotPayload();
@@ -859,7 +863,7 @@ function nameText() {
 
 /** Ismni harf-harf chiqarish (kursiv shrift, harflar ketma-ket) */
 function revealName() {
-  const txt = nameText();
+  const txt = params.anon ? '🕶 Yashirin xat' : nameText();
   UI.name.innerHTML = '';
   const len = Math.max(1, Array.from(txt).length);
   UI.name.style.whiteSpace = 'nowrap';
@@ -924,11 +928,14 @@ async function loadFromServer() {
       params.text = (j.text || '').slice(0, 1000);
       params.theme = j.theme || params.theme;
       Theme.pick(params.theme);      // serverdagi mavzuni DARHOL qo'llash
+      params.anon = j.anon ? 1 : 0;
+      if (j.media) params.media = String(j.media).slice(0, 500);
+      if (j.mediaTitle) params.mediaTitle = String(j.mediaTitle).slice(0, 60);
       params.ts = Number(j.ts || params.ts) || 0;
       if (Array.isArray(j.offers)) params.offers = j.offers.map(String).slice(0, 9);
       if (!params.name) params.name = j.mine ? '' : (j.fromName || '');
-      UI.forYouSub.textContent = params.name ? ('sizga: ' + params.name)
-                                             : 'sizga yozilgan xat';
+      UI.forYouSub.textContent = params.anon ? 'sizga 🕶 yashirin xat'
+    : (params.name ? ('sizga: ' + params.name) : 'sizga yozilgan xat');
     }
   } catch (e) { /* jim */ }
 }

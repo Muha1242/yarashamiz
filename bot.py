@@ -557,8 +557,11 @@ def offer_kb(sel):
 
 
 def theme_kb(u):
-    return IM(inline_keyboard=[[IB(text=name + (" 🔒" if not theme_ok(t, u) else ""),
-                                   callback_data=f"th:{t}")] for t, name in THEMES])
+    rows = [[IB(text=name + (" 🔒" if not theme_ok(t, u) else ""),
+                   callback_data=f"th:{t}")] for t, name in THEMES]
+    if st.is_prem(u):
+        rows.append([IB(text="🕶 Yashirin xat (yoqiq)", callback_data="an:1")])
+    return IM(inline_keyboard=rows)
 
 
 def open_letter_kb(lid, link):
@@ -795,7 +798,8 @@ async def start(m: Message, command: CommandObject, state: FSMContext):
         st.seen(lid, m.from_user.id)     # shikoyat qilish huquqi uchun
         payload = base64.urlsafe_b64encode(json.dumps(
             {"t": L["text"], "o": L["offers"], "theme": L["theme"],
-             "n": st.r.get(f"name:{L['sender']}") or ""}).encode()).decode()
+             "n": st.r.get(f"name:{L['sender']}") or "",
+             "a": L.get("anon", 0)}).encode()).decode()
         return await m.answer("Sizga xat bor 💌",
                               reply_markup=open_letter_kb(lid, payload))
 
@@ -1459,6 +1463,17 @@ async def finish(c: CallbackQuery, state: FSMContext):
     await c.answer()
 
 
+@dp.callback_query(W.theme, F.data == "an:1")
+async def anon_toggle(c: CallbackQuery, state: FSMContext):
+    """🕶 Yashirin xat — premium: yuboruvchi nomi ko'rinmaydi."""
+    if not st.is_prem(c.from_user.id):
+        return await c.answer("🕶 Yashirin xat — premium uchun 💎", show_alert=True)
+    d = await state.get_data()
+    anon = not bool(d.get("anon"))
+    await state.update_data(anon=anon)
+    await c.answer("🕶 Yashirin xat: " + ("yoqiq" if anon else "yo'q"))
+
+
 @dp.callback_query(W.theme, F.data.startswith("th:"))
 async def theme(c: CallbackQuery, state: FSMContext):
     t = c.data[3:]
@@ -1475,7 +1490,8 @@ async def theme(c: CallbackQuery, state: FSMContext):
         mins = max(1, left // 60)
         return await c.answer(f"⏳ Yana xat yozish uchun {mins} daqiqa kuting",
                               show_alert=True)
-    lid = st.add_letter(c.from_user.id, d["text"], d["offers"], t)
+    lid = st.add_letter(c.from_user.id, d["text"], d["offers"], t,
+                        bool(d.get("anon")))
     await state.clear()
     uname = await me_username()
     st.touch(c.from_user.id)

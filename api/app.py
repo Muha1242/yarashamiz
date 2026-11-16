@@ -278,6 +278,8 @@ def _letter(u, d):
         "ok": True, "id": L["id"], "text": L["text"], "offers": L["offers"],
         "theme": L["theme"], "ts": L["ts"], "mine": L["sender"] == u,
         "fromName": (st.r.get(f"name:{L['sender']}") or ""),
+        "anon": L.get("anon", 0),
+        "media": L.get("media", ""), "mediaTitle": L.get("media_title", ""),
         "changesLeft": max(0, st.THEME_LIMIT - int(L.get("thn") or 0)),
         "themes": [{"id": t, "name": n, "prem": t in core.PREMIUM_THEMES,
                     "ok": t not in core.PREMIUM_THEMES or st.is_prem(u)}
@@ -388,6 +390,13 @@ def _newletter(u, d):
     if theme in core.PREMIUM_THEMES and not prem:
         return {"ok": False, "err": "premium"}
 
+    # --- premium: 🕶 yashirin xat va 🎬 video xat ---
+    anon = bool(d.get("anon")) and prem
+    media = str(d.get("media") or "").strip()[:500]
+    if not prem or not re.match(r"^https?://", media, re.I):
+        media = ""
+    media_title = str(d.get("mediaTitle") or "").strip()[:60]
+
     if not prem and st.count_today_letters(u, st.day_start_ts()) >= core.DAILY_LIMIT:
         return {"ok": False, "err": "limit", "limit": core.DAILY_LIMIT}
 
@@ -396,7 +405,7 @@ def _newletter(u, d):
     if left > 0:
         return {"ok": False, "err": "cooldown", "wait": max(1, left // 60)}
 
-    lid = st.add_letter(u, text, offers, theme)
+    lid = st.add_letter(u, text, offers, theme, anon, media, media_title)
     st.touch(u)
     st.claim_reward(u)              # claim + ball/premium birga (atomar)
     uname = bot_username()
@@ -485,6 +494,17 @@ def _story(u):
             "capsules": st.r.scard(f"caps:{u}"),
             "coupons": coupons, "voices": st.r.llen(f"voices:{u}"),
             "since": ps["since"]}
+
+
+def _report(u, d):
+    """Premium: haftalik juftlik hisoboti (xatlar, o'yinlar, ball, seriya)."""
+    import store as st
+    if not st.is_prem(u):
+        return {"ok": False, "err": "premium"}
+    s = st.week_pair_stats(u, 7)
+    if not s:
+        return {"ok": False, "err": "no_pair"}
+    return {"ok": True, "report": s}
 
 
 def _mood(u, d):
@@ -702,6 +722,7 @@ ACTIONS = {"me": lambda u, usr, d: _me(u, usr),
            "remind": lambda u, usr, d: _remind(u, d),
            "mood": lambda u, usr, d: _mood(u, d),
            "story": lambda u, usr, d: _story(u),
+           "report": lambda u, usr, d: _report(u, d),
            "capsules": lambda u, usr, d: _capsules(u),
            "capsule_new": lambda u, usr, d: _capsule_new(u, d),
            "capsule_open": lambda u, usr, d: _capsule_open(u, d),

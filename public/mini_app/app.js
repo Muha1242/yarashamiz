@@ -263,6 +263,25 @@ function startTilt(stage) {
   });
 }
 
+/* Ilova bo'limlari — barmoq harakati bilan yengil parallaks (3D) */
+function tiltView() {
+  const v = $('view');
+  if (!v) return;
+  const apply = (x, y) => {
+    v.style.setProperty('--tiltx', (x * 3.2).toFixed(2) + 'deg');
+    v.style.setProperty('--tilty', (y * -2.6).toFixed(2) + 'deg');
+  };
+  let raf = 0, px = 0, py = 0;
+  window.addEventListener('pointermove', (e) => {
+    const r = v.getBoundingClientRect();
+    px = ((e.clientX - r.left) / Math.max(1, r.width) - 0.5) * 2;
+    py = ((e.clientY - r.top) / Math.max(1, r.height) - 0.5) * 2;
+    if (raf) return;
+    raf = requestAnimationFrame(() => { raf = 0; apply(px, py); });
+  }, { passive: true });
+  window.addEventListener('pointerleave', () => apply(0, 0), { passive: true });
+}
+
 function buildParticles(theme) {
   const box = h('div', 'lparts');
   const n = 14;
@@ -357,7 +376,7 @@ function viewWrite(v) {
 }
 
 function buildForm(v, f) {
-  const S = { offers: [], theme: 'classic', custom: [] };
+  const S = { offers: [], theme: 'classic', custom: [], anon: false };
 
   /* --- matn --- */
   const c1 = h('div', 'card');
@@ -440,6 +459,44 @@ function buildForm(v, f) {
   c3.appendChild(tgrid);
   v.appendChild(c3);
 
+  /* --- premium: 🕶 yashirin xat + 🎬 video xat --- */
+  let mediaInput = null, mediaTitleInput = null;
+  if (f.isPrem) {
+    const pc = h('div', 'card');
+    pc.appendChild(h('h2', '', '🕶 Yashirin xat'));
+    pc.appendChild(h('p', 'hint',
+      'Yuboruvchining ismi ko‘rinmaydi — juftingiz "kim?" deb topadi.'));
+    const sw = h('button', 'btn btn-ghost', '🕶 Yashirin: yo‘q');
+    sw.style.marginTop = '10px';
+    sw.onclick = () => {
+      haptic();
+      S.anon = !S.anon;
+      sw.textContent = '🕶 Yashirin: ' + (S.anon ? 'ha' : 'yo‘q');
+      sw.classList.toggle('btn-on', S.anon);
+    };
+    pc.appendChild(sw);
+    v.appendChild(pc);
+
+    const vc = h('div', 'card');
+    vc.appendChild(h('h2', '', '🎬 Video xat'));
+    vc.appendChild(h('p', 'hint',
+      'Instagram / YouTube / Telegram havolasi — xat ichida ochiladi.'));
+    const inputCss = 'width:100%;min-height:44px;margin-top:10px;border-radius:12px;'
+      + 'border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.08);'
+      + 'color:#fff3f7;padding:0 12px;font:400 14px Nunito';
+    mediaInput = document.createElement('input');
+    mediaInput.placeholder = 'Video havolasi (ixtiyoriy)';
+    mediaInput.maxLength = 300;
+    mediaInput.style.cssText = inputCss;
+    vc.appendChild(mediaInput);
+    mediaTitleInput = document.createElement('input');
+    mediaTitleInput.placeholder = 'Sarlavha (masalan: «Ko‘r»)';
+    mediaTitleInput.maxLength = 60;
+    mediaTitleInput.style.cssText = inputCss.replace('margin-top:10px', 'margin-top:8px');
+    vc.appendChild(mediaTitleInput);
+    v.appendChild(vc);
+  }
+
   /* --- yaratish --- */
   const mk = h('button', 'btn btn-main', '💌 Havola yaratish');
   mk.style.marginTop = '4px';
@@ -454,7 +511,11 @@ function buildForm(v, f) {
     haptic('medium');
     mk.disabled = true;
     mk.textContent = 'Yaratilmoqda…';
-    const r = await api('newletter', { text, offers: S.offers, theme: S.theme });
+    const r = await api('newletter', {
+      text, offers: S.offers, theme: S.theme, anon: S.anon,
+      media: mediaInput ? mediaInput.value.trim() : '',
+      mediaTitle: mediaTitleInput ? mediaTitleInput.value.trim() : '',
+    });
     mk.disabled = false;
     mk.textContent = '💌 Havola yaratish';
     if (!r.ok) {
@@ -1186,6 +1247,55 @@ async function couponsSection(v) {
   v.appendChild(c);
 }
 
+/* 📊 Haftalik juftlik hisoboti (premium) */
+async function reportSection(v) {
+  const r = await api('report');
+  if (!r.ok) return;
+  const s = r.report || {};
+  const c = h('div', 'card');
+  c.appendChild(h('h2', '', '📊 Haftalik hisobot'));
+  const g = h('div', 'stat-grid');
+  const cell = (v2, lb) => {
+    const d = h('div', 'stat');
+    d.appendChild(h('b', '', v2));
+    d.appendChild(h('small', '', lb));
+    return d;
+  };
+  g.appendChild(cell('💌 ' + (s.letters || 0), 'xat'));
+  g.appendChild(cell('🎮 ' + (s.gamesTotal || 0), 'o‘yin'));
+  g.appendChild(cell('⭐ ' + (s.pts || 0), 'juftlik bali'));
+  g.appendChild(cell('🔥 ' + (s.streak || 0), 'kun seriya'));
+  c.appendChild(g);
+
+  const names = s.gameNames || {};
+  const ids = Object.keys(s.games || {});
+  if (ids.length) {
+    const max = Math.max.apply(null, ids.map((k) => s.games[k])) || 1;
+    const bars = h('div');
+    bars.style.cssText = 'display:flex;flex-direction:column;gap:7px;margin-top:14px';
+    ids.slice(0, 6).forEach((k) => {
+      const row = h('div');
+      row.style.cssText = 'display:flex;align-items:center;gap:9px;font-size:12px';
+      const nm = h('span', '', names[k] || k);
+      nm.style.cssText = 'flex:0 0 118px;opacity:.82;overflow:hidden;'
+        + 'text-overflow:ellipsis;white-space:nowrap';
+      const tr = h('div');
+      tr.style.cssText = 'flex:1;height:8px;border-radius:99px;'
+        + 'background:rgba(255,255,255,.1);overflow:hidden';
+      const fl = h('i');
+      fl.style.cssText = 'display:block;height:100%;border-radius:99px;'
+        + 'background:linear-gradient(90deg,var(--pink),var(--gold));width:'
+        + Math.round((s.games[k] / max) * 100) + '%';
+      tr.appendChild(fl);
+      row.appendChild(nm);
+      row.appendChild(tr);
+      bars.appendChild(row);
+    });
+    c.appendChild(bars);
+  }
+  v.appendChild(c);
+}
+
 async function viewMe(v) {
   if (!ME) {
     v.appendChild(h('div', 'splash', 'Yuklanmoqda…'));
@@ -1308,6 +1418,7 @@ async function viewMe(v) {
      (avval bitta await xato butun "Hisobim" + "Bizning hikoya" ni tushirar edi) */
   const one = async (fn) => { try { await fn(v); } catch (e) { console.warn('bo‘lim:', e); } };
   await one(couponsSection);
+  if (ME.prem) await one(reportSection);
   await one(storySection);
 
   const tip = h('div', 'card');
@@ -1613,6 +1724,7 @@ function applyThemeParams() {
 (async function start() {
   try {
     applyThemeParams();
+    tiltView();
     if (CAPSULE_TOKEN) {
       const nav = document.querySelector('.tabs');
       if (nav) nav.style.display = 'none';

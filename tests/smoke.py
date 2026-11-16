@@ -965,8 +965,8 @@ check("JS: xat va kapsula sahnalari", js.count("showStage(") >= 3, js.count("sho
 check("CSS: sahna uslublari",
       ".lstage" in css and ".lpaper" in css and "paperIn" in css)
 check("CSS: portlash animatsiyasi", ".burst" in css and "burstFly" in css)
-check("cache-busting v16", "app.js?v=16" in idx_html
-      and "style.css?v=16" in idx_html)
+check("cache-busting v17", "app.js?v=17" in idx_html
+      and "style.css?v=17" in idx_html)
 
 # ------------------- 30. XAT SAHNASI 2.0 (ovoz/parallaks) ----------------
 check("JS: ochilish ovozi", "playOpenSound" in js and "AudioContext" in js)
@@ -976,7 +976,7 @@ check("JS: 'ochildi' muhr", "lstamp" in js and "OCHILDI" in js)
 check("CSS: zarralar va muhr",
       ".lparts" in css and ".lstamp" in css and "stampIn" in css)
 check("CSS: parallaks (translate)", "--px" in css and "--py" in css)
-check("cache-busting v16 (splash)", "app.js?v=16" in idx_html)
+check("cache-busting v17 (splash)", "app.js?v=17" in idx_html)
 check("bot: xat havolasida ism", '"n": st.r.get' in bot_src)
 check("api: kapsula fromName", "fromName" in open(os.path.join(ROOT, "api/app.py"),
                                                    encoding="utf-8").read())
@@ -1676,6 +1676,62 @@ check("build: import vaqtida muhit o'zgaruvchisi xatosi yo'q",
       and 'os.environ["REDIS_URL"]' not in _bot_src2
       and 'os.environ.get("REDIS_URL"' in _store_src2
       and 'os.environ.get("REDIS_URL"' in _bot_src2)
+
+# --------- 43. PREMIUM: 🕶 YASHIRIN XAT, 🎬 VIDEO XAT, 📊 HISOBOT ----------
+_an = st.add_letter(9911, "Yashirin xat", ["Kino"], "classic", True,
+                    "https://t.me/x", "Ko'r")
+check("premium: yashirin xat + video saqlanadi",
+      st.letter(_an)["anon"] == 1
+      and st.letter(_an)["media"] == "https://t.me/x"
+      and st.letter(_an)["media_title"] == "Ko'r")
+_lb = st.add_letter(9911, "Oddiy xat", ["Kino"], "classic")
+check("oddiy xat: yashirin emas, videosiz",
+      st.letter(_lb)["anon"] == 0 and st.letter(_lb)["media"] == "")
+
+st.add_pair(9912, 9913)
+st.add_prem(9912, 30)
+_rn = api_app._newletter(9912, {"text": "yashirin", "offers": ["Kino"],
+                                "theme": "classic", "anon": True})
+check("premium: yashirin xat yaratiladi",
+      _rn.get("ok") and st.letter(_rn["id"])["anon"] == 1, _rn)
+_rn2 = api_app._newletter(9914, {"text": "oddiy", "offers": ["Kino"],
+                                 "theme": "classic", "anon": True})
+check("bepul: yashirin xat rad etiladi (oddiy bo'lib qoladi)",
+      _rn2.get("ok") and st.letter(_rn2["id"])["anon"] == 0, _rn2)
+st.add_prem(9915, 30)
+_rn3 = api_app._newletter(9915, {"text": "video", "offers": ["Kino"],
+                                 "theme": "classic",
+                                 "media": "https://youtu.be/x",
+                                 "mediaTitle": "Ko'r"})
+check("premium: video xat saqlanadi",
+      _rn3.get("ok") and st.letter(_rn3["id"])["media"] == "https://youtu.be/x"
+      and st.letter(_rn3["id"])["media_title"] == "Ko'r", _rn3)
+_rn4 = api_app._newletter(9916, {"text": "video", "offers": ["Kino"],
+                                 "theme": "classic",
+                                 "media": "https://youtu.be/x"})
+check("bepul: video xat rad etiladi",
+      _rn4.get("ok") and st.letter(_rn4["id"])["media"] == "", _rn4)
+
+_ws = st.week_pair_stats(9912, 7)
+check("premium: haftalik hisobot tuzilishi to'liq",
+      isinstance(_ws, dict)
+      and {"letters", "games", "gamesTotal", "pts", "streak"} <= set(_ws),
+      sorted(_ws.keys()) if isinstance(_ws, dict) else _ws)
+check("premium: juftlik yo'q bo'lsa hisobot None",
+      st.week_pair_stats(9999, 7) is None)
+check("premium: report endpoint premium gate",
+      api_app._report(9916, {})["err"] == "premium")
+check("premium: report endpoint juftliksiz",
+      api_app._report(9915, {})["err"] == "no_pair")
+check("premium: report endpoint ishlaydi",
+      api_app._report(9912, {}).get("ok") is True)
+
+check("premium: letter.html yashirin xatni ko'rsatadi",
+      "params.anon" in _letter_now and "Yashirin xat" in _letter_now
+      and "d.a" in _letter_now and "j.media" in _letter_now)
+check("premium: ilovada yashirin xat + hisobot bo'limlari bor",
+      "reportSection" in _app_js and "Yashirin xat" in _app_js
+      and "btn-on" in _app_js)
 
 print()
 if FAILS:

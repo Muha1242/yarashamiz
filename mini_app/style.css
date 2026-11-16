@@ -23,7 +23,9 @@ body::before{content:"";position:fixed;inset:-20%;pointer-events:none;z-index:0;
 .pill{background:var(--glass);border:1px solid var(--line);border-radius:99px;
       padding:6px 13px;font-weight:800;font-size:13px;color:var(--gold)}
 .view{flex:1;padding:10px 16px 100px;display:flex;flex-direction:column;gap:14px;
-      perspective:1400px;perspective-origin:50% 35%}
+      perspective:1400px;perspective-origin:50% 35%;
+      transform:rotateX(var(--tilty,0deg)) rotateY(var(--tiltx,0deg));
+      transform-style:preserve-3d;transition:transform .25s ease-out}
 .splash{opacity:.6;text-align:center;margin-top:40vh}
 .tabs{position:fixed;left:12px;right:12px;bottom:calc(10px + env(safe-area-inset-bottom));z-index:9;
       display:flex;gap:4px;padding:7px;border-radius:var(--r-lg);background:rgba(30,12,44,.85);
@@ -67,7 +69,7 @@ body::before{content:"";position:fixed;inset:-20%;pointer-events:none;z-index:0;
 .envelope{position:absolute;inset:0;transform-style:preserve-3d;cursor:pointer;
           transition:transform .9s cubic-bezier(.2,.8,.2,1);animation:float 3.6s ease-in-out infinite}
 .scene.open .envelope{animation:none;transform:translateY(44px) rotateX(14deg) scale(.92)}
-@keyframes float{50%{transform:translateY(-11px) rotateY(7deg)}}
+@keyframes float{50%{transform:translateY(-13px) rotateY(13deg) rotateX(-4deg)}}
 .env-back{position:absolute;inset:0;border-radius:var(--r-md);background:linear-gradient(160deg,#7a3a86,#4a1d5c);
           box-shadow:0 24px 44px rgba(0,0,0,.55),inset 0 0 0 1px rgba(255,255,255,.08)}
 .env-letter{position:absolute;left:8%;right:8%;bottom:8%;height:84%;border-radius:var(--r-sm);
@@ -228,7 +230,8 @@ body::after{ /* yumshoq vinyetka */
   content:"";position:fixed;inset:0;z-index:0;pointer-events:none;
   background:radial-gradient(120% 80% at 50% 40%,transparent 55%,rgba(0,0,0,.38) 100%);
 }
-.app{width:100%;max-width:520px;margin:0 auto;position:relative;z-index:2}
+.app{width:100%;max-width:520px;margin:0 auto;position:relative;z-index:2;
+     perspective:1600px;perspective-origin:50% 30%}
 .top{padding:calc(16px + env(safe-area-inset-top)) 20px 6px}
 
 .brand{
@@ -297,6 +300,10 @@ body::after{ /* yumshoq vinyetka */
   border:1px solid var(--line-2);box-shadow:inset 0 1px 0 rgba(255,255,255,.08);
 }
 .btn-ghost:hover{background:rgba(255,255,255,.1)}
+.btn.btn-on{
+  background:linear-gradient(135deg,var(--pink),var(--purple));
+  border-color:transparent;color:#fff;box-shadow:0 8px 18px rgba(160,80,220,.35);
+}
 .btn:disabled{opacity:.45;box-shadow:none}
 
 /* tablar */
