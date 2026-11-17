@@ -14,12 +14,16 @@ yarn-error.log*
 # Bu papkalar fakeredis / PIL / playwright / imageio_ffmpeg import qiladi —
 # ular requirements.txt da yo'q, shuning uchun build'da ModuleNotFoundError
 # chiqarib Vercel render bosqichini to'xtatadi.
-legacy
-tests
-content
-mini_app
+#
+# MUHIM: bunda "/" bilan yoziladi — aks holda "mini_app" gitignore semantikasi
+# bo'yicha public/mini_app/ ni ham mos qilib, deploy qilinadigan fayllarni
+# chiqarib yuboradi (Mini App 404 bo'lib qoladi).
+/legacy
+/tests
+/content
+/mini_app
 
 # md hujjatlar
-DESIGN_BRIEF.md
-RELEASE_CHECKLIST.md
-RELEASE_QA_2026-11-03.md
+/DESIGN_BRIEF.md
+/RELEASE_CHECKLIST.md
+/RELEASE_QA_2026-11-03.md
